@@ -11,6 +11,7 @@ export interface Mentor {
   achievements?: string[];
   instagram?: string;
   phone?: string;
+  whatsapp?: string;
 }
 
 export interface SlideData {

@@ -7,6 +7,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Biologi",
     path: "Mandiri",
     category: "PTN",
+    whatsapp: "wa.me/6282125505517",
     achievements: ["Penmaba UNJ: Lulus D4 Pemasaran Digital", "Penmaru UPNVJ: Lulus S1 Biologi"]
   },
   {
@@ -15,6 +16,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Manajemen Rekod dan Arsip",
     path: "Mandiri PPKB UI",
     category: "PTN",
+    whatsapp: "wa.me/62895413910771",
     achievements: ["PPKB UI (Manajemen Rekod dan Arsip)", "Jalur Prestasi Vokasi UNDIP"]
   },
   {
@@ -23,6 +25,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Ilmu Komputer",
     path: "Mandiri (Jalur Ketua OSIS)",
     category: "PTN",
+    whatsapp: "wa.me/6282114927981",
     achievements: ["Lulus UNJ (Ilmu Komputer)", "Lulus IPB University (Ilmu Komputer)"]
   },
   {
@@ -31,6 +34,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Bisnis Internasional",
     path: "Mandiri",
     category: "PTN",
+    whatsapp: "wa.me/6285797049346",
     achievements: ["Undip & UPNVJ Teknik Industri", "Unsoed Teknik Pertanian & Bisnis Internasional"]
   },
   {
@@ -39,6 +43,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Fisika",
     path: "SNBP",
     category: "PTN",
+    whatsapp: "wa.me/6282111363420",
     achievements: ["Lulus jalur SNBP di UI - Fisika"]
   },
   {
@@ -47,6 +52,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Manajemen Keuangan",
     path: "SNBT",
     category: "PTN",
+    whatsapp: "wa.me/6288225688820",
     achievements: ["Juara 2 Basket HT Cup 2022", "Komisi B MPK 2024", "Bendahara Umum Gathering Prodi 2025"]
   },
   {
@@ -55,6 +61,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Psikologi",
     path: "Reguler Tanpa TES",
     category: "PTS",
+    whatsapp: "wa.me/6281932797546",
     achievements: []
   },
   {
@@ -63,6 +70,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "S1 Sistem Informasi",
     path: "Reguler Tanpa TES",
     category: "PTS",
+    whatsapp: "wa.me/6289623124053",
     achievements: ["Mantan Kadiv Venue Manager HangTuahCup 2025"]
   },
   {
@@ -71,6 +79,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Teknologi Hasil Perikanan",
     path: "Mandiri",
     category: "PTN",
+    whatsapp: "wa.me/6287811755618",
     achievements: ["Lulus jalur Mandiri di Undip - Teknologi Hasil Perikanan"]
   },
   {
@@ -79,6 +88,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Jurnalistik",
     path: "SNBT",
     category: "PTN",
+    whatsapp: "wa.me/62895322280793",
     achievements: ["Wakil Ketua Osis"]
   },
   {
@@ -87,6 +97,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Kesejahteraan Sosial",
     path: "SNBP",
     category: "PTN",
+    whatsapp: "wa.me/6285719335637",
     achievements: ["Lulus jalur SNBP di UINJKT - Kesejahteraan Sosial"]
   },
   {
@@ -95,6 +106,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Sistem Informasi",
     path: "SNBT",
     category: "PTN",
+    whatsapp: "wa.me/6287778474677",
     achievements: ["Bendahara MPK", "Sekretaris 2 Hang Tuah Cup 2025", "Ketua Pelaksana Hari Guru 2024"]
   },
   {
@@ -103,6 +115,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Sastra Inggris",
     path: "Mandiri",
     category: "PTN",
+    whatsapp: "wa.me/6285888800489",
     achievements: ["Wakil Ketua OSIS 2", "Ketua Pelaksana HARTES 2025", "Juara 1 Lomba Band Colabonation"]
   },
   {
@@ -111,6 +124,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Ekonomi Syariah",
     path: "SNBP",
     category: "PTN",
+    whatsapp: "wa.me/6281806861615",
     achievements: []
   },
   {
@@ -119,6 +133,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Kimia",
     path: "Mandiri",
     category: "PTN",
+    whatsapp: "wa.me/6287777834899",
     achievements: ["Anggota MPK", "Lulus UM Undip (Skor UTBK+Rapot)"]
   },
   {
@@ -127,6 +142,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "FITB",
     path: "SNBT",
     category: "PTN",
+    whatsapp: "wa.me/6281219518038",
     achievements: ["Sekretaris Hang Tuah Cup 2025", "Sekretaris MPK Periode 2024/2025"]
   },
   {
@@ -135,6 +151,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Manajemen Sumberdaya Perairan",
     path: "SNBP",
     category: "PTN",
+    whatsapp: "wa.me/6282112000308",
     achievements: ["Peserta OSN Kimia"]
   },
   {
@@ -143,6 +160,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Pendidikan Vokasional Konstruksi Bangunan",
     path: "Mandiri",
     category: "PTN",
+    whatsapp: "wa.me/6289524069271",
     achievements: ["Ketua Sekbid Sastra dan Budaya OSIS", "Ekskul Teater"]
   },
   {
@@ -151,6 +169,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Hukum",
     path: "Mandiri",
     category: "PTN",
+    whatsapp: "wa.me/62895336170916",
     achievements: ["Ketua Divisi Acara HT Art Festival 2024", "Anggota OSIS"]
   },
   {
@@ -159,6 +178,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Ilmu Politik",
     path: "SNBT",
     category: "PTN",
+    whatsapp: "wa.me/6287877256300",
     achievements: []
   },
   {
@@ -167,6 +187,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Bisnis Digital",
     path: "Mandiri",
     category: "PTN",
+    whatsapp: "wa.me/6281287672883",
     achievements: ["Ticketing HT Cup 25", "Pengurus English Club"]
   },
   {
@@ -175,6 +196,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Informasi dan Humas",
     path: "Mandiri",
     category: "PTN",
+    whatsapp: "wa.me/6281299160430",
     achievements: ["Ekskul PMR"]
   },
   {
@@ -183,6 +205,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Psikologi",
     path: "SNBT",
     category: "PTN",
+    whatsapp: "wa.me/6282228889947",
     achievements: ["Anggota MPK"]
   },
   {
@@ -191,6 +214,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Teknik Bioproses",
     path: "Jalur Prestasi (SJP)",
     category: "PTN",
+    whatsapp: "wa.me/6281585999258",
     achievements: ["PJ Sponsor Hang Tuah Cup 2025", "Taekwondo"]
   },
   {
@@ -199,6 +223,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Ilmu Politik",
     path: "SNBP",
     category: "PTN",
+    whatsapp: "wa.me/6288213837245",
     achievements: []
   },
   {
@@ -207,6 +232,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Perpajakan",
     path: "Mandiri",
     category: "PTN",
+    whatsapp: "wa.me/6285714010644",
     achievements: ["Juara 1 Tournafest Colabonation", "Bakti Mulya 400"]
   },
   {
@@ -215,6 +241,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Kesehatan Lingkungan",
     path: "Jalur Prestasi",
     category: "PTN",
+    whatsapp: "wa.me/6287780163575",
     achievements: ["Anggota Divisi Keamanan HT Cup 2024", "Humas Ratoh Jaroe Cup 2024"]
   },
   {
@@ -223,6 +250,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Ilmu Keperawatan",
     path: "Reguler TES",
     category: "PTS",
+    whatsapp: "wa.me/6281212845520",
     achievements: []
   },
   {
@@ -231,6 +259,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Analisis Farmasi dan Makanan",
     path: "Non-Ikatan Dinas",
     category: "PTN",
+    whatsapp: "wa.me/6281324885192",
     achievements: ["Pemangku Adat Pramuka 2024", "Bendahara Event HTRF 2024"]
   },
   {
@@ -239,6 +268,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Teknologi Hasil Hutan",
     path: "Mandiri",
     category: "PTN",
+    whatsapp: "wa.me/6281906066810",
     achievements: []
   },
   {
@@ -247,6 +277,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Accounting",
     path: "Reguler TES",
     category: "PTS",
+    whatsapp: "wa.me/6287721025462",
     achievements: []
   },
   {
@@ -255,6 +286,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Accounting",
     path: "Beasiswa",
     category: "PTS",
+    whatsapp: "wa.me/6285959603484",
     achievements: []
   },
   {
@@ -263,6 +295,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "International Relations Global Class",
     path: "Beasiswa",
     category: "PTS",
+    whatsapp: "wa.me/6285212364584",
     achievements: ["Gold Medalist English & Language Competition"]
   },
   {
@@ -271,6 +304,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Kesehatan Masyarakat",
     path: "Mandiri",
     category: "PTN",
+    whatsapp: "wa.me/6285281984136",
     achievements: ["Humas OSIS", "Humpro HT Cup"]
   },
   {
@@ -279,6 +313,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Sistem Informasi",
     path: "Reguler Tanpa TES",
     category: "PTS",
+    whatsapp: "wa.me/62895635896981",
     achievements: []
   },
   {
@@ -287,6 +322,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Kesehatan Masyarakat",
     path: "Reguler Tanpa TES",
     category: "PTS",
+    whatsapp: "wa.me/6285781198037",
     achievements: ["Sekretaris 2 OSIS", "Ketua Ekskul HTEC", "Bendahara Buku Tahunan 2025"]
   },
   {
@@ -295,6 +331,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Pendidikan Teknik Mesin",
     path: "Mandiri",
     category: "PTN",
+    whatsapp: "wa.me/6281410393378",
     achievements: ["Wakil Ketua Ekskul Jurnalistik"]
   },
   {
@@ -303,6 +340,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Keuangan dan Perbankan",
     path: "Mandiri",
     category: "PTN",
+    whatsapp: "wa.me/6285280036890",
     achievements: []
   },
   {
@@ -311,6 +349,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Pendidikan Anak Usia Dini",
     path: "Mandiri",
     category: "PTN",
+    whatsapp: "wa.me/6282124666890",
     achievements: ["Juara 1 Olimpiade PKN, Sosiologi, Bahasa Indonesia"]
   },
   {
@@ -319,6 +358,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Ilmu Keperawatan",
     path: "SNBT",
     category: "PTN",
+    whatsapp: "wa.me/62881025319747",
     achievements: []
   },
   {
@@ -327,6 +367,7 @@ export const MOCK_MENTORS: Mentor[] = [
     major: "Hukum",
     path: "Reguler Tanpa TES",
     category: "PTS",
+    whatsapp: "wa.me/6285156319826",
     achievements: ["Ketua Basket SMA Hang Tuah", "Juara 2 Basket Hukum Nasional Unpad"]
   }
 ];
