@@ -141,12 +141,12 @@ const App: React.FC = () => {
           <div className="relative z-10 max-w-5xl">
             <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full border border-slate-200 bg-white text-slate-900 text-[11px] font-black uppercase tracking-[0.2em] mb-8 shadow-sm">
               <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
-              Jaringan Mentorship Alumni 2025
+              DATABASE ALUMNI HANG TUAH 2025 TERINTEGRASI
             </div>
 
             <h1 className="text-6xl md:text-[140px] font-extrabold leading-[0.8] tracking-tighter text-slate-950 mb-10">
-              UKIR<br />
-              <span className="text-outline">PRESTASIMU.</span>
+              CARI<br />
+              <span className="text-outline">MENTOR ALUMNIMU</span>
             </h1>
 
             <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-500 font-medium leading-relaxed mb-12">
@@ -284,8 +284,8 @@ const App: React.FC = () => {
                 <div className="space-y-8 animate-reveal">
                   <div className="flex flex-col sm:flex-row items-center justify-between bg-indigo-50 p-6 rounded-[2rem] border border-indigo-100 gap-4">
                     <div className="text-center sm:text-left">
-                      <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1">Skor Kecocokan</p>
-                      <h4 className="text-2xl font-black text-slate-950">{Math.round(matchResults.score)}% Skor</h4>
+                      <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1">Skor Kecocokan Pencarian Mentor Alumni</p>
+                      <h4 className="text-2xl font-black text-slate-950">{Math.round(matchResults.score)}% Skor Alumni Yang Cocok</h4>
                     </div>
                     <div className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest ${matchResults.type === 'exact' ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'
                       }`}>
@@ -579,16 +579,16 @@ const App: React.FC = () => {
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 bg-slate-950 rounded-[1.5rem] flex items-center justify-center text-white font-black text-2xl shadow-xl">A</div>
             <div>
-              <h2 className="text-xl md:text-2xl font-black tracking-tighter text-slate-950 leading-none">AMP ARCHIVE</h2>
+              <h2 className="text-xl md:text-2xl font-black tracking-tighter text-slate-950 leading-none">DATABASE ALUMNI HANGTUAH</h2>
               <div className="flex items-center gap-2 mt-1.5">
                 <div className="w-2 h-2 rounded-full bg-lime-400 animate-pulse"></div>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Legacy System Online</p>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Sistem Database Digital</p>
               </div>
             </div>
           </div>
           <div className="hidden md:flex flex-col items-end">
-            <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em] leading-none mb-1">Current Vol.</p>
-            <p className="text-lg font-black text-slate-950 tracking-tighter">BASE_ALUMNI_2025</p>
+            <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em] leading-none mb-1">Version 1.0</p>
+            <p className="text-lg font-black text-slate-950 tracking-tighter">DATABASE ALUMNI SMA HANG TUAH 1 JAKARTA</p>
           </div>
         </div>
 
