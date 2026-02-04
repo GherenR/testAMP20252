@@ -595,7 +595,11 @@ const App: React.FC = () => {
         {/* Navigation Menu: Integrated, Non-Floating */}
         <nav
           ref={navRef}
-          className="w-full flex items-center gap-2 overflow-x-auto no-scrollbar pb-4 border-b border-slate-100"
+          className="w-full flex items-center gap-2 overflow-x-auto pb-4 border-b border-slate-100"
+          style={{
+            scrollbarWidth: 'thin',
+            scrollbarColor: '#4f46e5 transparent'
+          }}
         >
           {menuItems.map((item) => (
             <button
