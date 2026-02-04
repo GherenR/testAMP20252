@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { MOCK_MENTORS, CONTACT_WA, COMMUNITY_WA_GROUP } from './constants';
 import { SlideData, InstitutionCategory, Mentor } from './types';
+// GANTI KODE YANG ERROR JADI INI:
 
 const App: React.FC = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -577,7 +578,10 @@ const App: React.FC = () => {
       <header className="pt-8 md:pt-12 px-6 md:px-16 max-w-[1600px] mx-auto w-full z-50">
         <div className="flex justify-between items-center mb-10">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-slate-950 rounded-[1.5rem] flex items-center justify-center text-white font-black text-2xl shadow-xl">A</div>
+            <div className="w-14 h-14 bg-slate-950 rounded-[1.5rem] flex items-center justify-center shadow-xl overflow-hidden p-3">
+              {/* Langsung panggil /LogoIKAHATANew.svg (Vite otomatis cari di folder public) */}
+              <img src="/LogoIKAHATANew.svg" alt="Logo IKA HATA" className="w-full h-full object-contain" />
+            </div>
             <div>
               <h2 className="text-xl md:text-2xl font-black tracking-tighter text-slate-950 leading-none">DATABASE ALUMNI HANGTUAH</h2>
               <div className="flex items-center gap-2 mt-1.5">

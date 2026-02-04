@@ -20,3 +20,8 @@ export interface SlideData {
   subtitle?: string;
   content: ReactNode;
 }
+
+declare module "*.svg" {
+  const content: any;
+  export default content;
+}
