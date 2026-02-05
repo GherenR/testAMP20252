@@ -42,14 +42,16 @@ const App: React.FC = () => {
 
   const filteredMentors = useMemo(() => {
     const term = searchTerm.toLowerCase();
-    return MOCK_MENTORS.filter((m, index) => { // Added index here
-      const alumniId = `#2025-${index + 104}`.toLowerCase(); // Generate the ID string
+    return MOCK_MENTORS.filter((m) => {
+      // Cari index asli dari data mentor di dalam database utama (MOCK_MENTORS)
+      const originalIndex = MOCK_MENTORS.indexOf(m);
+      const alumniId = `#2025-${originalIndex + 104}`.toLowerCase();
 
       const matchesSearch =
         m.university.toLowerCase().includes(term) ||
         m.major.toLowerCase().includes(term) ||
         m.name.toLowerCase().includes(term) ||
-        alumniId.includes(term) || // Added search by ID
+        alumniId.includes(term) || // Tetap bisa cari berdasarkan ID
         (m.achievements && m.achievements.some(a => a.toLowerCase().includes(term)));
 
       const matchesCategory = filterCategory === 'All' || m.category === filterCategory;
@@ -427,7 +429,7 @@ const App: React.FC = () => {
                 <div className="flex justify-between items-start mb-10 pb-6 dashed-line">
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Alumni ID</p>
-                    <h4 className="text-xl font-black text-slate-950">#2025-{i + 104}</h4>
+                    <h4 className="text-xl font-black text-slate-950">#2025-{MOCK_MENTORS.indexOf(m) + 104}</h4>
                   </div>
                   <div className="w-16 h-16 rounded-[1.5rem] bg-slate-50 border-2 border-slate-100 flex items-center justify-center group-hover:border-indigo-100 group-hover:bg-indigo-50/30 transition-all">
                     <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${m.name}`} alt="avatar" className="w-12 h-12 rounded-xl" />
