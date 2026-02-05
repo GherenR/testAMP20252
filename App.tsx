@@ -3,7 +3,8 @@ import {
   Search, MessageCircle, ArrowRight, Sparkles, Database, UserCheck,
   BookOpen, Phone, X, Clock, Share2, Info, ShieldCheck, Users,
   Zap, ArrowUpRight, Globe, Target, BrainCircuit, Landmark,
-  HelpCircle
+  HelpCircle,
+  Instagram
 } from 'lucide-react';
 import { MOCK_MENTORS, CONTACT_WA, COMMUNITY_WA_GROUP } from './constants';
 import { SlideData, InstitutionCategory, Mentor } from './types';
@@ -457,11 +458,24 @@ const App: React.FC = () => {
 
                 <div className="flex gap-2">
                   <button
-                    onClick={() => handleContactClick(m)} // <--- PAKAI INI
+                    onClick={() => handleContactClick(m)}
                     className="flex-1 bg-slate-950 text-white py-5 rounded-2xl font-bold text-xs flex items-center justify-center gap-3 hover:bg-indigo-600 transition-all shadow-xl active:scale-95"
                   >
                     Hubungi Mentor <ArrowUpRight size={16} />
                   </button>
+
+                  {/* Tombol Instagram - Bersih tanpa fdprocessedid */}
+                  {m.instagram && m.instagram !== "N/A" && (
+                    <a
+                      href={`https://www.instagram.com/${m.instagram}/`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-5 rounded-2xl bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 text-white hover:shadow-lg hover:scale-105 transition-all active:scale-90 flex items-center justify-center"
+                    >
+                      <Instagram size={18} />
+                    </a>
+                  )}
+
                   <button
                     onClick={() => handleShare(m)}
                     className="p-5 rounded-2xl bg-white text-slate-400 hover:text-indigo-600 border-2 border-slate-100 hover:border-indigo-100 transition-all active:scale-90"
