@@ -431,18 +431,21 @@ const App: React.FC = () => {
                     <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Alumni ID</p>
                     <h4 className="text-xl font-black text-slate-950">#2025-{MOCK_MENTORS.indexOf(m) + 104}</h4>
                   </div>
-                  <div className="w-16 h-16 rounded-[1.5rem] bg-slate-50 border-2 border-slate-100 flex items-center justify-center group-hover:border-indigo-100 group-hover:bg-indigo-50/30 transition-all overflow-hidden">
-                    <img
-                      src={m.instagram && m.instagram !== "N/A"
-                        ? `https://www.social-searcher.com/api-instagram-profile-picture.php?user=${m.instagram}`
-                        : `https://api.dicebear.com/7.x/initials/svg?seed=${m.name}`}
-                      alt={m.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        // Jika gagal load foto IG, balik ke avatar inisial
-                        (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${m.name}`;
-                      }}
-                    />
+                  <div className="w-16 h-16 rounded-[1.5rem] bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 p-[2px] group-hover:scale-105 transition-all">
+                    <div className="w-full h-full rounded-[1.4rem] bg-white p-0.5">
+                      <img
+                        src={m.instagram && m.instagram !== "N/A"
+                          ? `https://www.instagram.com/${m.instagram.replace('@', '')}/live_dash_init_data/` // Salah satu trik trigger fetch atau pakai avatar URL
+                          : `https://api.dicebear.com/7.x/initials/svg?seed=${m.name}`}
+                        alt={m.name}
+                        className="w-full h-full rounded-[1.3rem] object-cover"
+                        onError={(e) => {
+                          // Fallback jika IG tidak mengizinkan akses gambar langsung
+                          const target = e.target as HTMLImageElement;
+                          target.src = `https://api.dicebear.com/7.x/initials/svg?seed=${m.name}&backgroundColor=f8fafc`;
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
 
