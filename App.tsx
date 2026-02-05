@@ -435,14 +435,14 @@ const App: React.FC = () => {
                     <div className="w-full h-full rounded-[1.4rem] bg-white p-0.5">
                       <img
                         src={m.instagram && m.instagram !== "N/A"
-                          ? `https://www.instagram.com/${m.instagram.replace('@', '')}/live_dash_init_data/` // Salah satu trik trigger fetch atau pakai avatar URL
+                          ? `https://unavatar.io/instagram/${m.instagram.replace('@', '')}`
                           : `https://api.dicebear.com/7.x/initials/svg?seed=${m.name}`}
                         alt={m.name}
-                        className="w-full h-full rounded-[1.3rem] object-cover"
+                        className="w-full h-full object-cover"
                         onError={(e) => {
-                          // Fallback jika IG tidak mengizinkan akses gambar langsung
+                          // Jika unavatar gagal (akun private atau error), balik ke Dicebear
                           const target = e.target as HTMLImageElement;
-                          target.src = `https://api.dicebear.com/7.x/initials/svg?seed=${m.name}&backgroundColor=f8fafc`;
+                          target.src = `https://api.dicebear.com/7.x/initials/svg?seed=${m.name}`;
                         }}
                       />
                     </div>
