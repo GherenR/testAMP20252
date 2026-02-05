@@ -1,10 +1,11 @@
 import React from 'react';
 import { Mentor, InstitutionCategory } from '../../types';
+import { FilteredMentorWithIndex } from '../../hooks/useMentorFiltering';
 import { SearchAndFilter } from '../SearchAndFilter';
 import { MentorCard } from '../MentorCard';
 
 interface MentorDatabaseSlideProps {
-  filteredMentors: Mentor[];
+  filteredMentors: FilteredMentorWithIndex[]; // Array dengan mentor + originalIndex
   searchTerm: string;
   onSearchChange: (term: string) => void;
   filterCategory: InstitutionCategory;
@@ -48,13 +49,11 @@ export const MentorDatabaseSlide: React.FC<MentorDatabaseSlideProps> = ({
 
       {/* Mentor Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {filteredMentors.map((m, i) => (
+        {filteredMentors.map(({ mentor, originalIndex }) => (
           <MentorCard
-            key={i}
-            mentor={m}
-            index={i}
-            variant="default"
-            showAlumniId={true}
+            key={originalIndex}
+            mentor={mentor}
+            index={originalIndex}
             onContact={onMentorContact}
             onInstagram={onMentorInstagram}
           />

@@ -2,8 +2,17 @@ import { useState, useMemo } from 'react';
 import { Mentor, InstitutionCategory } from '../types';
 
 /**
+ * Type untuk hasil filtering yang menyimpan mentor + original index dari MOCK_MENTORS
+ */
+export interface FilteredMentorWithIndex {
+  mentor: Mentor;
+  originalIndex: number; // Index dari MOCK_MENTORS, bukan dari filtered array
+}
+
+/**
  * Custom hook untuk mengelola filtering dan searching mentors
  * Menangani search term, category filter, dan path filter
+ * Returns array dengan mentor info + original index dari MOCK_MENTORS
  */
 export const useMentorFiltering = (mentors: Mentor[]) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,22 +28,26 @@ export const useMentorFiltering = (mentors: Mentor[]) => {
   // Memoized filtering logic untuk performa optimal
   const filteredMentors = useMemo(() => {
     const term = searchTerm.toLowerCase();
-    return mentors.filter((m) => {
-      const originalIndex = mentors.indexOf(m);
-      const alumniId = `#2025-${originalIndex + 104}`.toLowerCase();
 
-      const matchesSearch =
-        m.university.toLowerCase().includes(term) ||
-        m.major.toLowerCase().includes(term) ||
-        m.name.toLowerCase().includes(term) ||
-        alumniId.includes(term) ||
-        (m.achievements && m.achievements.some(a => a.toLowerCase().includes(term)));
+    // Map dulu ke object yang menyimpan mentor + index asli dari MOCK_MENTORS
+    return mentors
+      .map((m, index) => ({ mentor: m, originalIndex: index }))
+      .filter(({ mentor, originalIndex }) => {
+        // Hitung Alumni ID menggunakan original index (INI PENTING!)
+        const alumniId = `#2025-${originalIndex + 104}`.toLowerCase();
 
-      const matchesCategory = filterCategory === 'All' || m.category === filterCategory;
-      const matchesPath = filterPath === 'All' || m.path.includes(filterPath);
+        const matchesSearch =
+          mentor.university.toLowerCase().includes(term) ||
+          mentor.major.toLowerCase().includes(term) ||
+          mentor.name.toLowerCase().includes(term) ||
+          alumniId.includes(term) ||
+          (mentor.achievements && mentor.achievements.some(a => a.toLowerCase().includes(term)));
 
-      return matchesSearch && matchesCategory && matchesPath;
-    });
+        const matchesCategory = filterCategory === 'All' || mentor.category === filterCategory;
+        const matchesPath = filterPath === 'All' || mentor.path.includes(filterPath);
+
+        return matchesSearch && matchesCategory && matchesPath;
+      });
   }, [searchTerm, filterPath, filterCategory, mentors]);
 
   return {
@@ -44,6 +57,6 @@ export const useMentorFiltering = (mentors: Mentor[]) => {
     setFilterCategory: handleCategoryChange,
     filterPath,
     setFilterPath,
-    filteredMentors
+    filteredMentors // Array of { mentor, originalIndex }
   };
 };
