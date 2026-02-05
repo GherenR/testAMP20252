@@ -600,8 +600,10 @@ const App: React.FC = () => {
           ref={navRef}
           className="w-full flex items-center gap-2 overflow-x-auto pb-4 border-b border-slate-100"
           style={{
+            /* Trik Inline Style biar HP nurut */
             scrollbarWidth: 'thin',
-            scrollbarColor: '#4f46e5 transparent'
+            scrollbarColor: '#4f46e5 #f1f5f9', /* Warna bar (Indigo) & Warna jalur (Slate) */
+            WebkitOverflowScrolling: 'touch' /* Biar scrolling di HP makin halus */
           }}
         >
           {menuItems.map((item) => (
