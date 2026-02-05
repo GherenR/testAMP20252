@@ -431,8 +431,18 @@ const App: React.FC = () => {
                     <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Alumni ID</p>
                     <h4 className="text-xl font-black text-slate-950">#2025-{MOCK_MENTORS.indexOf(m) + 104}</h4>
                   </div>
-                  <div className="w-16 h-16 rounded-[1.5rem] bg-slate-50 border-2 border-slate-100 flex items-center justify-center group-hover:border-indigo-100 group-hover:bg-indigo-50/30 transition-all">
-                    <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${m.name}`} alt="avatar" className="w-12 h-12 rounded-xl" />
+                  <div className="w-16 h-16 rounded-[1.5rem] bg-slate-50 border-2 border-slate-100 flex items-center justify-center group-hover:border-indigo-100 group-hover:bg-indigo-50/30 transition-all overflow-hidden">
+                    <img
+                      src={m.instagram && m.instagram !== "N/A"
+                        ? `https://www.social-searcher.com/api-instagram-profile-picture.php?user=${m.instagram}`
+                        : `https://api.dicebear.com/7.x/initials/svg?seed=${m.name}`}
+                      alt={m.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Jika gagal load foto IG, balik ke avatar inisial
+                        (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${m.name}`;
+                      }}
+                    />
                   </div>
                 </div>
 
