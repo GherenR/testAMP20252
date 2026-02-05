@@ -609,7 +609,7 @@ const App: React.FC = () => {
           </div>
           <div className="hidden md:flex flex-col items-end">
             <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em] leading-none mb-1">Version 1.0</p>
-            <p className="text-lg font-black text-slate-950 tracking-tighter">DATABASE ALUMNI SMA HANG TUAH 1 JAKARTA</p>
+            <p className="text-lg font-black text-slate-950 tracking-tighter">IKAHATA 2025</p>
           </div>
         </div>
 
