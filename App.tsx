@@ -574,6 +574,24 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#fcfcfd] flex flex-col">
+      {/* --- KODE SAKTI SCROLLBAR HP MULAI DI SINI --- */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        nav::-webkit-scrollbar {
+          height: 6px !important;
+          display: block !important;
+          -webkit-appearance: none !important;
+        }
+        nav::-webkit-scrollbar-track {
+          background: #f1f5f9 !important;
+          border-radius: 10px;
+        }
+        nav::-webkit-scrollbar-thumb {
+          background: #4f46e5 !important;
+          border-radius: 10px;
+          border: 1px solid #f1f5f9;
+        }
+      ` }} />
       {/* Editorial Header & Nav */}
       <header className="pt-8 md:pt-12 px-6 md:px-16 max-w-[1600px] mx-auto w-full z-50">
         <div className="flex justify-between items-center mb-10">
