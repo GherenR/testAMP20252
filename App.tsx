@@ -450,9 +450,33 @@ const App: React.FC = () => {
                     <div className="px-4 py-1.5 bg-slate-950 text-white text-[9px] font-black rounded-full uppercase tracking-widest">{m.path}</div>
                     <div className="flex-1 h-0.5 bg-slate-50"></div>
                   </div>
-                  <div className="bg-lime-300/20 p-4 rounded-2xl border border-lime-400/20 flex items-start gap-3">
-                    <Sparkles size={14} className="text-lime-600 shrink-0 mt-0.5" />
-                    <p className="text-[11px] font-bold text-slate-700 italic">"{m.achievements?.[0] || 'Siap Membimbing'}"</p>
+                  <div className="bg-lime-300/20 p-4 rounded-2xl border border-lime-400/20 flex flex-col gap-2">
+                    <div className="flex items-start gap-3">
+                      <Sparkles size={14} className="text-lime-600 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        {/* Jika ada achievements */}
+                        {m.achievements && m.achievements.length > 0 ? (
+                          <div className="space-y-2 max-h-[80px] overflow-y-auto pr-2 custom-scrollbar">
+                            {m.achievements.map((ach, index) => (
+                              <p key={index} className="text-[10px] md:text-[11px] font-bold text-slate-700 italic leading-snug">
+                                • "{ach}"
+                              </p>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-[11px] font-bold text-slate-700 italic">"Siap Membimbing"</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Indikator Halus kalau datanya banyak */}
+                    {m.achievements && m.achievements.length > 2 && (
+                      <div className="flex justify-end">
+                        <span className="text-[8px] font-black text-lime-600 uppercase tracking-tighter">
+                          Scroll untuk lihat {m.achievements.length - 2} lainnya ↓
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

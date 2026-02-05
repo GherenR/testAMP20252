@@ -38,7 +38,7 @@ export const MOCK_MENTORS: Mentor[] = [
     "whatsapp": "wa.me/6282114927981",
     "instagram": "gheren_ramandra",
     "achievements": [
-      "Pil 1: UI - Sistem Informasi, Pil 2: UI - Teknik Bioproses",
+      "Ketua OSIS 2023/2024",
       "UNJ - Ilmu Komputer (Tanpa TES Hanya nilai UTBK), IPB University - Ilmu Komputer"
     ]
   },
@@ -50,10 +50,8 @@ export const MOCK_MENTORS: Mentor[] = [
     "category": "PTN",
     "whatsapp": "wa.me/6285797049346",
     "instagram": "chsabby",
-    "achievements": [
-      "UPNVJ-Teknik Industri, IPB-Teknologi Pertanian",
-      "Undip-Teknik Industri, UPNVJ-Teknik Industri, Unsoed-Bisnis Internasional"
-    ]
+    "achievements": ["Undip-Teknik Industri, UPNVJ-Teknik Industri, Unsoed-Bisnis Internasional"]
+
   },
   {
     "name": "Septiyan Dwi Putra Wibowo",
