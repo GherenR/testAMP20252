@@ -42,11 +42,14 @@ const App: React.FC = () => {
 
   const filteredMentors = useMemo(() => {
     const term = searchTerm.toLowerCase();
-    return MOCK_MENTORS.filter(m => {
+    return MOCK_MENTORS.filter((m, index) => { // Added index here
+      const alumniId = `#2025-${index + 104}`.toLowerCase(); // Generate the ID string
+
       const matchesSearch =
         m.university.toLowerCase().includes(term) ||
         m.major.toLowerCase().includes(term) ||
         m.name.toLowerCase().includes(term) ||
+        alumniId.includes(term) || // Added search by ID
         (m.achievements && m.achievements.some(a => a.toLowerCase().includes(term)));
 
       const matchesCategory = filterCategory === 'All' || m.category === filterCategory;
