@@ -16,7 +16,4 @@ export interface Mentor {
 
 export interface SlideData {
   id: string;
-  title?: string;
-  subtitle?: string;
-  content: ReactNode;
 }
