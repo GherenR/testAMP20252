@@ -411,24 +411,15 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-4 max-w-5xl">
-              <div className="relative group flex-1">
-                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" size={20} />
-                <input
-                  type="text"
-                  placeholder="Cari Jurusan, Universitas, atau ID..."
-                  className="w-full pl-14 pr-6 py-5 bg-white border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-600 transition-all font-bold text-slate-900 shadow-sm"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-
-              <button
-                onClick={() => window.open(CONTACT_WA, '_blank')}
-                className="px-8 py-5 bg-indigo-50 text-indigo-600 border-2 border-indigo-100 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2 shrink-0 active:scale-95"
-              >
-                <HelpCircle size={16} /> Cari Manual
-              </button>
+            <div className="relative group max-w-4xl">
+              <Search className="absolute left-6 md:left-10 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" size={24} />
+              <input
+                type="text"
+                placeholder="Cari mentor berdasarkan Jurusan, Universitas, atau Prestasi..."
+                className="w-full pl-16 md:pl-24 pr-8 py-6 md:py-8 bg-white border-2 border-slate-100 rounded-[2.5rem] outline-none focus:border-indigo-600 transition-all font-bold text-slate-900 text-lg md:text-xl shadow-sm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
           </div>
 
