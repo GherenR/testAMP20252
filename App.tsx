@@ -504,13 +504,6 @@ const App: React.FC = () => {
                       <Instagram size={18} />
                     </a>
                   )}
-
-                  <button
-                    onClick={() => handleShare(m)}
-                    className="p-5 rounded-2xl bg-white text-slate-400 hover:text-indigo-600 border-2 border-slate-100 hover:border-indigo-100 transition-all active:scale-90"
-                  >
-                    <Share2 size={18} />
-                  </button>
                 </div>
               </div>
             ))}
