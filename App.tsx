@@ -598,12 +598,14 @@ const App: React.FC = () => {
         {/* Navigation Menu: Integrated, Non-Floating */}
         <nav
           ref={navRef}
-          className="w-full flex items-center gap-2 overflow-x-auto pb-4 border-b border-slate-100"
+          className="w-full flex items-center gap-2 overflow-x-auto pb-4 border-b border-slate-100 relative z-10"
           style={{
-            /* Trik Inline Style biar HP nurut */
+            /* Trik Maut biar HP nurut */
             scrollbarWidth: 'thin',
-            scrollbarColor: '#4f46e5 #f1f5f9', /* Warna bar (Indigo) & Warna jalur (Slate) */
-            WebkitOverflowScrolling: 'touch' /* Biar scrolling di HP makin halus */
+            scrollbarColor: '#4f46e5 #f1f5f9',
+            WebkitOverflowScrolling: 'touch',
+            /* Tambahkan ini khusus untuk Chrome/Safari di HP */
+            msOverflowStyle: 'auto'
           }}
         >
           {menuItems.map((item) => (
