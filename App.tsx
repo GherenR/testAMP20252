@@ -616,7 +616,7 @@ const App: React.FC = () => {
         {/* Navigation Menu: Integrated, Non-Floating */}
         <nav
           ref={navRef}
-          className="w-full flex items-center gap-2 overflow-x-auto pb-4 border-b border-slate-100 relative z-10"
+          className="w-full flex items-center gap-2 overflow-x-auto pb-8 border-b border-slate-100 relative z-10"
           style={{
             /* Trik Maut biar HP nurut */
             scrollbarWidth: 'thin',
