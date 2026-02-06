@@ -15,6 +15,8 @@ interface MentorDatabaseSlideProps {
   subPaths: string[];
   onMentorContact: (mentor: Mentor) => void;
   onMentorInstagram: (handle: string) => void;
+  onMentorCompare?: (mentor: Mentor) => void;
+  comparedMentors?: string[];
 }
 
 /**
@@ -32,7 +34,9 @@ export const MentorDatabaseSlide: React.FC<MentorDatabaseSlideProps> = ({
   onPathChange,
   subPaths,
   onMentorContact,
-  onMentorInstagram
+  onMentorInstagram,
+  onMentorCompare,
+  comparedMentors = []
 }) => {
   return (
     <div className="max-w-7xl mx-auto px-6 animate-reveal pb-32 pt-8">
@@ -56,6 +60,8 @@ export const MentorDatabaseSlide: React.FC<MentorDatabaseSlideProps> = ({
             index={originalIndex}
             onContact={onMentorContact}
             onInstagram={onMentorInstagram}
+            onCompare={onMentorCompare}
+            isSelected={comparedMentors.includes(mentor.name)}
           />
         ))}
       </div>

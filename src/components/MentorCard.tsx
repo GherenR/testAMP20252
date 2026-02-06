@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUpRight, Sparkles, Instagram } from 'lucide-react';
+import { ArrowUpRight, Sparkles, Instagram, Scale } from 'lucide-react';
 import { Mentor } from '../types';
 
 interface MentorCardProps {
@@ -9,6 +9,8 @@ interface MentorCardProps {
   variant?: 'default' | 'compact';
   onContact?: (mentor: Mentor) => void;
   onInstagram?: (instagramHandle: string) => void;
+  onCompare?: (mentor: Mentor) => void;
+  isSelected?: boolean;
 }
 
 /**
@@ -29,7 +31,9 @@ export const MentorCard: React.FC<MentorCardProps> = ({
   showAlumniId = true,
   variant = 'default',
   onContact,
-  onInstagram
+  onInstagram,
+  onCompare,
+  isSelected = false
 }) => {
   const alumniId = `#2025-${index + 104}`;
   const avatarUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${mentor.name}`;
@@ -54,6 +58,16 @@ export const MentorCard: React.FC<MentorCardProps> = ({
           className="w-full md:w-auto p-5 bg-slate-950 text-white rounded-2xl hover:bg-indigo-600 transition-all active:scale-95 shadow-xl flex justify-center items-center"
         >
           <ArrowUpRight size={24} />
+        </button>
+        <button
+          onClick={() => onCompare?.(mentor)}
+          className={`p-5 rounded-2xl font-bold transition-all active:scale-95 flex items-center justify-center shadow-lg ${isSelected
+              ? 'bg-lime-500 text-white hover:bg-lime-600'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          title="Bandingkan dengan mentor lain"
+        >
+          <Scale size={20} />
         </button>
       </div>
     );
@@ -138,6 +152,17 @@ export const MentorCard: React.FC<MentorCardProps> = ({
           className="flex-1 bg-slate-950 text-white py-5 rounded-2xl font-bold text-xs flex items-center justify-center gap-3 hover:bg-indigo-600 transition-all shadow-xl active:scale-95"
         >
           Hubungi Mentor <ArrowUpRight size={16} />
+        </button>
+
+        <button
+          onClick={() => onCompare?.(mentor)}
+          className={`p-5 rounded-2xl font-bold transition-all active:scale-95 flex items-center justify-center shadow-lg ${isSelected
+              ? 'bg-lime-500 text-white hover:bg-lime-600'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          title="Bandingkan dengan mentor lain"
+        >
+          <Scale size={18} />
         </button>
 
         {mentor.instagram && mentor.instagram !== "N/A" && (
