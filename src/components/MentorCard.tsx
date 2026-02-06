@@ -11,6 +11,7 @@ interface MentorCardProps {
   onInstagram?: (instagramHandle: string) => void;
   onCompare?: (mentor: Mentor) => void;
   isSelected?: boolean;
+  onViewDetail?: (mentor: Mentor) => void;
 }
 
 /**
@@ -33,42 +34,57 @@ export const MentorCard: React.FC<MentorCardProps> = ({
   onContact,
   onInstagram,
   onCompare,
-  isSelected = false
+  isSelected = false,
+  onViewDetail
 }) => {
   const alumniId = `#2025-${index + 104}`;
   const avatarUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${mentor.name}`;
 
   if (variant === 'compact') {
-    // Compact variant untuk matchmaker results
+    // Compact variant untuk matchmaker results - mobile optimized
     return (
-      <div className="group ticket-border rounded-[2.5rem] p-6 flex flex-col md:flex-row items-center gap-6 hover:border-indigo-600 transition-all animate-reveal">
-        <div className="w-16 h-16 md:w-20 md:h-20 rounded-3xl bg-slate-50 border-2 border-slate-100 flex items-center justify-center shrink-0">
-          <img src={avatarUrl} alt={mentor.name} className="w-12 h-12 md:w-14 md:h-14 rounded-2xl" />
+      <div className="group ticket-border rounded-[2.5rem] p-4 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 hover:border-indigo-600 transition-all animate-reveal">
+        {/* Avatar */}
+        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-slate-50 border-2 border-slate-100 flex items-center justify-center shrink-0">
+          <img src={avatarUrl} alt={mentor.name} className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl" />
         </div>
-        <div className="flex-1 text-center md:text-left space-y-1">
-          <h4 className="text-lg md:text-xl font-black text-slate-950">{mentor.name}</h4>
-          <p className="text-xs md:text-sm font-bold text-slate-400">{mentor.university} • {mentor.major}</p>
-          <div className="flex flex-wrap gap-2 mt-3 justify-center md:justify-start">
-            <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-[9px] font-black uppercase">{mentor.path}</span>
-            <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[9px] font-black uppercase">{mentor.category}</span>
+
+        {/* Info */}
+        <div className="flex-1 text-center sm:text-left space-y-1 min-w-0">
+          <h4 className="text-base sm:text-lg md:text-xl font-black text-slate-950 truncate">{mentor.name}</h4>
+          <p className="text-xs sm:text-sm font-bold text-slate-400 line-clamp-1">{mentor.university}</p>
+          <p className="text-xs font-bold text-slate-500 line-clamp-1">{mentor.major}</p>
+          <div className="flex flex-wrap gap-2 mt-2 sm:mt-3 justify-center sm:justify-start">
+            <span className="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-lg text-[9px] font-black uppercase whitespace-nowrap">{mentor.path}</span>
+            <span className="px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[9px] font-black uppercase whitespace-nowrap">{mentor.category}</span>
           </div>
         </div>
-        <button
-          onClick={() => onContact?.(mentor)}
-          className="w-full md:w-auto p-5 bg-slate-950 text-white rounded-2xl hover:bg-indigo-600 transition-all active:scale-95 shadow-xl flex justify-center items-center"
-        >
-          <ArrowUpRight size={24} />
-        </button>
-        <button
-          onClick={() => onCompare?.(mentor)}
-          className={`p-5 rounded-2xl font-bold transition-all active:scale-95 flex items-center justify-center shadow-lg ${isSelected
+
+        {/* Action Buttons - Stack on mobile, row on larger screens */}
+        <div className="w-full sm:w-auto flex gap-2 sm:flex-col sm:gap-1 mt-3 sm:mt-0">
+          {/* Main Button - Select/Contact */}
+          <button
+            onClick={() => onContact?.(mentor)}
+            className="flex-1 sm:flex-none px-4 sm:px-5 py-4 sm:py-3.5 bg-slate-950 text-white rounded-2xl hover:bg-indigo-600 transition-all active:scale-95 shadow-xl flex justify-center items-center font-bold text-sm min-h-[44px] sm:min-h-[48px] touch-none"
+            title="Pilih mentor ini"
+          >
+            <ArrowUpRight size={20} className="sm:hidden" />
+            <span className="hidden sm:inline text-xs font-black">Select</span>
+          </button>
+
+          {/* Compare Button */}
+          <button
+            onClick={() => onCompare?.(mentor)}
+            className={`px-4 sm:px-5 py-4 sm:py-3.5 rounded-2xl font-bold transition-all active:scale-95 flex items-center justify-center shadow-lg min-h-[44px] sm:min-h-[48px] touch-none ${isSelected
               ? 'bg-lime-500 text-white hover:bg-lime-600'
               : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          title="Bandingkan dengan mentor lain"
-        >
-          <Scale size={20} />
-        </button>
+              }`}
+            title="Bandingkan dengan mentor lain"
+            aria-pressed={isSelected}
+          >
+            <Scale size={24} className="sm:size-6" />
+          </button>
+        </div>
       </div>
     );
   }
@@ -149,29 +165,31 @@ export const MentorCard: React.FC<MentorCardProps> = ({
       <div className="flex gap-2">
         <button
           onClick={() => onContact?.(mentor)}
-          className="flex-1 bg-slate-950 text-white py-5 rounded-2xl font-bold text-xs flex items-center justify-center gap-3 hover:bg-indigo-600 transition-all shadow-xl active:scale-95"
+          className="flex-1 bg-slate-950 text-white py-5 rounded-2xl font-bold text-xs flex items-center justify-center gap-3 hover:bg-indigo-600 transition-all shadow-xl active:scale-95 min-h-[48px] touch-none"
         >
           Hubungi Mentor <ArrowUpRight size={16} />
         </button>
 
         <button
           onClick={() => onCompare?.(mentor)}
-          className={`p-5 rounded-2xl font-bold transition-all active:scale-95 flex items-center justify-center shadow-lg ${isSelected
-              ? 'bg-lime-500 text-white hover:bg-lime-600'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          className={`p-5 rounded-2xl font-bold transition-all active:scale-95 flex items-center justify-center shadow-lg min-h-[48px] w-[48px] touch-none ${isSelected
+            ? 'bg-lime-500 text-white hover:bg-lime-600'
+            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           title="Bandingkan dengan mentor lain"
+          aria-pressed={isSelected}
         >
-          <Scale size={18} />
+          <Scale size={28} />
         </button>
 
         {mentor.instagram && mentor.instagram !== "N/A" && (
           <button
             onClick={() => onInstagram?.(mentor.instagram || '')}
-            className="p-5 rounded-2xl bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 text-white hover:shadow-lg hover:scale-105 transition-all active:scale-90 flex items-center justify-center"
+            className="p-5 rounded-2xl bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 text-white hover:shadow-lg hover:scale-105 transition-all active:scale-90 flex items-center justify-center min-h-[48px] w-[48px] touch-none"
             title={`Visit ${mentor.name} on Instagram`}
+            aria-label={`Instagram: ${mentor.name}`}
           >
-            <Instagram size={18} />
+            <Instagram size={28} />
           </button>
         )}
       </div>

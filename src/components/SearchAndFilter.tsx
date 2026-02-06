@@ -47,10 +47,11 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
               <button
                 key={cat}
                 onClick={() => onCategoryChange(cat === 'Semua' ? 'All' : (cat as InstitutionCategory))}
-                className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl text-[9px] sm:text-[10px] font-black transition-all border-2 min-h-[44px] flex items-center justify-center ${(filterCategory === 'All' ? 'Semua' : filterCategory) === cat
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xl shadow-indigo-100'
-                    : 'bg-white text-slate-400 border-slate-100 hover:border-indigo-300'
+                className={`px-4 sm:px-6 py-3 sm:py-4 rounded-2xl text-[9px] sm:text-[10px] font-black transition-all border-2 min-h-[48px] sm:min-h-[52px] flex items-center justify-center ${(filterCategory === 'All' ? 'Semua' : filterCategory) === cat
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-xl shadow-indigo-100'
+                  : 'bg-white text-slate-400 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50'
                   }`}
+                aria-pressed={(filterCategory === 'All' ? 'Semua' : filterCategory) === cat}
               >
                 {cat}
               </button>
@@ -67,10 +68,11 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
                 <button
                   key={path}
                   onClick={() => onPathChange(path === 'Semua' ? 'All' : path)}
-                  className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[8px] sm:text-[10px] font-bold transition-all whitespace-nowrap min-h-[36px] flex items-center justify-center ${(filterPath === 'All' ? 'Semua' : filterPath) === path
-                      ? 'bg-slate-900 text-white'
-                      : 'text-slate-500 hover:bg-slate-200'
+                  className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-[8px] sm:text-[10px] font-bold transition-all whitespace-nowrap min-h-[40px] flex items-center justify-center touch-none ${(filterPath === 'All' ? 'Semua' : filterPath) === path
+                    ? 'bg-slate-900 text-white shadow-md'
+                    : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-100 hover:border-slate-300'
                     }`}
+                  aria-pressed={(filterPath === 'All' ? 'Semua' : filterPath) === path}
                 >
                   {path}
                 </button>
@@ -86,9 +88,10 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
         <input
           type="text"
           placeholder="Cari mentor berdasarkan Jurusan, Universitas, atau Prestasi..."
-          className="w-full pl-12 sm:pl-16 md:pl-24 pr-4 sm:pr-8 py-4 sm:py-6 md:py-8 bg-white border-2 border-slate-100 rounded-2xl sm:rounded-[2.5rem] outline-none focus:border-indigo-600 transition-all font-bold text-slate-900 text-sm sm:text-lg md:text-xl shadow-sm min-h-[44px] sm:min-h-[48px]"
+          className="w-full pl-12 sm:pl-16 md:pl-24 pr-4 sm:pr-8 py-4 sm:py-6 md:py-8 bg-white border-2 border-slate-100 rounded-2xl sm:rounded-[2.5rem] outline-none focus:border-indigo-600 transition-all font-bold text-slate-900 placeholder:text-slate-400 text-sm sm:text-lg md:text-xl shadow-sm min-h-[44px] sm:min-h-[48px]"
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
+          aria-label="Search mentors"
         />
       </div>
     </div>

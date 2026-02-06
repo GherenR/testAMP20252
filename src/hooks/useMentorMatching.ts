@@ -9,8 +9,17 @@ export interface MatchResult {
 
 /**
  * Custom hook untuk mengelola logika mentor matching dengan scoring algorithm
- * Scoring: Category 25pts + Path 20pts + University 30pts + Major 25pts
- * Exact match: >= 85pts, Partial match: >= 20pts, No match: < 20pts
+ * Scoring Priorities (Tertinggi ke Terendah):
+ * 1. Major (Jurusan): 40 pts - HIGHEST PRIORITY
+ * 2. University (Universitas): 35 pts - SECOND PRIORITY
+ * 3. Path (Jalur Masuk): 15 pts - THIRD PRIORITY
+ * 4. Category (Institusi): 10 pts - LOWEST PRIORITY
+ * 
+ * Filter: Minimum 10 pts (ada minimal 1 match) untuk muncul
+ * Match Type:
+ * - Exact: >= 85 pts (3+ fields match perfectly)
+ * - Partial: >= 10 pts (minimal 1 field match)
+ * - None: < 10 pts (tidak ada yang match)
  */
 export const useMentorMatching = () => {
   const [matchTarget, setMatchTarget] = useState<InstitutionCategory>('PTN');
@@ -34,27 +43,52 @@ export const useMentorMatching = () => {
     setTimeout(() => {
       const resultsWithScores = mentors.map(mentor => {
         let score = 0;
+        let matchCount = 0;
 
-        // Scoring system (max 100 points)
-        if (mentor.category === matchTarget) score += 25;
-        if (mentor.path === matchPath) score += 20;
-        if (matchUniversity && mentor.university.toLowerCase().includes(matchUniversity.toLowerCase())) score += 30;
-        if (matchMajor && mentor.major.toLowerCase().includes(matchMajor.toLowerCase())) score += 25;
+        // Priority 1: MAJOR (Jurusan) - HIGHEST WEIGHT: 40 pts
+        if (matchMajor && mentor.major.toLowerCase().includes(matchMajor.toLowerCase())) {
+          score += 40;
+          matchCount++;
+        }
 
-        return { mentor, score };
-      }).sort((a, b) => b.score - a.score);
+        // Priority 2: UNIVERSITY (Universitas) - WEIGHT: 35 pts
+        if (matchUniversity && mentor.university.toLowerCase().includes(matchUniversity.toLowerCase())) {
+          score += 35;
+          matchCount++;
+        }
+
+        // Priority 3: PATH (Jalur Masuk) - WEIGHT: 15 pts
+        // PENTING: Jika user pilih "All", jangan kurangi score. Hanya tambah jika path cocok.
+        if (matchPath !== 'All' && mentor.path === matchPath) {
+          score += 15;
+          matchCount++;
+        }
+
+        // Priority 4: CATEGORY (Institusi) - LOWEST WEIGHT: 10 pts
+        if (mentor.category === matchTarget) {
+          score += 10;
+          matchCount++;
+        }
+
+        return { mentor, score, matchCount };
+      })
+        .filter(r => r.score >= 10) // Minimum 10 pts (ada minimal 1 match yang significant)
+        .sort((a, b) => {
+          // Sort by score DESC, then by match count DESC untuk consistency
+          if (b.score !== a.score) return b.score - a.score;
+          return b.matchCount - a.matchCount;
+        });
 
       const topScore = resultsWithScores[0]?.score || 0;
       let type: 'exact' | 'partial' | 'none' = 'none';
 
       // Determine match type berdasarkan score
       if (topScore >= 85) type = 'exact';
-      else if (topScore >= 20) type = 'partial';
+      else if (topScore >= 10) type = 'partial';
       else type = 'none';
 
-      // Get top 3 results dengan score > 0
+      // Get top 3 results dengan score >= 10 (sudah di-filter di atas)
       const finalMentors = resultsWithScores
-        .filter(r => r.score > 0)
         .slice(0, 3)
         .map(r => r.mentor);
 

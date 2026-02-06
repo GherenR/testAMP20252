@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Home, BrainCircuit, Database, ShieldCheck, Info
+  Home, BrainCircuit, Database, ShieldCheck, Info, ArrowUp
 } from 'lucide-react';
 import { MOCK_MENTORS } from './constants';
 import { SlideData } from './types';
@@ -20,9 +20,14 @@ import {
   AboutSlide,
   SopModal,
   MentorComparisonModal,
+  MentorDetailModal,
+  SmartMatchActionModal,
   MenuItem
 } from './components';
 import { generateWhatsAppMessage, generateWhatsAppLink } from './utils/whatsappMessage';
+import { decodeComparisonUrl, encodeComparisonUrl } from './utils/comparisonUrl';
+import { useAnalytics } from './hooks/useAnalytics';
+import { SLIDE_NAMES } from './utils/analytics';
 
 /**
  * 🚀 FUTURE AI INTEGRATION (Gemini API)
@@ -72,6 +77,13 @@ const App: React.FC = () => {
   const slideNavigation = useSlideNavigation(totalSlides);
   const { currentSlide, setCurrentSlide } = slideNavigation;
 
+  const { trackPageView } = useAnalytics();
+
+  useEffect(() => {
+    // Track page view when current slide changes
+    trackPageView(currentSlide, SLIDE_NAMES[currentSlide] || 'Unknown');
+  }, [currentSlide, trackPageView]);
+
   // ===== MENTOR FILTERING HOOKS =====
   const mentorFiltering = useMentorFiltering(MOCK_MENTORS);
   const {
@@ -106,8 +118,114 @@ const App: React.FC = () => {
 
   // ===== MENTOR COMPARISON HOOKS =====
   const mentorComparison = useMentorComparison();
-  const { selectedMentors, addMentorToCompare, removeMentorFromCompare, clearComparison, isComparing } = mentorComparison;
+  const { selectedMentors, addMentorToCompare, removeMentorFromCompare, clearComparison, setBulkComparison, isComparing } = mentorComparison;
   const [showComparisonModal, setShowComparisonModal] = useState(false);
+
+  // ===== SCROLL TO TOP STATE (Mobile Only) =====
+  const [showScrollToTop, setShowScrollToTop] = useState(false);
+
+  // ===== AUTO-SCROLL TO RESULTS ON MOBILE =====
+  /**
+   * Saat matchResults update di Smart Match (mobile), auto-scroll ke hasil
+   */
+  useEffect(() => {
+    if (currentSlide === 1 && matchResults && window.innerWidth < 1024) {
+      setTimeout(() => {
+        const resultsSection = document.getElementById('match-results');
+        resultsSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 250); // Optimal timing untuk DOM render"}}]
+    }
+  }, [matchResults, currentSlide]);
+
+  /**
+   * Saat filteredMentors berubah di Direktori (mobile), auto-scroll ke grid
+   */
+  useEffect(() => {
+    if (currentSlide === 2 && searchTerm && window.innerWidth < 1024) {
+      setTimeout(() => {
+        const mentorGrid = document.getElementById('mentor-grid');
+        mentorGrid?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 250); // Optimal timing"}}]
+    }
+  }, [filteredMentors, currentSlide, searchTerm]);
+
+  // ===== SCROLL TO TOP BUTTON VISIBILITY (Mobile Only) =====
+  /**
+   * Show floating button saat scroll down > 300px, tapi hanya di mobile
+   */
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      // Show di mobile (<640px) dan saat scroll down
+      setShowScrollToTop(scrollTop > 300 && window.innerWidth < 640);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  /**
+   * Scroll ke atas dengan smooth animation
+   */
+  const scrollToTop = () => {
+    // Gunakan requestAnimationFrame untuk smooth performance
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // ===== RESTORE COMPARISON STATE FROM URL =====
+  /**
+   * Load comparison mentors dari URL params saat page load
+   * Contoh: ?compare=siti-nurassifa,zhalisha-athaya,gheren-ramandra
+   */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const comparisonMentors = decodeComparisonUrl(params);
+
+    if (comparisonMentors.length > 0) {
+      // Bulk set mentors dari URL (menghindari async setState loop issue)
+      setBulkComparison(comparisonMentors);
+      // Automatically open comparison modal jika ada mentors di URL
+      setShowComparisonModal(true);
+    }
+  }, []); // Only run on mount
+
+  // ===== PERSIST COMPARISON STATE TO URL =====
+  /**
+   * Update URL params setiap kali selectedMentors berubah
+   * Ini memastikan URL selalu reflect state terkini
+   * Saat remove mentor -> URL updated -> refresh akan restore state yang benar
+   */
+  useEffect(() => {
+    if (selectedMentors.length > 0) {
+      // Ada mentors -> update URL dengan selectedMentors
+      const newUrl = encodeComparisonUrl(selectedMentors);
+      window.history.replaceState(null, '', window.location.pathname + newUrl);
+    } else {
+      // Tidak ada mentors -> clear URL params
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, [selectedMentors]); // Re-run setiap kali selectedMentors berubah
+
+  // ===== AUTO-CLOSE MODAL WHEN EMPTY =====
+  /**
+   * Tutup modal otomatis ketika semua mentors di-remove
+   * Terpisah dari persist effect untuk menghindari race condition
+   */
+  useEffect(() => {
+    if (showComparisonModal && selectedMentors.length === 0) {
+      setShowComparisonModal(false);
+    }
+  }, [selectedMentors, showComparisonModal]); // Watch both untuk accuracy
+
+  // ===== MENTOR DETAIL MODAL STATE =====
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [detailMentor, setDetailMentor] = useState<typeof MOCK_MENTORS[0] | null>(null);
+  const [detailAlumniId, setDetailAlumniId] = useState<string>('');
+
+  // ===== SMART MATCH ACTION MODAL STATE =====
+  const [showSmartMatchAction, setShowSmartMatchAction] = useState(false);
+  const [smartMatchMentor, setSmartMatchMentor] = useState<typeof MOCK_MENTORS[0] | null>(null);
+  const [smartMatchAlumniId, setSmartMatchAlumniId] = useState<string>('');
 
   // ===== HELPER FUNCTIONS =====
   /**
@@ -156,6 +274,47 @@ const App: React.FC = () => {
     window.open(`https://www.instagram.com/${handle}/`, '_blank');
   };
 
+  /**
+   * Handle detail modal opening
+   */
+  const openDetailModal = (mentor: typeof MOCK_MENTORS[0]) => {
+    const index = MOCK_MENTORS.findIndex(m => m.name === mentor.name);
+    setDetailAlumniId(`#2025-${index + 104}`);
+    setDetailMentor(mentor);
+    setShowDetailModal(true);
+  };
+
+  /**
+   * Handle Smart Match action - when user clicks a mentor card in Smart Match
+   * Opens action modal with options to contact or view detail
+   */
+  const handleSmartMatchMentorClick = (mentor: typeof MOCK_MENTORS[0]) => {
+    const index = MOCK_MENTORS.findIndex(m => m.name === mentor.name);
+    setSmartMatchAlumniId(`#2025-${index + 104}`);
+    setSmartMatchMentor(mentor);
+    setShowSmartMatchAction(true);
+  };
+
+  /**
+   * From Smart Match Action Modal - view detail
+   */
+  const handleSmartMatchViewDetail = (mentor: typeof MOCK_MENTORS[0]) => {
+    setShowSmartMatchAction(false);
+    setTimeout(() => {
+      openDetailModal(mentor);
+    }, 300);
+  };
+
+  /**
+   * From Smart Match Action Modal - start WhatsApp conversation
+   */
+  const handleSmartMatchContact = (mentor: typeof MOCK_MENTORS[0]) => {
+    setShowSmartMatchAction(false);
+    setTimeout(() => {
+      handleContactClick(mentor);
+    }, 300);
+  };
+
   // ===== MENU ITEMS untuk navigation =====
   const menuItems: MenuItem[] = [
     { icon: <Home size={18} />, label: 'Beranda', id: 0 },
@@ -190,7 +349,10 @@ const App: React.FC = () => {
             matchResults={matchResults}
             subPaths={getSubPaths(matchTarget)}
             onRunMatchmaker={() => mentorMatching.runMatchmaker(MOCK_MENTORS)}
-            onMentorContact={handleContactClick}
+            onReset={mentorMatching.resetMatching}
+            onMentorSelect={handleSmartMatchMentorClick}
+            onMentorCompare={addMentorToCompare}
+            comparedMentors={selectedMentors.map(m => m.name)}
           />
         );
       case 2:
@@ -208,6 +370,7 @@ const App: React.FC = () => {
             onMentorInstagram={handleInstagramClick}
             onMentorCompare={addMentorToCompare}
             comparedMentors={selectedMentors.map(m => m.name)}
+            onViewDetail={openDetailModal}
           />
         );
       case 3:
@@ -291,6 +454,18 @@ const App: React.FC = () => {
             <span className="sm:hidden">Bandingkan</span>
           </button>
         )}
+
+        {/* Floating Back-to-Top Button (Mobile Only) */}
+        {showScrollToTop && (
+          <button
+            onClick={scrollToTop}
+            className="fixed bottom-20 right-4 sm:bottom-24 sm:right-6 lg:hidden z-40 w-12 h-12 sm:w-14 sm:h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition-all min-h-[44px]"
+            title="Kembali ke atas"
+            aria-label="Scroll to top button"
+          >
+            <ArrowUp size={24} />
+          </button>
+        )}
       </main>
 
       {/* ===== FOOTER ===== */}
@@ -314,8 +489,30 @@ const App: React.FC = () => {
         onClose={() => setShowComparisonModal(false)}
         onRemove={removeMentorFromCompare}
       />
+
+      {detailMentor && (
+        <MentorDetailModal
+          mentor={detailMentor}
+          isOpen={showDetailModal}
+          onClose={() => setShowDetailModal(false)}
+          onContact={handleContactClick}
+          alumniId={detailAlumniId}
+        />
+      )}
+
+      {smartMatchMentor && (
+        <SmartMatchActionModal
+          mentor={smartMatchMentor}
+          isOpen={showSmartMatchAction}
+          onClose={() => setShowSmartMatchAction(false)}
+          onContact={handleSmartMatchContact}
+          onViewDetail={handleSmartMatchViewDetail}
+          alumniId={smartMatchAlumniId}
+        />
+      )}
     </div>
   );
 };
 
 export default App;
+

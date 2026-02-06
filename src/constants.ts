@@ -506,6 +506,16 @@ export const MOCK_MENTORS: Mentor[] = [
     "whatsapp": "wa.me/628118121396",
     "instagram": "oliviafirdauss",
     "achievements": ["Lulus: ITS - Teknik Kimia (Mandiri)"]
+  },
+  {
+    "name": "Faisal Fazly Pratama",
+    "university": "Universitas Bakrie",
+    "major": "Ilmu Komunikasi",
+    "path": "Beasiswa",
+    "category": "PTS",
+    "whatsapp": "wa.me/6287785195744",
+    "instagram": "salpratamaa",
+    "achievements": ["Lulus: Universitas Bakrie Ilmu Komunikasi (Beasiswa)", "Ketua Paskibra SMA Hang Tuah 1 Jakarta Tahun 2024", "Sekretaris II MPK", "Ketua Pelaksana Hang Tuah Cup 2025."]
   }
 ];
 

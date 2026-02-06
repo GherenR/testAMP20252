@@ -1,0 +1,209 @@
+/* Custom styles for Alumni Database */
+
+html {
+    scroll-behavior: smooth;
+}
+
+:root {
+    --bg-color: #fcfcfd;
+    --primary: #4f46e5;
+    --accent: #d9f99d;
+    /* Cyber Lime */
+    --midnight: #020617;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--midnight);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+}
+
+/* Noise Overlay Effect */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.04;
+    z-index: 9999;
+    background-image: repeating-linear-gradient(45deg,
+            transparent,
+            transparent 2px,
+            rgba(0, 0, 0, 0.03) 2px,
+            rgba(0, 0, 0, 0.03) 4px);
+    pointer-events: none;
+}
+
+h1,
+h2,
+h3,
+.font-heading {
+    font-family: 'Space Grotesk', sans-serif;
+    letter-spacing: -0.04em;
+}
+
+.text-outline {
+    -webkit-text-stroke: 1.5px var(--midnight);
+    color: transparent;
+}
+
+.ticket-border {
+    border: 2px solid #f1f5f9;
+    position: relative;
+    background: white;
+}
+
+.ticket-border::before,
+.ticket-border::after {
+    content: '';
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    background: var(--bg-color);
+    border: 2px solid #f1f5f9;
+    border-radius: 50%;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+}
+
+.ticket-border::before {
+    left: -14px;
+}
+
+.ticket-border::after {
+    right: -14px;
+}
+
+.dashed-line {
+    background-image: linear-gradient(to right, #e2e8f0 50%, transparent 50%);
+    background-position: bottom;
+    background-size: 8px 1px;
+    background-repeat: repeat-x;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+}
+
+@keyframes revealUp {
+    from {
+        opacity: 0;
+        transform: translateY(40px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.animate-reveal {
+    animation: revealUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.stagger-1 {
+    animation-delay: 0.1s;
+}
+
+.stagger-2 {
+    animation-delay: 0.2s;
+}
+
+.stagger-3 {
+    animation-delay: 0.3s;
+}
+
+/* Smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Prevent layout shift from scrollbar */
+body {
+    scrollbar-gutter: stable;
+}
+
+/* Selection colors */
+::selection {
+    background-color: var(--primary);
+    color: white;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(79, 70, 229, 0.8);
+}
+
+/* Custom scrollbar for Firefox */
+* {
+    scrollbar-color: var(--primary) transparent;
+    scrollbar-width: thin;
+}
+
+/* Utility classes */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 3px;
+}
+
+/* Mobile Touch Optimization */
+button,
+a {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* Input focus styling */
+input,
+textarea,
+select {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+@media (max-width: 640px) {
+    body {
+        font-size: 16px;
+        /* Prevents zoom on iOS input focus */
+    }
+
+    /* Ensure proper mobile spacing */
+    html,
+    body {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+}

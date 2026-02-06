@@ -6,6 +6,12 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
 
+  // HTML processing
+  html: {
+    // Don't inline CSS - let it be handled separately
+    cspNonce: undefined,
+  },
+
   // Security optimizations
   build: {
     // Minify and optimize for production

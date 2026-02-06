@@ -6,13 +6,14 @@ interface UseMentorComparisonReturn {
     addMentorToCompare: (mentor: Mentor) => void;
     removeMentorFromCompare: (mentorName: string) => void;
     clearComparison: () => void;
+    setBulkComparison: (mentors: Mentor[]) => void;
     canAddMore: boolean;
     isComparing: boolean;
 }
 
 /**
  * Hook untuk manage mentor comparison state
- * Max 3 mentors dapat dibandingkan sekaligus
+ * Max 3 mentors dapat dibandingkan sekaligus (limited untuk UX, URL support up to 4)
  */
 export const useMentorComparison = (): UseMentorComparisonReturn => {
     const [selectedMentors, setSelectedMentors] = useState<Mentor[]>([]);
@@ -36,11 +37,21 @@ export const useMentorComparison = (): UseMentorComparisonReturn => {
         setSelectedMentors([]);
     };
 
+    /**
+     * Set multiple mentors at once (untuk restore dari URL)
+     * Menghindari masalah async setState saat loop forEach
+     */
+    const setBulkComparison = (mentors: Mentor[]) => {
+        const limitedMentors = mentors.slice(0, 3);
+        setSelectedMentors(limitedMentors);
+    };
+
     return {
         selectedMentors,
         addMentorToCompare,
         removeMentorFromCompare,
         clearComparison,
+        setBulkComparison,
         canAddMore: selectedMentors.length < 3,
         isComparing: selectedMentors.length > 0
     };

@@ -45,7 +45,7 @@ export const HeroSlide: React.FC<HeroSlideProps> = ({ onSmartMatchClick, onNavig
         <div className="flex flex-col gap-3 sm:gap-5 mb-12 sm:mb-16">
           <button
             onClick={onSmartMatchClick}
-            className="group relative bg-slate-950 text-white px-6 sm:px-12 py-4 sm:py-6 rounded-2xl font-bold transition-all hover:bg-indigo-600 active:scale-95 shadow-2xl shadow-slate-950/20 text-sm sm:text-lg w-full"
+            className="group relative bg-indigo-600 text-white px-6 sm:px-12 py-4 sm:py-6 rounded-2xl font-bold transition-all hover:bg-indigo-700 active:scale-95 shadow-2xl shadow-indigo-600/20 text-sm sm:text-lg w-full min-h-[48px] sm:min-h-[56px] touch-none"
           >
             <span className="flex items-center gap-2 sm:gap-3 justify-center">
               Coba Smart Match <BrainCircuit size={18} className="sm:w-[22px] sm:h-[22px] group-hover:rotate-12 transition-transform" />
@@ -53,7 +53,7 @@ export const HeroSlide: React.FC<HeroSlideProps> = ({ onSmartMatchClick, onNavig
           </button>
           <button
             onClick={() => setCurrentSlide(2)}
-            className="group relative bg-slate-950 text-white px-6 sm:px-12 py-4 sm:py-6 rounded-2xl font-bold transition-all hover:bg-indigo-600 active:scale-95 shadow-2xl shadow-slate-950/20 text-sm sm:text-lg w-full"
+            className="group relative bg-slate-900 text-white px-6 sm:px-12 py-4 sm:py-6 rounded-2xl font-bold transition-all hover:bg-slate-950 active:scale-95 shadow-2xl shadow-slate-900/20 text-sm sm:text-lg w-full min-h-[48px] sm:min-h-[56px] touch-none"
           >
             <span className="flex items-center gap-2 sm:gap-3 justify-center">
               Cari Manual <BrainCircuit size={18} className="sm:w-[22px] sm:h-[22px] group-hover:rotate-12 transition-transform" />
@@ -61,7 +61,7 @@ export const HeroSlide: React.FC<HeroSlideProps> = ({ onSmartMatchClick, onNavig
           </button>
           <button
             onClick={() => window.open(COMMUNITY_WA_GROUP, '_blank')}
-            className="group bg-white text-slate-900 border-2 border-slate-100 px-6 sm:px-12 py-4 sm:py-6 rounded-2xl font-bold transition-all hover:border-indigo-600 flex items-center gap-2 sm:gap-3 active:scale-95 text-sm sm:text-lg w-full justify-center"
+            className="group bg-white text-slate-900 border-2 border-slate-200 px-6 sm:px-12 py-4 sm:py-6 rounded-2xl font-bold transition-all hover:border-indigo-600 hover:bg-indigo-50 flex items-center gap-2 sm:gap-3 active:scale-95 text-sm sm:text-lg w-full justify-center min-h-[48px] sm:min-h-[56px] touch-none"
           >
             <Users size={18} className="sm:w-[22px] sm:h-[22px] text-green-600" /> Komunitas WhatsApp
           </button>

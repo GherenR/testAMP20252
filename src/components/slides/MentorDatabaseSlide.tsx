@@ -17,6 +17,7 @@ interface MentorDatabaseSlideProps {
   onMentorInstagram: (handle: string) => void;
   onMentorCompare?: (mentor: Mentor) => void;
   comparedMentors?: string[];
+  onViewDetail?: (mentor: Mentor) => void;
 }
 
 /**
@@ -36,7 +37,8 @@ export const MentorDatabaseSlide: React.FC<MentorDatabaseSlideProps> = ({
   onMentorContact,
   onMentorInstagram,
   onMentorCompare,
-  comparedMentors = []
+  comparedMentors = [],
+  onViewDetail
 }) => {
   return (
     <div className="max-w-7xl mx-auto px-6 animate-reveal pb-32 pt-8">
@@ -52,7 +54,7 @@ export const MentorDatabaseSlide: React.FC<MentorDatabaseSlideProps> = ({
       />
 
       {/* Mentor Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div id="mentor-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {filteredMentors.map(({ mentor, originalIndex }) => (
           <MentorCard
             key={originalIndex}
@@ -62,6 +64,7 @@ export const MentorDatabaseSlide: React.FC<MentorDatabaseSlideProps> = ({
             onInstagram={onMentorInstagram}
             onCompare={onMentorCompare}
             isSelected={comparedMentors.includes(mentor.name)}
+            onViewDetail={onViewDetail}
           />
         ))}
       </div>

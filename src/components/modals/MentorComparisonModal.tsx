@@ -1,6 +1,11 @@
-import React from 'react';
-import { X, Share2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Share2, Copy, Check } from 'lucide-react';
 import { Mentor } from '../../types';
+import {
+    getComparisonShareUrl,
+    getComparisonWhatsAppLink,
+    generateComparisonWhatsAppMessage
+} from '../../utils/comparisonUrl';
 
 interface MentorComparisonModalProps {
     isOpen: boolean;
@@ -19,20 +24,23 @@ export const MentorComparisonModal: React.FC<MentorComparisonModalProps> = ({
     onClose,
     onRemove
 }) => {
+    const [isCopied, setIsCopied] = useState(false);
+
     if (!isOpen || mentors.length === 0) return null;
 
-    const handleShare = () => {
-        const mentorNames = mentors.map(m => m.name).join(', ');
-        const text = `Saya sedang membandingkan mentor-mentor ini: ${mentorNames}. Cek di Database Alumni!`;
-        const encodedText = encodeURIComponent(text);
-        window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+    // Generate share URL dengan mentor slugs
+    const shareUrl = getComparisonShareUrl(mentors);
+    const whatsappLink = getComparisonWhatsAppLink(mentors);
+    const whatsappMessage = generateComparisonWhatsAppMessage(mentors);
+
+    const handleShareWhatsApp = () => {
+        window.open(whatsappLink, '_blank');
     };
 
-    const handleCopyToClipboard = () => {
-        const mentorNames = mentors.map(m => m.name).join(', ');
-        const text = `Mentor yang dipilih: ${mentorNames}`;
-        navigator.clipboard.writeText(text);
-        alert('Disalin ke clipboard!');
+    const handleCopyLink = () => {
+        navigator.clipboard.writeText(shareUrl);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
     };
 
     return (
@@ -161,18 +169,46 @@ export const MentorComparisonModal: React.FC<MentorComparisonModalProps> = ({
 
                 {/* Action Buttons */}
                 <div className="flex flex-col gap-2 sm:gap-3">
+                    {/* Share WhatsApp Button */}
                     <button
-                        onClick={handleShare}
-                        className="w-full bg-slate-950 text-white py-4 sm:py-5 rounded-lg sm:rounded-2xl font-bold text-sm sm:text-base hover:bg-indigo-600 transition-all flex items-center justify-center gap-2 sm:gap-3 shadow-lg active:scale-95 min-h-[44px]"
+                        onClick={handleShareWhatsApp}
+                        className="w-full bg-green-500 hover:bg-green-600 text-white py-4 sm:py-5 rounded-lg sm:rounded-2xl font-bold text-sm sm:text-base transition-all flex items-center justify-center gap-2 sm:gap-3 shadow-lg active:scale-95 min-h-[44px]"
+                        title="Bagikan perbandingan ke WhatsApp"
                     >
-                        <Share2 size={16} className="sm:hidden" /><Share2 size={20} className="hidden sm:block" /> Share ke WhatsApp
+                        <Share2 size={18} /> Share ke WhatsApp
                     </button>
+
+                    {/* Copy Link Button */}
                     <button
-                        onClick={handleCopyToClipboard}
-                        className="w-full bg-slate-100 text-slate-900 py-4 sm:py-5 rounded-lg sm:rounded-2xl font-bold text-sm sm:text-base hover:bg-slate-200 transition-all shadow-lg active:scale-95 min-h-[44px]"
+                        onClick={handleCopyLink}
+                        className={`w-full py-4 sm:py-5 rounded-lg sm:rounded-2xl font-bold text-sm sm:text-base transition-all flex items-center justify-center gap-2 sm:gap-3 shadow-lg active:scale-95 min-h-[44px] ${isCopied
+                            ? 'bg-green-500 text-white'
+                            : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                            }`}
+                        title="Salin link perbandingan"
                     >
-                        Copy ke Clipboard
+                        {isCopied ? (
+                            <>
+                                <Check size={18} /> Link Disalin!
+                            </>
+                        ) : (
+                            <>
+                                <Copy size={18} /> Salin Link Perbandingan
+                            </>
+                        )}
                     </button>
+
+                    {/* URL Preview */}
+                    <div className="bg-slate-50 p-3 sm:p-4 rounded-lg border border-slate-200">
+                        <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                            URL Share:
+                        </p>
+                        <p className="text-[10px] sm:text-xs font-mono text-slate-700 break-all line-clamp-2">
+                            {shareUrl}
+                        </p>
+                    </div>
+
+                    {/* Close Button */}
                     <button
                         onClick={onClose}
                         className="w-full bg-slate-100 text-slate-900 py-4 sm:py-5 rounded-lg sm:rounded-2xl font-bold text-sm sm:text-base hover:bg-slate-200 transition-all shadow-lg active:scale-95 min-h-[44px]"
