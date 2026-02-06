@@ -236,7 +236,9 @@ export const MOCK_MENTORS: Mentor[] = [
     "instagram": "al.sdamm",
     "achievements": [
       "Ketua Divisi Acara HT Art Festival 2024, Anggota OSIS Bilingual",
-      "Lulus: UPNVJ - Hukum (Mandiri SMPTN Barat)"
+      "Lulus: UPNVJ - Hukum (Mandiri SMPTN Barat)",
+      "Tim Kreatif Buku Tahunan Sekolah",
+      "Director of Event Management - Underradar"
     ]
   },
   {
