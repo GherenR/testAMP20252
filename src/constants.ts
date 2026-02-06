@@ -516,6 +516,30 @@ export const MOCK_MENTORS: Mentor[] = [
     "whatsapp": "wa.me/6287785195744",
     "instagram": "salpratamaa",
     "achievements": ["Lulus: Universitas Bakrie Ilmu Komunikasi (Beasiswa)", "Ketua Paskibra SMA Hang Tuah 1 Jakarta Tahun 2024", "Sekretaris II MPK", "Ketua Pelaksana Hang Tuah Cup 2025."]
+  },
+  {
+    "name": "Muhammad Fikri Fahlevi",
+    "university": "UPNVJ (Jakarta)",
+    "major": "Akuntansi",
+    "path": "Mandiri",
+    "category": "PTN",
+    "whatsapp": "wa.me/6282246973040",
+    "instagram": "fikriflvi",
+    "achievements": [
+      "Pilihan SNBP: UI Matematika",
+      "Pilihan SNBT: UI Akuntansi, UI Matematika",
+      "Mandiri: UI-Akuntansi (Simak), UI-Matematika (PPKB), UPNVJ-Akuntansi (SMM), UNJ-Akuntansi (UTUL), PNJ-Akuntansi"
+    ]
+  },
+  {
+    "name": "Daffa Gintara Wigena Atmadja",
+    "university": "MNC University",
+    "major": "Sistem Informasi",
+    "path": "Beasiswa",
+    "category": "PTS",
+    "whatsapp": "wa.me/628128011386",
+    "instagram": "daffagintara",
+    "achievements": ["Pilihan SNBP: UI Teknik Elektro", "Pilihan SNBT: UPNVJ Sistem Informasi, UNJ Sistem Informasi"]
   }
 ];
 
