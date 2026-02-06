@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Zap, BrainCircuit, Database, ShieldCheck, Info
+  Home, BrainCircuit, Database, ShieldCheck, Info
 } from 'lucide-react';
 import { MOCK_MENTORS } from './constants';
 import { SlideData } from './types';
@@ -158,7 +158,7 @@ const App: React.FC = () => {
 
   // ===== MENU ITEMS untuk navigation =====
   const menuItems: MenuItem[] = [
-    { icon: <Zap size={18} />, label: 'Beranda', id: 0 },
+    { icon: <Home size={18} />, label: 'Beranda', id: 0 },
     { icon: <BrainCircuit size={18} />, label: 'Smart Match', id: 1 },
     { icon: <Database size={18} />, label: 'Direktori', id: 2 },
     { icon: <ShieldCheck size={18} />, label: 'Etika Chat', id: 3 },

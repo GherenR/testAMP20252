@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck, Clock, Zap, ArrowRight } from 'lucide-react';
+import { X, ShieldCheck, Clock, Lightbulb, ArrowRight } from 'lucide-react';
 import { Mentor } from '../../types';
 
 interface SopModalProps {
@@ -94,7 +94,7 @@ export const SopModal: React.FC<SopModalProps> = ({
             {/* Message guideline */}
             <div className="bg-slate-50 p-4 sm:p-6 rounded-xl sm:rounded-[2rem] border-2 border-slate-100 flex gap-3 sm:gap-4 items-start">
               <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-lg sm:rounded-xl bg-white border border-slate-100 flex items-center justify-center shrink-0 shadow-sm">
-                <Zap className="text-lime-500" size={16} />
+                <Lightbulb className="text-lime-500" size={16} />
               </div>
               <div className="min-w-0">
                 <p className="text-sm sm:text-base font-bold text-slate-950">Pesan Sudah Siap</p>
