@@ -4,16 +4,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta http-equiv="Content-Security-Policy" content="
-  default-src 'self';
-  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://esm.sh https://*.vercel.com;
-  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net;
-  font-src 'self' https://fonts.gstatic.com;
-  connect-src 'self' https://wmqzeyqktcrptuqpjttr.supabase.co https://*.vercel.com;
-">
+
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="theme-color" content="#020617" />
+
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://vercel.live https://*.vercel.com https://esm.sh;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net;
+    font-src 'self' https://fonts.gstatic.com;
+    connect-src 'self' https://wmqzeyqktcrptuqpjttr.supabase.co https://vercel.live https://*.vercel.com;
+    img-src 'self' data: blob: https://*.supabase.co;
+  ">
+
   <title>AMP 25/26 | Future Leaders Network</title>
   <meta name="description" content="Alumni Mentorship Project - Connecting Generations." />
 
@@ -31,16 +35,16 @@
   <!-- Styles loaded from src/index.css via React import -->
 
   <script type="importmap">
-{
-  "imports": {
-    "react/": "https://esm.sh/react@19.2.4/",
-    "react": "https://esm.sh/react@19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@19.2.4/",
-    "react-dom/client": "https://esm.sh/react-dom@19.2.4/client",
-    "lucide-react": "https://esm.sh/lucide-react@0.563.0"
+  {
+    "imports": {
+      "react/": "https://esm.sh/react@19.2.4/",
+      "react": "https://esm.sh/react@19.2.4",
+      "react-dom/": "https://esm.sh/react-dom@19.2.4/",
+      "react-dom/client": "https://esm.sh/react-dom@19.2.4/client",
+      "lucide-react": "https://esm.sh/lucide-react@0.563.0"
+    }
   }
-}
-</script>
+  </script>
 </head>
 
 <body>
