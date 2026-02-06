@@ -4,7 +4,7 @@ import { subDays } from 'date-fns';
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4Y3diYmtyYnJpd2p4c2ppeW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzOTE5MzgsImV4cCI6MjA4NTk2NzkzOH0.H4OC - nmxGyINuqjBu_aMs8EaSG--ymwZaSls11cmPck!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
 );
 
 /**
