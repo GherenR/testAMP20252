@@ -1,0 +1,68 @@
+#!/bin/bash
+# Security pre-commit hook
+# Prevents committing secrets, large files, and other security issues
+
+echo "🔐 Running security pre-commit checks..."
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+EXIT_CODE=0
+
+# Check for secrets in staged files
+echo "🔍 Checking for hardcoded secrets..."
+SECRETS_FOUND=0
+
+# Check for API keys
+if git diff --cached | grep -i "GEMINI_API_KEY\s*=" | grep -v ".env.example"; then
+  echo -e "${RED}❌ ERROR: API key found in staged changes!${NC}"
+  echo "   Commit .env.local to .gitignore if not already there"
+  SECRETS_FOUND=1
+fi
+
+# Check for common secret patterns
+if git diff --cached | grep -E "(password\s*=|secret\s*=|token\s*=)" | grep -v "example\|test\|mock"; then
+  echo -e "${YELLOW}⚠️  WARNING: Potential secrets found${NC}"
+  SECRETS_FOUND=1
+fi
+
+if [ $SECRETS_FOUND -eq 1 ]; then
+  EXIT_CODE=1
+fi
+
+# Check for .env files (should never be committed)
+echo "🔍 Checking for environment files..."
+if git diff --cached --name-only | grep -E "\.env\.local|\.env\.production"; then
+  echo -e "${RED}❌ ERROR: .env files cannot be committed!${NC}"
+  echo "   These contain sensitive data. Update .gitignore"
+  EXIT_CODE=1
+fi
+
+# Check file sizes (prevent large commits)
+echo "🔍 Checking file sizes..."
+LARGE_FILES=$(git diff --cached --name-only -z | xargs -0 du -h 2>/dev/null | awk '$1 ~ /M$/ {print $0}')
+if [ ! -z "$LARGE_FILES" ]; then
+  echo -e "${YELLOW}⚠️  WARNING: Large files detected:${NC}"
+  echo "$LARGE_FILES"
+  echo "   Consider using Git LFS for large files"
+fi
+
+# Check for console.logs in production files
+echo "🔍 Checking for debug statements..."
+if git diff --cached | grep -E "console\.(log|error|warn|debug)" | grep -v "test\|spec"; then
+  echo -e "${YELLOW}⚠️  WARNING: console statements found${NC}"
+  echo "   Remove before production commit"
+fi
+
+# Success message
+if [ $EXIT_CODE -eq 0 ]; then
+  echo -e "${GREEN}✅ Security checks passed!${NC}"
+else
+  echo -e "${RED}❌ Security check failed${NC}"
+  echo "   Fix issues before committing"
+fi
+
+exit $EXIT_CODE

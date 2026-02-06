@@ -12,6 +12,22 @@ dist
 dist-ssr
 *.local
 
+# SECURITY: Environment variables - NEVER COMMIT
+# Note: .env.local contains GEMINI_API_KEY (placeholder until Gemini integration)
+.env
+.env.local
+.env.*.local
+.env.production.local
+
+# SECURITY: Secret files
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+secrets/
+private/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,3 +38,30 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# SECURITY: OS specific files that may contain sensitive data
+.AppleDouble
+.LSOverride
+Thumbs.db
+
+# SECURITY: IDE caches
+.cache/
+.eslintcache
+
+# SECURITY: Temporary files
+tmp/
+temp/
+*.tmp
+
+# SECURITY: Backup files (may contain credentials)
+*.bak
+*.backup
+*~
+
+# SECURITY: Debug files
+debug/
+logs/
+*.pid
+
+# SECURITY: Package manager lock files (commit these) - only for npm
+# Do NOT ignore package-lock.json - it should be committed for reproducibility

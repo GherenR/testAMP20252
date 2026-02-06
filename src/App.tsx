@@ -25,6 +25,30 @@ import {
 import { generateWhatsAppMessage, generateWhatsAppLink } from './utils/whatsappMessage';
 
 /**
+ * 🚀 FUTURE AI INTEGRATION (Gemini API)
+ * =====================================
+ * STATUS: Ready to integrate when needed
+ * CURRENT: All mentor matching is done client-side (fast ⚡, no API calls)
+ * 
+ * Gemini API Key is already secured in:
+ * - Vercel: Environment Variables (production)
+ * - Local: .env.local (development)
+ * See SECURITY.md for setup details
+ * 
+ * WHEN TO INTEGRATE:
+ * - AI-powered mentor recommendations
+ * - Smart student profile analysis
+ * - Personalized matching suggestions
+ * 
+ * INTEGRATION EXAMPLE:
+ * import { secureFetch } from './utils/security';
+ * const response = await secureFetch(
+ *   'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',
+ *   { method: 'POST', body: JSON.stringify({...}) }
+ * );
+ */
+
+/**
  * App Component
  * Main container component yang mengatur state aplikasi dan routing
  * Menggunakan custom hooks untuk logic separation dan micro-components untuk UI

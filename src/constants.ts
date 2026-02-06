@@ -1,3 +1,19 @@
+/**
+ * 🚀 FUTURE: Gemini API Ready
+ * ===========================
+ * CURRENT MATCHING ALGORITHM: Client-side local scoring (in App.tsx runMatchmaker())
+ * 
+ * WHEN integrating Gemini API:
+ * - Keep MOCK_MENTORS data for reference/fallback
+ * - Call Gemini API in runMatchmaker() instead of local algorithm
+ * - Use secureFetch() from utils/security for safe API calls
+ * - See SECURITY.md for integration guidelines
+ * 
+ * API Key Location:
+ * - Local: .env.local (GEMINI_API_KEY)
+ * - Production: Vercel Environment Variables
+ */
+
 import { Mentor } from './types';
 
 export const MOCK_MENTORS: Mentor[] = [
