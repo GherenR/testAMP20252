@@ -153,7 +153,9 @@ export const MOCK_MENTORS: Mentor[] = [
     "instagram": "daffanargya",
     "achievements": [
       "Bendahara MPK, Sekretaris 2 Hang Tuah Cup 2025, Ketua Pelaksana Hari Guru 2024",
-      "Pilihan: ITB - Teknik Industri, UIN Jakarta - Sistem Informasi"
+      "Pilihan: ITB - Teknik Industri, UIN Jakarta - Sistem Informasi",
+      "Perlap Event Ramadhan UIN Jakarta 2025",
+      "Medali Emas Bahasa Inggris 2023"
     ]
   },
   {

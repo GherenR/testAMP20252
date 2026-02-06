@@ -72,7 +72,7 @@ export const MentorDatabaseSlide: React.FC<MentorDatabaseSlideProps> = ({
       {/* Empty state */}
       {filteredMentors.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <p className="text-2xl font-bold text-slate-400 mb-2">Mentor tidak ditemukan</p>
+          <p className="text-2xl font-bold text-slate-400 mb-2">Alumni tidak ditemukan</p>
           <p className="text-slate-500">Coba ubah filter atau keyword pencarian Anda</p>
         </div>
       )}
