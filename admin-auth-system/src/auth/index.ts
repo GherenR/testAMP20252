@@ -1,4 +1,4 @@
-import prisma from './prisma';
+import prisma from './prisma'; // Ini sudah benar kalau di prisma.ts pakai 'export default'
 import { hashPassword, comparePassword } from './password';
 import { signupSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from './validation';
 import { generateResetToken, hashToken } from './resetToken';

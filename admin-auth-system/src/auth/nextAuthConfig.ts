@@ -27,15 +27,19 @@ export const authOptions: NextAuthOptions = {
         }),
     ],
     callbacks: {
-        async jwt({ token, user }) {
+        async jwt({ token, user }: any) {
             if (user) {
-                token.role = user.role;
+                token.id = user.id;
+                token.role = user.role; // TypeScript nggak akan protes kalau tipenya 'any'
             }
             return token;
         },
-        async session({ session, token }) {
-            (session.user as { role?: string }).role = token.role;
+        async session({ session, token }: any) {
+            if (session && session.user) {
+                session.user.id = token.id;
+                session.user.role = token.role;
+            }
             return session;
         },
     },
-};
+}
