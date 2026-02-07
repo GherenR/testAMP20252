@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Home, BrainCircuit, Database, ShieldCheck, Info, ArrowUp
+  Home, BrainCircuit, Database, ShieldCheck, Info, ArrowUp, Heart
 } from 'lucide-react';
 import { MOCK_MENTORS } from './constants';
 import { SlideData } from './types';
@@ -9,7 +9,8 @@ import {
   useMentorFiltering,
   useMentorMatching,
   useSopModal,
-  useMentorComparison
+  useMentorComparison,
+  useFavorites
 } from './hooks';
 import {
   SlideNavigation,
@@ -18,11 +19,13 @@ import {
   MentorDatabaseSlide,
   EtiquetteGuideSlide,
   AboutSlide,
+  FavoritesSlide,
   SopModal,
   MentorComparisonModal,
   MentorDetailModal,
   SmartMatchActionModal,
-  MenuItem
+  MenuItem,
+  Toast
 } from './components';
 import { generateWhatsAppMessage, generateWhatsAppLink } from './utils/whatsappMessage';
 import { decodeComparisonUrl, encodeComparisonUrl } from './utils/comparisonUrl';
@@ -65,13 +68,14 @@ import { SLIDE_NAMES } from './utils/analytics';
  */
 const App: React.FC = () => {
   // ===== NAVIGATION HOOKS =====
-  const totalSlides = 5;
+  const totalSlides = 6;
   const slides: SlideData[] = [
     { id: 'hero' },
     { id: 'matchmaker' },
     { id: 'database' },
     { id: 'etiquette' },
-    { id: 'about' }
+    { id: 'about' },
+    { id: 'favorites' }
   ];
 
   const slideNavigation = useSlideNavigation(totalSlides);
@@ -93,6 +97,7 @@ const App: React.FC = () => {
     setFilterCategory,
     filterPath,
     setFilterPath,
+    resetFilter,
     filteredMentors
   } = mentorFiltering;
 
@@ -123,6 +128,14 @@ const App: React.FC = () => {
 
   // ===== SCROLL TO TOP STATE (Mobile Only) =====
   const [showScrollToTop, setShowScrollToTop] = useState(false);
+
+  // ===== TOAST STATE =====
+  const [toastMessage, setToastMessage] = useState('');
+  const [showToast, setShowToast] = useState(false);
+  const showToastMessage = (msg: string) => {
+    setToastMessage(msg);
+    setShowToast(true);
+  };
 
   // ===== AUTO-SCROLL TO RESULTS ON MOBILE =====
   /**
@@ -227,6 +240,28 @@ const App: React.FC = () => {
   const [smartMatchMentor, setSmartMatchMentor] = useState<typeof MOCK_MENTORS[0] | null>(null);
   const [smartMatchAlumniId, setSmartMatchAlumniId] = useState<string>('');
 
+  // ===== KEYBOARD SHORTCUTS =====
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showDetailModal) setShowDetailModal(false);
+        else if (showComparisonModal) setShowComparisonModal(false);
+        else if (showSopModal) closeSopModal();
+        else if (showSmartMatchAction) setShowSmartMatchAction(false);
+      } else if (e.key === 'ArrowLeft' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (!document.activeElement?.closest('input, textarea, select')) {
+          setCurrentSlide(s => Math.max(0, s - 1));
+        }
+      } else if (e.key === 'ArrowRight' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (!document.activeElement?.closest('input, textarea, select')) {
+          setCurrentSlide(s => Math.min(totalSlides - 1, s + 1));
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showDetailModal, showComparisonModal, showSopModal, showSmartMatchAction, totalSlides, closeSopModal]);
+
   // ===== HELPER FUNCTIONS =====
   /**
    * Get sub-paths berdasarkan kategori institusi
@@ -236,6 +271,7 @@ const App: React.FC = () => {
       case 'PTN': return ['SNBP', 'SNBT', 'Mandiri'];
       case 'PTS': return ['Reguler', 'Beasiswa'];
       case 'PTLN': return ['Beasiswa Luar Negeri', 'Mandiri'];
+      case 'All': return ['SNBP', 'SNBT', 'Mandiri', 'Reguler', 'Beasiswa', 'Beasiswa Luar Negeri'];
       default: return [];
     }
   };
@@ -284,6 +320,12 @@ const App: React.FC = () => {
     setShowDetailModal(true);
   };
 
+  /** Alumni serupa: same university atau major, max 3 */
+  const getSimilarMentors = (mentor: typeof MOCK_MENTORS[0]) =>
+    MOCK_MENTORS
+      .filter(m => m.name !== mentor.name && (m.university === mentor.university || m.major === mentor.major))
+      .slice(0, 3);
+
   /**
    * Handle Smart Match action - when user clicks a mentor card in Smart Match
    * Opens action modal with options to contact or view detail
@@ -316,12 +358,15 @@ const App: React.FC = () => {
   };
 
   // ===== MENU ITEMS untuk navigation =====
+  const { favorites, toggleFavorite, isFavorite } = useFavorites(MOCK_MENTORS);
+
   const menuItems: MenuItem[] = [
     { icon: <Home size={18} />, label: 'Beranda', id: 0 },
     { icon: <BrainCircuit size={18} />, label: 'Smart Match', id: 1 },
     { icon: <Database size={18} />, label: 'Direktori', id: 2 },
     { icon: <ShieldCheck size={18} />, label: 'Etika Chat', id: 3 },
     { icon: <Info size={18} />, label: 'Tentang Kami', id: 4 },
+    { icon: <Heart size={18} />, label: 'Favorit', id: 5 },
   ];
 
   // ===== SLIDE CONTENT MAPPING =====
@@ -353,6 +398,8 @@ const App: React.FC = () => {
             onMentorSelect={handleSmartMatchMentorClick}
             onMentorCompare={addMentorToCompare}
             comparedMentors={selectedMentors.map(m => m.name)}
+            onFavoriteToggle={toggleFavorite}
+            isFavorite={isFavorite}
           />
         );
       case 2:
@@ -371,12 +418,30 @@ const App: React.FC = () => {
             onMentorCompare={addMentorToCompare}
             comparedMentors={selectedMentors.map(m => m.name)}
             onViewDetail={openDetailModal}
+            onResetFilter={resetFilter}
+            onFavoriteToggle={toggleFavorite}
+            isFavorite={isFavorite}
           />
         );
       case 3:
         return <EtiquetteGuideSlide />;
       case 4:
         return <AboutSlide />;
+      case 5:
+        return (
+          <FavoritesSlide
+            favorites={favorites}
+            onMentorContact={handleContactClick}
+            onMentorInstagram={handleInstagramClick}
+            onMentorCompare={addMentorToCompare}
+            comparedMentors={selectedMentors.map(m => m.name)}
+            onViewDetail={openDetailModal}
+            onFavoriteToggle={toggleFavorite}
+            isFavorite={isFavorite}
+            getAllMentors={() => MOCK_MENTORS}
+            onNavigateToDirektori={() => setCurrentSlide(2)}
+          />
+        );
       default:
         return null;
     }
@@ -437,6 +502,31 @@ const App: React.FC = () => {
           currentSlide={currentSlide}
           onSlideChange={setCurrentSlide}
         />
+
+        {/* Breadcrumb */}
+        <nav className="px-4 sm:px-6 md:px-8 pt-2 pb-1" aria-label="Breadcrumb">
+          <ol className="flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-slate-400">
+            <li>
+              <button onClick={() => setCurrentSlide(0)} className="hover:text-indigo-600 transition-colors">
+                Beranda
+              </button>
+            </li>
+            {currentSlide > 0 && (
+              <>
+                <span aria-hidden>/</span>
+                <li>
+                  <span className="text-slate-600">
+                    {currentSlide === 1 && 'Smart Match'}
+                    {currentSlide === 2 && 'Direktori'}
+                    {currentSlide === 3 && 'Etika Chat'}
+                    {currentSlide === 4 && 'Tentang Kami'}
+                    {currentSlide === 5 && 'Favorit'}
+                  </span>
+                </li>
+              </>
+            )}
+          </ol>
+        </nav>
       </header>
 
       {/* ===== MAIN CONTENT AREA ===== */}
@@ -488,7 +578,12 @@ const App: React.FC = () => {
         mentors={selectedMentors}
         onClose={() => setShowComparisonModal(false)}
         onRemove={removeMentorFromCompare}
+        onContact={handleContactClick}
+        onInstagram={handleInstagramClick}
+        onCopySuccess={() => showToastMessage('Link disalin ke clipboard!')}
       />
+
+      <Toast message={toastMessage} isVisible={showToast} onHide={() => setShowToast(false)} />
 
       {detailMentor && (
         <MentorDetailModal
@@ -497,6 +592,8 @@ const App: React.FC = () => {
           onClose={() => setShowDetailModal(false)}
           onContact={handleContactClick}
           alumniId={detailAlumniId}
+          similarMentors={getSimilarMentors(detailMentor)}
+          onViewSimilar={openDetailModal}
         />
       )}
 

@@ -18,6 +18,9 @@ interface MentorDatabaseSlideProps {
   onMentorCompare?: (mentor: Mentor) => void;
   comparedMentors?: string[];
   onViewDetail?: (mentor: Mentor) => void;
+  onResetFilter?: () => void;
+  onFavoriteToggle?: (mentorName: string) => void;
+  isFavorite?: (name: string) => boolean;
 }
 
 /**
@@ -38,7 +41,10 @@ export const MentorDatabaseSlide: React.FC<MentorDatabaseSlideProps> = ({
   onMentorInstagram,
   onMentorCompare,
   comparedMentors = [],
-  onViewDetail
+  onViewDetail,
+  onResetFilter,
+  onFavoriteToggle,
+  isFavorite
 }) => {
   return (
     <div className="max-w-7xl mx-auto px-6 animate-reveal pb-32 pt-8">
@@ -65,15 +71,25 @@ export const MentorDatabaseSlide: React.FC<MentorDatabaseSlideProps> = ({
             onCompare={onMentorCompare}
             isSelected={comparedMentors.includes(mentor.name)}
             onViewDetail={onViewDetail}
+            onFavoriteToggle={onFavoriteToggle}
+            isFavorite={isFavorite?.(mentor.name) ?? false}
           />
         ))}
       </div>
 
       {/* Empty state */}
       {filteredMentors.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="flex flex-col items-center justify-center py-20 text-center px-4">
           <p className="text-2xl font-bold text-slate-400 mb-2">Alumni tidak ditemukan</p>
-          <p className="text-slate-500">Coba ubah filter atau keyword pencarian Anda</p>
+          <p className="text-slate-500 mb-6 max-w-md">Coba ubah filter atau keyword pencarian. Pilih <strong>Semua</strong> kategori atau hapus keyword untuk melihat semua alumni.</p>
+          {onResetFilter && (
+            <button
+              onClick={onResetFilter}
+              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition-all active:scale-95"
+            >
+              Reset Semua Filter
+            </button>
+          )}
         </div>
       )}
     </div>

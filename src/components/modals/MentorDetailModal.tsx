@@ -8,6 +8,9 @@ interface MentorDetailModalProps {
     onClose: () => void;
     onContact?: (mentor: Mentor) => void;
     alumniId?: string;
+    similarMentors?: Mentor[];
+    onViewSimilar?: (mentor: Mentor) => void;
+    getAlumniId?: (mentor: Mentor) => string;
 }
 
 /**
@@ -20,7 +23,10 @@ export const MentorDetailModal: React.FC<MentorDetailModalProps> = ({
     isOpen,
     onClose,
     onContact,
-    alumniId
+    alumniId,
+    similarMentors = [],
+    onViewSimilar,
+    getAlumniId
 }) => {
     if (!isOpen || !mentor) return null;
 
@@ -74,6 +80,11 @@ export const MentorDetailModal: React.FC<MentorDetailModalProps> = ({
                             <Sparkles className="text-lime-600" size={20} />
                             <h4 className="text-lg font-black text-slate-950">Pencapaian & Riwayat</h4>
                         </div>
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800">
+                            <p className="font-bold mb-1">Keterangan:</p>
+                            <p><span className="font-black text-green-700">Lulus:</span> Diterima dan berkuliah di PT tersebut</p>
+                            <p><span className="font-black text-slate-600">Pilihan/Daftar:</span> Pernah mendaftar (pilihan SNBP/SNBT) — belum tentu lolos</p>
+                        </div>
                         <div className="bg-lime-50 border-2 border-lime-200 rounded-2xl p-6 space-y-3">
                             {mentor.achievements && mentor.achievements.length > 0 ? (
                                 mentor.achievements.map((ach, idx) => (
@@ -87,6 +98,34 @@ export const MentorDetailModal: React.FC<MentorDetailModalProps> = ({
                             )}
                         </div>
                     </div>
+
+                    {/* Alumni Serupa */}
+                    {similarMentors.length > 0 && onViewSimilar && (
+                        <div className="space-y-3">
+                            <h4 className="text-lg font-black text-slate-950">Alumni Serupa</h4>
+                            <p className="text-xs text-slate-500">Jurusan atau universitas sama — bisa jadi pilihan lain</p>
+                            <div className="flex flex-wrap gap-3">
+                                {similarMentors.slice(0, 3).map((m) => (
+                                    <button
+                                        key={m.name}
+                                        onClick={() => { onViewSimilar(m); onClose(); }}
+                                        className="flex items-center gap-3 p-4 bg-slate-50 hover:bg-indigo-50 border-2 border-slate-100 hover:border-indigo-200 rounded-2xl transition-all text-left group"
+                                    >
+                                        <img
+                                            src={`https://api.dicebear.com/7.x/initials/svg?seed=${m.name}`}
+                                            alt={m.name}
+                                            className="w-12 h-12 rounded-xl"
+                                        />
+                                        <div>
+                                            <p className="font-bold text-slate-900 group-hover:text-indigo-600">{m.name}</p>
+                                            <p className="text-xs text-slate-500">{m.university} • {m.major}</p>
+                                        </div>
+                                        <ArrowUpRight size={16} className="text-slate-300 group-hover:text-indigo-600 ml-auto" />
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Contact Info */}
                     <div className="grid sm:grid-cols-2 gap-4">

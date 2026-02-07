@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Share2, Copy, Check } from 'lucide-react';
+import { X, Share2, Copy, Check, ChevronDown, Phone, Instagram } from 'lucide-react';
 import { Mentor } from '../../types';
 import {
     getComparisonShareUrl,
@@ -12,6 +12,9 @@ interface MentorComparisonModalProps {
     mentors: Mentor[];
     onClose: () => void;
     onRemove: (mentorName: string) => void;
+    onContact?: (mentor: Mentor) => void;
+    onInstagram?: (handle: string) => void;
+    onCopySuccess?: () => void;
 }
 
 /**
@@ -22,9 +25,13 @@ export const MentorComparisonModal: React.FC<MentorComparisonModalProps> = ({
     isOpen,
     mentors,
     onClose,
-    onRemove
+    onRemove,
+    onContact,
+    onInstagram,
+    onCopySuccess
 }) => {
     const [isCopied, setIsCopied] = useState(false);
+    const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
     if (!isOpen || mentors.length === 0) return null;
 
@@ -40,6 +47,7 @@ export const MentorComparisonModal: React.FC<MentorComparisonModalProps> = ({
     const handleCopyLink = () => {
         navigator.clipboard.writeText(shareUrl);
         setIsCopied(true);
+        onCopySuccess?.();
         setTimeout(() => setIsCopied(false), 2000);
     };
 
@@ -79,7 +87,7 @@ export const MentorComparisonModal: React.FC<MentorComparisonModalProps> = ({
                         {mentors.map((mentor) => (
                             <div
                                 key={mentor.name}
-                                className="bg-slate-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 border-2 border-slate-100 relative group"
+                                className="bg-slate-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 border-2 border-slate-100 relative group overflow-visible"
                             >
                                 {/* Remove button */}
                                 <button
@@ -144,6 +152,7 @@ export const MentorComparisonModal: React.FC<MentorComparisonModalProps> = ({
                                         {/* Achievements */}
                                         {mentor.achievements && mentor.achievements.length > 0 && (
                                             <div>
+                                                <p className="text-[8px] font-bold text-slate-500 mb-1">Lulus=diterima • Pilihan=pernah daftar</p>
                                                 <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.1em] text-slate-400 mb-2">
                                                     Pencapaian
                                                 </p>
@@ -162,6 +171,46 @@ export const MentorComparisonModal: React.FC<MentorComparisonModalProps> = ({
                                         )}
                                     </div>
                                 </div>
+
+                                {/* Action Dropdown - Contact & Instagram */}
+                                {(onContact || (onInstagram && mentor.instagram && mentor.instagram !== 'N/A')) && (
+                                    <div className="mt-4 pt-4 border-t border-slate-200 relative">
+                                        <button
+                                            onClick={() => setOpenDropdown(openDropdown === mentor.name ? null : mentor.name)}
+                                            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs sm:text-sm transition-all active:scale-95 min-h-[44px] touch-none"
+                                            aria-expanded={openDropdown === mentor.name}
+                                            aria-haspopup="true"
+                                        >
+                                            <span>Hubungi Alumni</span>
+                                            <ChevronDown size={16} className={`transition-transform ${openDropdown === mentor.name ? 'rotate-180' : ''}`} />
+                                        </button>
+                                        {openDropdown === mentor.name && (
+                                            <>
+                                                <div className="fixed inset-0 z-[199]" onClick={() => setOpenDropdown(null)} aria-hidden="true" />
+                                                <div className="absolute left-0 right-0 top-full mt-1 z-[201] bg-white rounded-xl border-2 border-slate-200 shadow-xl py-2 overflow-hidden">
+                                                    {onContact && (
+                                                        <button
+                                                            onClick={() => { onContact(mentor); setOpenDropdown(null); onClose(); }}
+                                                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 text-left text-sm font-bold text-slate-800 transition-colors"
+                                                        >
+                                                            <Phone size={18} className="text-green-600" />
+                                                            Contact via WhatsApp
+                                                        </button>
+                                                    )}
+                                                    {onInstagram && mentor.instagram && mentor.instagram !== 'N/A' && (
+                                                        <button
+                                                            onClick={() => { onInstagram(mentor.instagram!); setOpenDropdown(null); }}
+                                                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 text-left text-sm font-bold text-slate-800 transition-colors"
+                                                        >
+                                                            <Instagram size={18} className="text-pink-600" />
+                                                            Instagram @{mentor.instagram}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

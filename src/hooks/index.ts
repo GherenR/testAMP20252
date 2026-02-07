@@ -4,3 +4,4 @@ export { useMentorMatching } from './useMentorMatching';
 export { useModal, useChatModal, useSopModal } from './useModal';
 export { useMentorComparison } from './useMentorComparison';
 export { useAnalytics } from './useAnalytics';
+export { useFavorites } from './useFavorites';

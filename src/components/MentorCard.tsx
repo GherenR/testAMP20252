@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUpRight, Sparkles, Instagram, Scale } from 'lucide-react';
+import { ArrowUpRight, Sparkles, Instagram, Scale, Heart } from 'lucide-react';
 import { Mentor } from '../types';
 
 interface MentorCardProps {
@@ -12,6 +12,8 @@ interface MentorCardProps {
   onCompare?: (mentor: Mentor) => void;
   isSelected?: boolean;
   onViewDetail?: (mentor: Mentor) => void;
+  onFavoriteToggle?: (mentorName: string) => void;
+  isFavorite?: boolean;
 }
 
 /**
@@ -35,7 +37,9 @@ export const MentorCard: React.FC<MentorCardProps> = ({
   onInstagram,
   onCompare,
   isSelected = false,
-  onViewDetail
+  onViewDetail,
+  onFavoriteToggle,
+  isFavorite = false
 }) => {
   const alumniId = `#2025-${index + 104}`;
   const avatarUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${mentor.name}`;
@@ -43,7 +47,17 @@ export const MentorCard: React.FC<MentorCardProps> = ({
   if (variant === 'compact') {
     // Compact variant untuk matchmaker results - mobile optimized
     return (
-      <div className="group ticket-border rounded-[2.5rem] p-4 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 hover:border-indigo-600 transition-all animate-reveal">
+      <div className="group ticket-border rounded-[2.5rem] p-4 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 hover:border-indigo-600 transition-all animate-reveal relative">
+        {onFavoriteToggle && (
+          <button
+            onClick={() => onFavoriteToggle(mentor.name)}
+            className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 rounded-lg hover:bg-slate-100 transition-colors -mr-2"
+            title={isFavorite ? 'Hapus dari favorit' : 'Tambah ke favorit'}
+            aria-label={isFavorite ? 'Hapus dari favorit' : 'Tambah ke favorit'}
+          >
+            <Heart size={20} className={isFavorite ? 'fill-red-500 text-red-500' : 'text-slate-300 hover:text-red-400'} />
+          </button>
+        )}
         {/* Avatar */}
         <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-slate-50 border-2 border-slate-100 flex items-center justify-center shrink-0">
           <img src={avatarUrl} alt={mentor.name} className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl" />
@@ -91,7 +105,17 @@ export const MentorCard: React.FC<MentorCardProps> = ({
 
   // Default variant untuk database
   return (
-    <div className="group ticket-border rounded-[2.5rem] p-8 transition-all duration-500 flex flex-col hover:border-indigo-600 hover:shadow-2xl animate-reveal">
+    <div className="group ticket-border rounded-[2.5rem] p-8 transition-all duration-500 flex flex-col hover:border-indigo-600 hover:shadow-2xl animate-reveal relative">
+      {onFavoriteToggle && (
+        <button
+          onClick={() => onFavoriteToggle(mentor.name)}
+          className="absolute top-6 right-6 p-2 rounded-lg hover:bg-slate-100 transition-colors"
+          title={isFavorite ? 'Hapus dari favorit' : 'Tambah ke favorit'}
+          aria-label={isFavorite ? 'Hapus dari favorit' : 'Tambah ke favorit'}
+        >
+          <Heart size={22} className={isFavorite ? 'fill-red-500 text-red-500' : 'text-slate-300 hover:text-red-400'} />
+        </button>
+      )}
       {/* Header dengan Alumni ID dan Avatar */}
       <div className="flex justify-between items-start mb-10 pb-6 dashed-line">
         <div className="space-y-1">
@@ -137,6 +161,7 @@ export const MentorCard: React.FC<MentorCardProps> = ({
           <div className="flex items-start gap-3">
             <Sparkles size={14} className="text-lime-600 shrink-0 mt-0.5" />
             <div className="flex-1">
+              <p className="text-[8px] font-bold text-slate-500 mb-1.5">Lulus = diterima • Pilihan = pernah daftar</p>
               {mentor.achievements && mentor.achievements.length > 0 ? (
                 <div className="space-y-2 max-h-[80px] overflow-y-auto pr-2 custom-scrollbar">
                   {mentor.achievements.map((ach, idx) => (
@@ -172,7 +197,7 @@ export const MentorCard: React.FC<MentorCardProps> = ({
 
         <button
           onClick={() => onCompare?.(mentor)}
-          className={`p-5 rounded-2xl font-bold transition-all active:scale-95 flex items-center justify-center shadow-lg min-h-[48px] w-[48px] touch-none ${isSelected
+          className={`p-2.5 rounded-2xl font-bold transition-all active:scale-95 flex items-center justify-center shadow-lg min-h-[48px] w-[48px] touch-none ${isSelected
             ? 'bg-lime-500 text-white hover:bg-lime-600'
             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
@@ -185,7 +210,7 @@ export const MentorCard: React.FC<MentorCardProps> = ({
         {mentor.instagram && mentor.instagram !== "N/A" && (
           <button
             onClick={() => onInstagram?.(mentor.instagram || '')}
-            className="p-5 rounded-2xl bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 text-white hover:shadow-lg hover:scale-105 transition-all active:scale-90 flex items-center justify-center min-h-[48px] w-[48px] touch-none"
+            className="p-2.5 rounded-2xl bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 text-white hover:shadow-lg hover:scale-105 transition-all active:scale-90 flex items-center justify-center min-h-[48px] w-[48px] touch-none"
             title={`Visit ${mentor.name} on Instagram`}
             aria-label={`Instagram: ${mentor.name}`}
           >

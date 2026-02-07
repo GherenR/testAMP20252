@@ -33,7 +33,8 @@ export const SLIDE_NAMES: Record<number, string> = {
     1: 'Smart Match',
     2: 'Direktori',
     3: 'Etika',
-    4: 'About'
+    4: 'About',
+    5: 'Favorit'
 };
 
 // Feature name mapping (constants for consistency)

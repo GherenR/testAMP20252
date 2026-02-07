@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Mentor, InstitutionCategory } from '../types';
+import { matchUniversitySmart } from '../utils/universityMatch';
 
 /**
  * Type untuk hasil filtering yang menyimpan mentor + original index dari MOCK_MENTORS
@@ -37,7 +38,7 @@ export const useMentorFiltering = (mentors: Mentor[]) => {
         const alumniId = `#2025-${originalIndex + 104}`.toLowerCase();
 
         const matchesSearch =
-          mentor.university.toLowerCase().includes(term) ||
+          matchUniversitySmart(mentor.university, term) ||
           mentor.major.toLowerCase().includes(term) ||
           mentor.name.toLowerCase().includes(term) ||
           alumniId.includes(term) ||
@@ -50,6 +51,12 @@ export const useMentorFiltering = (mentors: Mentor[]) => {
       });
   }, [searchTerm, filterPath, filterCategory, mentors]);
 
+  const resetFilter = () => {
+    setSearchTerm('');
+    setFilterCategory('All');
+    setFilterPath('All');
+  };
+
   return {
     searchTerm,
     setSearchTerm,
@@ -57,6 +64,7 @@ export const useMentorFiltering = (mentors: Mentor[]) => {
     setFilterCategory: handleCategoryChange,
     filterPath,
     setFilterPath,
+    resetFilter,
     filteredMentors // Array of { mentor, originalIndex }
   };
 };
