@@ -1,0 +1,16 @@
+// Vercel deployment config
+{
+    "rewrites": [
+        {
+            "source": "/api/(.*)",
+            "destination": "/api/$1"
+        }
+    ],
+    "redirects": [
+        {
+            "source": "/login",
+            "destination": "/api/auth/signin",
+            "status": 302
+        }
+    ]
+}
