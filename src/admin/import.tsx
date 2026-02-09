@@ -189,6 +189,20 @@ export default function ImportCSVPage() {
         return -1;
     };
 
+    // Helper: Find ALL column indices matching a pattern
+    const findAllColumnIndices = (headers: string[], ...patterns: string[]): number[] => {
+        const indices: number[] = [];
+        for (let i = 0; i < headers.length; i++) {
+            for (const pattern of patterns) {
+                if (headers[i].toLowerCase().includes(pattern.toLowerCase())) {
+                    indices.push(i);
+                    break;
+                }
+            }
+        }
+        return indices;
+    };
+
     const parseCSV = useCallback((text: string): { entries: CSVEntry[]; debugInfo: { headers: string[]; colMap: Record<string, number> } } => {
         // Parse entire CSV properly handling multi-line quoted fields
         const allRows = parseCSVContent(text);
@@ -197,8 +211,16 @@ export default function ImportCSVPage() {
         // First row is headers
         const headers = allRows[0];
 
-        // Column indices based on actual Google Form CSV structure
-        // Headers like "Nama Universitas" and "Program Studi" repeat, so we use fixed positions
+        // Find all university columns dynamically
+        const univCols = findAllColumnIndices(headers, 'Nama Universitas', 'Nama Politeknik', 'Nama Instansi', 'University');
+        const majorCols = findAllColumnIndices(headers, 'Program Studi', 'Jurusan', 'Major', 'Spesialisasi');
+        const pathCols = findAllColumnIndices(headers, 'Jalur Masuk', 'Jalur Penerimaan');
+
+        console.log('[CSV Debug] Headers:', headers);
+        console.log('[CSV Debug] University columns found:', univCols.map(i => `${i}: ${headers[i]}`));
+        console.log('[CSV Debug] Major columns found:', majorCols.map(i => `${i}: ${headers[i]}`));
+
+        // Column indices - use dynamic detection with fallback to hardcoded
         const COL = {
             // Basic info - use pattern matching for unique headers
             timestamp: findColumnIndex(headers, 'Timestamp'),
@@ -210,24 +232,29 @@ export default function ImportCSVPage() {
             status: findColumnIndex(headers, 'Status sekarang'),
             jenisPT: findColumnIndex(headers, 'Jenis Perguruan Tinggi'),
 
-            // PTN (columns 8-11) - after "Jenis Perguruan Tinggi"
-            univPTN: 8,      // "Nama Universitas" (first occurrence)
-            majorPTN: 9,     // "Program Studi" (first occurrence)
-            pathPTN: 11,     // "Jalur Masuk" (first occurrence)
+            // Dynamic detection with fallback
+            // PTN - first occurrence
+            univPTN: univCols[0] ?? 8,
+            majorPTN: majorCols[0] ?? 9,
+            pathPTN: pathCols[0] ?? 11,
 
-            // Kedinasan (columns 12-15)
-            univKedinasan: 12,   // "Nama Instansi / Sekolah Kedinasan"
-            majorKedinasan: 13,  // "Program Studi atau Spesialisasi Studi"
+            // Kedinasan - usually has "Instansi" or second occurrence
+            univKedinasan: findColumnIndex(headers, 'Instansi', 'Kedinasan') >= 0
+                ? findColumnIndex(headers, 'Instansi', 'Kedinasan')
+                : (univCols[1] ?? 12),
+            majorKedinasan: majorCols[1] ?? 13,
 
-            // PTS (columns 16-19)
-            univPTS: 16,     // "Nama Universitas" (second occurrence)
-            majorPTS: 17,    // "Program Studi" (second occurrence)
-            pathPTS: 19,     // "Jalur Masuk" (second occurrence)
+            // PTS - look for explicit or use 3rd occurrence
+            univPTS: univCols[2] ?? 16,
+            majorPTS: majorCols[2] ?? 17,
+            pathPTS: pathCols[1] ?? 19,
 
-            // Politeknik (columns 20-23)
-            univPoltek: 20,  // "Nama Politeknik"
-            majorPoltek: 21, // "Program Studi" (third occurrence)
-            pathPoltek: 23,  // "Jalur Masuk" (third occurrence)
+            // Politeknik - look for "Politeknik" or use 4th occurrence
+            univPoltek: findColumnIndex(headers, 'Politeknik') >= 0
+                ? findColumnIndex(headers, 'Politeknik')
+                : (univCols[3] ?? 20),
+            majorPoltek: majorCols[3] ?? 21,
+            pathPoltek: pathCols[2] ?? 23,
 
             // PTLN (columns 24-27)
             univPTLN: 24,    // "Nama Universitas" (fourth occurrence - luar negeri)
@@ -343,13 +370,25 @@ export default function ImportCSVPage() {
 
             // Get university and major based on Jenis PT
             const jenisPT = values[COL.jenisPT]?.trim() || '';
+            const jenisPTLower = jenisPT.toLowerCase();
             rawData['Jenis PT (col ' + COL.jenisPT + ')'] = jenisPT;
             let university = '';
             let major = '';
             let path = '';
             let category: InstitutionCategory = 'PTN';
 
-            if (jenisPT.includes('Negeri') && !jenisPT.includes('Luar') || jenisPT === 'PTN') {
+            // Log all potential university/major columns for debugging
+            rawData['[DEBUG] All Univ Cols'] = `PTN:${COL.univPTN}=${values[COL.univPTN] || ''}, PTS:${COL.univPTS}=${values[COL.univPTS] || ''}, Poltek:${COL.univPoltek}=${values[COL.univPoltek] || ''}, PTLN:${COL.univPTLN}=${values[COL.univPTLN] || ''}`;
+            rawData['[DEBUG] All Major Cols'] = `PTN:${COL.majorPTN}=${values[COL.majorPTN] || ''}, PTS:${COL.majorPTS}=${values[COL.majorPTS] || ''}, Poltek:${COL.majorPoltek}=${values[COL.majorPoltek] || ''}, PTLN:${COL.majorPTLN}=${values[COL.majorPTLN] || ''}`;
+
+            // More flexible jenisPT detection
+            const isPTN = jenisPTLower.includes('negeri') && !jenisPTLower.includes('luar') || jenisPT === 'PTN' || jenisPTLower.includes('ptn');
+            const isPTS = jenisPTLower.includes('swasta') || jenisPT === 'PTS' || jenisPTLower.includes('pts');
+            const isPoltek = jenisPTLower.includes('politeknik') || jenisPTLower.includes('poltek');
+            const isPTLN = jenisPTLower.includes('luar negeri') || jenisPT === 'PTLN' || jenisPTLower.includes('ptln') || jenisPTLower.includes('overseas');
+            const isKedinasan = jenisPTLower.includes('kedinasan') || jenisPTLower.includes('sekolah tinggi');
+
+            if (isPTN) {
                 university = values[COL.univPTN]?.trim() || '';
                 major = values[COL.majorPTN]?.trim() || '';
                 path = values[COL.pathPTN]?.trim() || '';
@@ -357,7 +396,7 @@ export default function ImportCSVPage() {
                 rawData['Universitas PTN (col ' + COL.univPTN + ')'] = university;
                 rawData['Jurusan PTN (col ' + COL.majorPTN + ')'] = major;
                 reasons.push(`Jenis: PTN - ${university || '(kosong)'}`);
-            } else if (jenisPT.includes('Swasta') || jenisPT === 'PTS') {
+            } else if (isPTS) {
                 university = values[COL.univPTS]?.trim() || '';
                 major = values[COL.majorPTS]?.trim() || '';
                 path = values[COL.pathPTS]?.trim() || '';
@@ -365,7 +404,7 @@ export default function ImportCSVPage() {
                 rawData['Universitas PTS (col ' + COL.univPTS + ')'] = university;
                 rawData['Jurusan PTS (col ' + COL.majorPTS + ')'] = major;
                 reasons.push(`Jenis: PTS - ${university || '(kosong)'}`);
-            } else if (jenisPT.includes('Politeknik')) {
+            } else if (isPoltek) {
                 university = values[COL.univPoltek]?.trim() || '';
                 major = values[COL.majorPoltek]?.trim() || '';
                 path = values[COL.pathPoltek]?.trim() || '';
@@ -373,7 +412,7 @@ export default function ImportCSVPage() {
                 rawData['Politeknik (col ' + COL.univPoltek + ')'] = university;
                 rawData['Jurusan Poltek (col ' + COL.majorPoltek + ')'] = major;
                 reasons.push(`Jenis: Politeknik - ${university || '(kosong)'}`);
-            } else if (jenisPT.includes('Luar Negeri') || jenisPT === 'PTLN') {
+            } else if (isPTLN) {
                 university = values[COL.univPTLN]?.trim() || '';
                 major = values[COL.majorPTLN]?.trim() || '';
                 path = values[COL.pathPTLN]?.trim() || '';
@@ -381,7 +420,7 @@ export default function ImportCSVPage() {
                 rawData['Universitas PTLN (col ' + COL.univPTLN + ')'] = university;
                 rawData['Jurusan PTLN (col ' + COL.majorPTLN + ')'] = major;
                 reasons.push(`Jenis: PTLN - ${university || '(kosong)'}`);
-            } else if (jenisPT.includes('Kedinasan')) {
+            } else if (isKedinasan) {
                 university = values[COL.univKedinasan]?.trim() || '';
                 major = values[COL.majorKedinasan]?.trim() || '';
                 path = 'Kedinasan';
@@ -390,11 +429,26 @@ export default function ImportCSVPage() {
                 rawData['Program Kedinasan (col ' + COL.majorKedinasan + ')'] = major;
                 reasons.push(`Jenis: Kedinasan - ${university || '(kosong)'}`);
             } else {
-                // Fallback: try all PT columns
-                university = values[COL.univPTN]?.trim() || values[COL.univPTS]?.trim() || values[COL.univPoltek]?.trim() || '';
-                major = values[COL.majorPTN]?.trim() || values[COL.majorPTS]?.trim() || values[COL.majorPoltek]?.trim() || '';
+                // Fallback: scan ALL columns for any filled university/major value
+                const tryUnivCols = [COL.univPTN, COL.univPTS, COL.univPoltek, COL.univPTLN, COL.univKedinasan];
+                const tryMajorCols = [COL.majorPTN, COL.majorPTS, COL.majorPoltek, COL.majorPTLN, COL.majorKedinasan];
+
+                for (const col of tryUnivCols) {
+                    if (values[col]?.trim()) {
+                        university = values[col].trim();
+                        rawData['[FALLBACK] Found Univ at col ' + col] = university;
+                        break;
+                    }
+                }
+                for (const col of tryMajorCols) {
+                    if (values[col]?.trim()) {
+                        major = values[col].trim();
+                        rawData['[FALLBACK] Found Major at col ' + col] = major;
+                        break;
+                    }
+                }
                 path = values[COL.pathPTN]?.trim() || values[COL.pathPTS]?.trim() || '';
-                reasons.push(`Jenis PT tidak dikenali: "${jenisPT || '(kosong)'}"`);
+                reasons.push(`Jenis PT tidak dikenali: "${jenisPT || '(kosong)'}" - menggunakan fallback`);
             }
 
             // Check missing university/major
