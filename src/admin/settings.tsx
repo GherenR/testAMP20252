@@ -4,6 +4,9 @@ import DashboardLayout from '../components/admin/DashboardLayout';
 import RequireAdmin from '../components/admin/RequireAdmin';
 import { Settings, User, Shield, Key, Bell, Palette } from 'lucide-react';
 
+// Admin emails - should match AdminAuthContext
+const ADMIN_EMAILS = ['gherenramandra@gmail.com', 'saputragheren@gmail.com'];
+
 interface UserProfile {
     id: string;
     email: string;
@@ -42,11 +45,17 @@ export default function SettingsPage() {
         try {
             const { data: { user: authUser } } = await supabase.auth.getUser();
             if (authUser) {
+                // Determine role based on email (admin list) or user_metadata
+                const email = authUser.email || '';
+                const isAdmin = ADMIN_EMAILS.includes(email);
+                const roleFromMeta = authUser.user_metadata?.role;
+                const role = isAdmin ? 'admin' : (roleFromMeta || 'user');
+
                 setUser({
                     id: authUser.id,
-                    email: authUser.email || '',
-                    name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || '',
-                    role: authUser.user_metadata?.role || 'user',
+                    email: email,
+                    name: authUser.user_metadata?.name || email.split('@')[0] || '',
+                    role: role,
                     createdAt: authUser.created_at,
                 });
                 setName(authUser.user_metadata?.name || '');
