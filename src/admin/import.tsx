@@ -207,31 +207,36 @@ export default function ImportCSVPage() {
             instagram: findColumnIndex(headers, 'Instagram', 'Social Media'),
             status: findColumnIndex(headers, 'Status sekarang'),
             jenisPT: findColumnIndex(headers, 'Jenis Perguruan Tinggi'),
-            // PTN
-            univPTN: 8, // Usually right after Jenis PT
-            majorPTN: 9,
-            pathPTN: 11,
-            // Kedinasan  
-            univKedinasan: 12,
-            majorKedinasan: 13,
+            // PTN - find by header patterns
+            univPTN: findColumnIndex(headers, 'Nama PTN', 'PTN yang', 'Perguruan Tinggi Negeri'),
+            majorPTN: findColumnIndex(headers, 'Jurusan/Program Studi di PTN', 'Prodi di PTN', 'Jurusan PTN'),
+            pathPTN: findColumnIndex(headers, 'Jalur Masuk ke PTN', 'Jalur PTN'),
+            // Kedinasan
+            univKedinasan: findColumnIndex(headers, 'Perguruan Tinggi Kedinasan', 'Instansi Kedinasan', 'Nama PTK'),
+            majorKedinasan: findColumnIndex(headers, 'Program di Kedinasan', 'Jurusan Kedinasan', 'Prodi Kedinasan'),
             // PTS
-            univPTS: 16,
-            majorPTS: 17,
-            pathPTS: 19,
+            univPTS: findColumnIndex(headers, 'Nama PTS', 'Perguruan Tinggi Swasta', 'PTS yang'),
+            majorPTS: findColumnIndex(headers, 'Jurusan/Program Studi di PTS', 'Prodi di PTS', 'Jurusan PTS'),
+            pathPTS: findColumnIndex(headers, 'Jalur Masuk ke PTS', 'Jalur PTS'),
             // Politeknik
-            univPoltek: 20,
-            majorPoltek: 21,
-            pathPoltek: 23,
+            univPoltek: findColumnIndex(headers, 'Nama Politeknik', 'Politeknik yang'),
+            majorPoltek: findColumnIndex(headers, 'Jurusan/Program Studi di Politeknik', 'Prodi Politeknik'),
+            pathPoltek: findColumnIndex(headers, 'Jalur Masuk ke Politeknik', 'Jalur Politeknik'),
             // PTLN
-            univPTLN: 24,
-            majorPTLN: 25,
-            pathPTLN: 27,
+            univPTLN: findColumnIndex(headers, 'Nama PTLN', 'Nama PT Luar Negeri', 'Perguruan Tinggi Luar Negeri'),
+            majorPTLN: findColumnIndex(headers, 'Jurusan/Program Studi di PTLN', 'Prodi PTLN', 'Jurusan PTLN'),
+            pathPTLN: findColumnIndex(headers, 'Jalur Masuk ke PTLN', 'Jalur PTLN'),
             // AMP Consent & Angkatan - search by exact patterns
             consentAMP: findColumnIndex(headers, 'dimasukan dalam Alumni Mentorship Project', 'bersedia untuk datanya'),
             angkatan: findColumnIndex(headers, 'Angkatan Berapa'),
             prestasi: findColumnIndex(headers, 'prestasi atau pengalaman', 'Juara'),
             domisiliAsli: findColumnIndex(headers, 'Domisili Asli'),
         };
+
+        // Debug: log headers to console for troubleshooting
+        console.log('=== CSV HEADER MAPPING DEBUG ===');
+        headers.forEach((h, i) => console.log(`Col ${i}: "${h}"`));
+        console.log('Detected column indices:', COL);
 
         console.log('Column mapping:', COL);
 
