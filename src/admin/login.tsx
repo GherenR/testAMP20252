@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, Lock, Mail, Sparkles } from 'lucide-react';
+import { Lock, Mail, Sparkles } from 'lucide-react';
 
 // Animated grid background component
 function AnimatedGridBackground() {
@@ -114,7 +114,7 @@ export default function AdminLogin() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 text-white p-4 relative overflow-hidden">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#fdfdfd] via-[#f5eee6] to-[#e7d7c1] text-[#503124] p-4 relative overflow-hidden">
             {/* Animated Background */}
             <AnimatedGridBackground />
 
@@ -123,7 +123,7 @@ export default function AdminLogin() {
                 {[...Array(20)].map((_, i) => (
                     <div
                         key={i}
-                        className="absolute w-2 h-2 bg-purple-500/30 rounded-full animate-pulse"
+                        className="absolute w-2 h-2 bg-[#a67c52]/30 rounded-full animate-pulse"
                         style={{
                             left: `${Math.random() * 100}%`,
                             top: `${Math.random() * 100}%`,
@@ -135,15 +135,15 @@ export default function AdminLogin() {
             </div>
 
             {/* Login Card */}
-            <form onSubmit={handleSubmit} className="relative bg-slate-900/80 backdrop-blur-xl border border-purple-500/20 rounded-3xl p-8 w-full max-w-md shadow-2xl shadow-purple-900/20 z-10">
+            <form onSubmit={handleSubmit} className="relative bg-white/80 backdrop-blur-xl border border-[#a67c52]/20 rounded-3xl p-8 w-full max-w-md shadow-2xl shadow-[#503124]/10 z-10">
                 {/* Logo & Header */}
                 <div className="text-center mb-8">
-                    {/* IKAHAT Logo */}
-                    <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-2xl mb-4 shadow-lg shadow-purple-600/30">
-                        <Shield size={40} className="text-white" />
+                    {/* IKAHATA Logo */}
+                    <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-[#503124] to-[#a67c52] rounded-2xl mb-4 shadow-lg shadow-[#503124]/30">
+                        <img src="/LogoIKAHATANewRBG.svg" alt="IKAHATA Logo" className="w-16 h-16 object-contain" />
                     </div>
                     <h1 className="text-3xl font-black tracking-tight mb-2">
-                        <span className="bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">IKAHAT</span> Admin
+                        <span className="bg-gradient-to-r from-[#503124] to-[#a67c52] bg-clip-text text-transparent">IKAHATA</span> Admin
                     </h1>
                     <p className="text-slate-400 text-sm">Alumni Mentorship Portal</p>
                 </div>
@@ -163,7 +163,7 @@ export default function AdminLogin() {
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                         <input
                             type="email"
-                            className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder:text-slate-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all outline-none"
+                            className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-[#f5eee6]/70 border border-[#a67c52]/30 text-[#503124] placeholder:text-[#a67c52] focus:border-[#a67c52] focus:ring-2 focus:ring-[#a67c52]/20 transition-all outline-none"
                             value={email}
                             onChange={e => setEmail(e.target.value)}
                             placeholder="admin@example.com"
@@ -179,7 +179,7 @@ export default function AdminLogin() {
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                         <input
                             type="password"
-                            className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder:text-slate-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all outline-none"
+                            className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-[#f5eee6]/70 border border-[#a67c52]/30 text-[#503124] placeholder:text-[#a67c52] focus:border-[#a67c52] focus:ring-2 focus:ring-[#a67c52]/20 transition-all outline-none"
                             value={password}
                             onChange={e => setPassword(e.target.value)}
                             placeholder="••••••••"
@@ -192,7 +192,7 @@ export default function AdminLogin() {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 rounded-xl font-bold text-white shadow-lg shadow-purple-600/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full py-4 bg-gradient-to-r from-[#a67c52] to-[#503124] hover:from-[#a67c52]/90 hover:to-[#503124]/90 rounded-xl font-bold text-white shadow-lg shadow-[#503124]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                     {loading ? (
                         <>

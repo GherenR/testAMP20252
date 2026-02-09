@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Home, BarChart3, Database, Settings, LogOut, Menu, X, ExternalLink, Upload } from 'lucide-react';
@@ -7,6 +7,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
+
+    // Set document title for admin dashboard
+    useEffect(() => {
+        document.title = 'Dashboard Admin IKAHATA';
+    }, []); // This line is retained to ensure the title is set correctly
 
     const handleLogout = async () => {
         await supabase.auth.signOut();

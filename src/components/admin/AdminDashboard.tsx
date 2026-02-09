@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { AlertTriangle, CheckCircle, ClipboardList, FileText, HeartPulse, StickyNote } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import DashboardLayout from './DashboardLayout';
@@ -15,9 +16,101 @@ export default function AdminDashboard() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<any>(null);
+    // Admin helpers state
+    const [activityLog, setActivityLog] = useState<any[]>([]);
+    const [notifications, setNotifications] = useState<any[]>([]);
+    const [pendingApprovals, setPendingApprovals] = useState<any[]>([]);
+    const [errorLogs, setErrorLogs] = useState<any[]>([]);
+    const [systemHealth, setSystemHealth] = useState<{ db: boolean; api: boolean }>({ db: true, api: true });
+    const [adminNotes, setAdminNotes] = useState<string>('');
 
     useEffect(() => {
         loadData();
+        // Fetch all admin helpers from Supabase
+        const fetchHelpers = async () => {
+            // Activity Log
+            const { data: logData } = await supabase
+                .from('admin_activity_log')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(10);
+            setActivityLog(
+                (logData || []).map(l => ({
+                    type: l.action,
+                    user: l.user_email,
+                    detail: l.detail,
+                    time: l.created_at ? new Date(l.created_at).toLocaleString('id-ID') : '',
+                }))
+            );
+
+            // Notifications
+            const { data: notifData } = await supabase
+                .from('admin_notifications')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(10);
+            setNotifications(
+                (notifData || []).map(n => ({
+                    type: n.type,
+                    message: n.message,
+                    time: n.created_at ? new Date(n.created_at).toLocaleString('id-ID') : '',
+                }))
+            );
+
+            // Pending Approvals
+            const { data: approvalData } = await supabase
+                .from('admin_pending_approvals')
+                .select('*')
+                .order('submitted_at', { ascending: false })
+                .limit(10);
+            setPendingApprovals(
+                (approvalData || []).map(p => ({
+                    type: p.type,
+                    name: p.name,
+                    submitted: p.submitted_at ? new Date(p.submitted_at).toLocaleString('id-ID') : '',
+                }))
+            );
+
+            // Error Logs
+            const { data: errorData } = await supabase
+                .from('admin_error_logs')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(10);
+            setErrorLogs(
+                (errorData || []).map(e => ({
+                    type: e.type,
+                    message: e.message,
+                    time: e.created_at ? new Date(e.created_at).toLocaleString('id-ID') : '',
+                }))
+            );
+
+            // Admin Notes (single row)
+            const { data: notesData } = await supabase
+                .from('admin_notes')
+                .select('*')
+                .order('updated_at', { ascending: false })
+                .limit(1);
+            setAdminNotes(notesData && notesData[0]?.note ? notesData[0].note : '');
+
+            // System Health: check DB and API
+            let dbOk = true;
+            let apiOk = true;
+            try {
+                // DB: try a simple select
+                await supabase.from('admin_activity_log').select('id').limit(1);
+            } catch {
+                dbOk = false;
+            }
+            try {
+                // API: try fetch analytics platform endpoint
+                await fetch('/api/analytics/stats/platform?days=1');
+            } catch {
+                apiOk = false;
+            }
+            setSystemHealth({ db: dbOk, api: apiOk });
+        };
+        fetchHelpers();
     }, []);
 
     const loadData = async () => {
@@ -56,6 +149,7 @@ export default function AdminDashboard() {
         { label: 'Import CSV', description: 'Upload data alumni baru', icon: Upload, href: '/admin/import', color: 'from-orange-600 to-orange-700' },
         { label: 'Analytics', description: 'Lihat statistik lengkap', icon: BarChart3, href: '/admin/analytics', color: 'from-blue-600 to-blue-700' },
         { label: 'Alumni Database', description: 'Kelola data alumni', icon: Database, href: '/admin/alumni', color: 'from-green-600 to-green-700' },
+        { label: 'User Management', description: 'Kelola user & admin', icon: Users, href: '/admin/users', color: 'from-pink-600 to-pink-700' },
         { label: 'Settings', description: 'Pengaturan admin', icon: Settings, href: '/admin/settings', color: 'from-purple-600 to-purple-700' },
     ];
 
@@ -148,6 +242,90 @@ export default function AdminDashboard() {
                         <li>• <strong>Settings</strong> - Ubah password dan pengaturan akun</li>
                     </ul>
                 </div>
+                {/* Admin Helper Widgets */}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-10 mb-10">
+                    {/* Activity Log */}
+                    <div className="bg-slate-800 p-5 rounded-xl border border-slate-700">
+                        <div className="flex items-center gap-2 mb-3 font-bold text-indigo-400"><ClipboardList size={18} /> Activity Log</div>
+                        <ul className="text-sm text-slate-300 space-y-2">
+                            {activityLog.length === 0 && <li className="text-slate-500">No recent activity</li>}
+                            {activityLog.map((log, i) => (
+                                <li key={i} className="flex flex-col">
+                                    <span><span className="font-semibold">{log.user}</span> {log.type} {log.detail && <span>- {log.detail}</span>}</span>
+                                    <span className="text-xs text-slate-500">{log.time}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    {/* System Notifications */}
+                    <div className="bg-slate-800 p-5 rounded-xl border border-slate-700">
+                        <div className="flex items-center gap-2 mb-3 font-bold text-green-400"><CheckCircle size={18} /> Notifications</div>
+                        <ul className="text-sm text-slate-300 space-y-2">
+                            {notifications.length === 0 && <li className="text-slate-500">No notifications</li>}
+                            {notifications.map((n, i) => (
+                                <li key={i} className="flex items-center gap-2">
+                                    {n.type === 'warning' ? <AlertTriangle size={14} className="text-yellow-400" /> : <CheckCircle size={14} className="text-green-400" />}
+                                    <span>{n.message}</span>
+                                    <span className="ml-auto text-xs text-slate-500">{n.time}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    {/* Pending Approvals */}
+                    <div className="bg-slate-800 p-5 rounded-xl border border-slate-700">
+                        <div className="flex items-center gap-2 mb-3 font-bold text-yellow-400"><ClipboardList size={18} /> Pending Approvals</div>
+                        <ul className="text-sm text-slate-300 space-y-2">
+                            {pendingApprovals.length === 0 && <li className="text-slate-500">No pending approvals</li>}
+                            {pendingApprovals.map((p, i) => (
+                                <li key={i} className="flex flex-col">
+                                    <span>{p.type === 'user' ? 'User' : p.type}: <span className="font-semibold">{p.name}</span></span>
+                                    <span className="text-xs text-slate-500">Submitted: {p.submitted}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    {/* Error/Access Logs */}
+                    <div className="bg-slate-800 p-5 rounded-xl border border-slate-700">
+                        <div className="flex items-center gap-2 mb-3 font-bold text-red-400"><FileText size={18} /> Error/Access Logs</div>
+                        <ul className="text-sm text-slate-300 space-y-2">
+                            {errorLogs.length === 0 && <li className="text-slate-500">No errors or unauthorized attempts</li>}
+                            {errorLogs.map((e, i) => (
+                                <li key={i} className="flex flex-col">
+                                    <span>{e.type === 'unauthorized' ? 'Unauthorized' : 'Error'}: {e.message}</span>
+                                    <span className="text-xs text-slate-500">{e.time}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    {/* System Health */}
+                    <div className="bg-slate-800 p-5 rounded-xl border border-slate-700">
+                        <div className="flex items-center gap-2 mb-3 font-bold text-pink-400"><HeartPulse size={18} /> System Health</div>
+                        <ul className="text-sm text-slate-300 space-y-2">
+                            <li>Database: <span className={systemHealth.db ? 'text-green-400' : 'text-red-400'}>{systemHealth.db ? 'Online' : 'Offline'}</span></li>
+                            <li>API: <span className={systemHealth.api ? 'text-green-400' : 'text-red-400'}>{systemHealth.api ? 'Online' : 'Offline'}</span></li>
+                        </ul>
+                    </div>
+
+                    {/* Admin Notes */}
+                    <div className="bg-slate-800 p-5 rounded-xl border border-slate-700">
+                        <div className="flex items-center gap-2 mb-3 font-bold text-blue-400"><StickyNote size={18} /> Admin Notes</div>
+                        <textarea
+                            className="w-full min-h-[80px] bg-slate-700 border border-slate-600 rounded p-2 text-slate-200"
+                            value={adminNotes}
+                            onChange={async e => {
+                                setAdminNotes(e.target.value);
+                                // Update admin_notes (single row, id=1)
+                                await supabase.from('admin_notes').update({ note: e.target.value, updated_at: new Date().toISOString() }).eq('id', 1);
+                            }}
+                        />
+                        <div className="text-xs text-slate-500 mt-1">Catatan ini dapat diedit oleh semua admin.</div>
+                    </div>
+                </div>
+
             </div>
         </DashboardLayout>
     );

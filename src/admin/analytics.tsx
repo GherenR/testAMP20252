@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import {
+    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend,
+} from 'recharts';
 import { supabase } from '../supabaseClient';
 import DashboardLayout from '../components/admin/DashboardLayout';
 import RequireAdmin from '../components/admin/RequireAdmin';
@@ -49,10 +52,10 @@ export default function AnalyticsPage() {
                 .select('*', { count: 'exact' })
                 .gte('interacted_at', startDateStr);
 
-            // Get unique visitors
+            // Get unique visitors (user_id)
             const uniqueVisitors = new Set(pageViews?.map(pv => pv.user_id) || []).size;
 
-            // Page views by slide
+            // Page views by slide (page)
             const slideMap: Record<string, number> = {};
             pageViews?.forEach(pv => {
                 const key = pv.page || 'Unknown';
@@ -62,7 +65,7 @@ export default function AnalyticsPage() {
                 .map(([name, count]) => ({ slide_index: 0, slide_name: name, count }))
                 .sort((a, b) => b.count - a.count);
 
-            // Feature clicks by type
+            // Feature clicks by type (feature)
             const featureMap: Record<string, number> = {};
             featureClicks?.forEach(fc => {
                 const key = fc.feature || 'Unknown';
@@ -72,18 +75,18 @@ export default function AnalyticsPage() {
                 .map(([feature, count]) => ({ feature, count }))
                 .sort((a, b) => b.count - a.count);
 
-            // Top mentors
+            // Top mentors (mentor_id)
             const mentorMap: Record<string, number> = {};
             mentorInteractions?.forEach(mi => {
                 const key = mi.mentor_id || 'Unknown';
                 mentorMap[key] = (mentorMap[key] || 0) + 1;
             });
             const topMentors = Object.entries(mentorMap)
-                .map(([mentor_name, count]) => ({ mentor_name, count }))
+                .map(([mentor_id, count]) => ({ mentor_name: mentor_id, count }))
                 .sort((a, b) => b.count - a.count)
                 .slice(0, 10);
 
-            // Daily visitors (last 7 days)
+            // Daily visitors (last 7 days, by user_id)
             const dailyMap: Record<string, Set<string>> = {};
             pageViews?.forEach(pv => {
                 const date = new Date(pv.viewed_at).toLocaleDateString('id-ID');
@@ -176,59 +179,65 @@ export default function AnalyticsPage() {
                                 </div>
                             </div>
 
+
                             {/* Charts Row */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                                {/* Page Views by Slide */}
+                                {/* Page Views by Slide (BarChart) */}
                                 <div className="bg-slate-800 p-6 rounded-xl">
                                     <h3 className="text-lg font-bold mb-4">📊 Page Views by Section</h3>
-                                    <div className="space-y-3">
-                                        {data.pageViewsBySlide.map((item, i) => (
-                                            <div key={i} className="flex items-center gap-3">
-                                                <div className="w-24 text-sm text-slate-400 truncate">
-                                                    {slideNames[item.slide_name] || item.slide_name}
-                                                </div>
-                                                <div className="flex-1 bg-slate-700 rounded-full h-6 overflow-hidden">
-                                                    <div
-                                                        className="bg-indigo-500 h-full rounded-full flex items-center justify-end pr-2"
-                                                        style={{
-                                                            width: `${Math.max(10, (item.count / Math.max(...data.pageViewsBySlide.map(p => p.count))) * 100)}%`,
-                                                        }}
-                                                    >
-                                                        <span className="text-xs font-bold">{item.count}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                        {data.pageViewsBySlide.length === 0 && (
-                                            <p className="text-slate-400 text-sm">Belum ada data</p>
-                                        )}
-                                    </div>
+                                    {data.pageViewsBySlide.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height={260}>
+                                            <BarChart data={data.pageViewsBySlide.map(item => ({
+                                                ...item,
+                                                slide: slideNames[item.slide_name] || item.slide_name,
+                                            }))} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                                <XAxis dataKey="slide" stroke="#cbd5e1" fontSize={12} />
+                                                <YAxis stroke="#cbd5e1" fontSize={12} allowDecimals={false} />
+                                                <Tooltip contentStyle={{ background: '#1e293b', border: 'none', color: '#fff' }} />
+                                                <Bar dataKey="count" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <p className="text-slate-400 text-sm">Belum ada data</p>
+                                    )}
                                 </div>
 
-                                {/* Feature Clicks */}
+                                {/* Feature Clicks (BarChart) */}
                                 <div className="bg-slate-800 p-6 rounded-xl">
                                     <h3 className="text-lg font-bold mb-4">🖱️ Feature Clicks</h3>
-                                    <div className="space-y-3">
-                                        {data.featureClicksByType.slice(0, 8).map((item, i) => (
-                                            <div key={i} className="flex items-center gap-3">
-                                                <div className="w-32 text-sm text-slate-400 truncate">{item.feature}</div>
-                                                <div className="flex-1 bg-slate-700 rounded-full h-6 overflow-hidden">
-                                                    <div
-                                                        className="bg-green-500 h-full rounded-full flex items-center justify-end pr-2"
-                                                        style={{
-                                                            width: `${Math.max(10, (item.count / Math.max(...data.featureClicksByType.map(f => f.count))) * 100)}%`,
-                                                        }}
-                                                    >
-                                                        <span className="text-xs font-bold">{item.count}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                        {data.featureClicksByType.length === 0 && (
-                                            <p className="text-slate-400 text-sm">Belum ada data</p>
-                                        )}
-                                    </div>
+                                    {data.featureClicksByType.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height={260}>
+                                            <BarChart data={data.featureClicksByType.slice(0, 8)} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                                <XAxis dataKey="feature" stroke="#cbd5e1" fontSize={12} />
+                                                <YAxis stroke="#cbd5e1" fontSize={12} allowDecimals={false} />
+                                                <Tooltip contentStyle={{ background: '#1e293b', border: 'none', color: '#fff' }} />
+                                                <Bar dataKey="count" fill="#22c55e" radius={[6, 6, 0, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <p className="text-slate-400 text-sm">Belum ada data</p>
+                                    )}
                                 </div>
+                            </div>
+
+                            {/* Daily Visitors (BarChart) */}
+                            <div className="bg-slate-800 p-6 rounded-xl mb-8">
+                                <h3 className="text-lg font-bold mb-4">📅 Daily Unique Visitors (7 Hari Terakhir)</h3>
+                                {data.dailyVisitors.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height={260}>
+                                        <BarChart data={data.dailyVisitors} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                            <XAxis dataKey="date" stroke="#cbd5e1" fontSize={12} />
+                                            <YAxis stroke="#cbd5e1" fontSize={12} allowDecimals={false} />
+                                            <Tooltip contentStyle={{ background: '#1e293b', border: 'none', color: '#fff' }} />
+                                            <Bar dataKey="count" fill="#f59e42" radius={[6, 6, 0, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <p className="text-slate-400 text-sm">Belum ada data</p>
+                                )}
                             </div>
 
                             {/* Top Mentors */}

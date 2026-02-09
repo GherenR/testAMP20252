@@ -7,6 +7,7 @@ import AnalyticsPage from './analytics';
 import AlumniEditorPage from './alumni';
 import ImportCSVPage from './import';
 import SettingsPage from './settings';
+import UserManagementPage from './users';
 
 export default function AdminPage() {
     return (
@@ -16,6 +17,7 @@ export default function AdminPage() {
             <Route path="/alumni" element={<AlumniEditorPage />} />
             <Route path="/import" element={<ImportCSVPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/users" element={<UserManagementPage />} />
         </Routes>
     );
 }

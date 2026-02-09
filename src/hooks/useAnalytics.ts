@@ -38,12 +38,15 @@ export const useAnalytics = () => {
     ) => {
         try {
             await supabase.from('page_views').insert({
-                session_id: sessionIdRef.current,
-                slide_number: slideNumber,
-                slide_name: slideName,
-                device_type: getDeviceType(),
-                view_duration_seconds: viewDurationSeconds,
-                user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+                user_id: sessionIdRef.current,
+                page: slideName,
+                viewed_at: new Date().toISOString(),
+                device: getDeviceType(),
+                metadata: {
+                    slide_number: slideNumber,
+                    view_duration_seconds: viewDurationSeconds,
+                    user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : ''
+                }
             });
         } catch (err) {
             console.error('[Analytics] Page view error:', err);
@@ -61,11 +64,14 @@ export const useAnalytics = () => {
     ) => {
         try {
             await supabase.from('feature_clicks').insert({
-                session_id: sessionIdRef.current,
-                feature_name: featureName,
-                feature_type: featureType,
-                slide_number: slideNumber,
-                device_type: getDeviceType(),
+                user_id: sessionIdRef.current,
+                feature: featureName,
+                clicked_at: new Date().toISOString(),
+                metadata: {
+                    feature_type: featureType,
+                    slide_number: slideNumber,
+                    device: getDeviceType()
+                }
             });
         } catch (err) {
             console.error('[Analytics] Feature click error:', err);
@@ -77,19 +83,22 @@ export const useAnalytics = () => {
      * Call when user clicks on mentor (detail, chat, compare, instagram)
      */
     const trackMentorInteraction = async (
-        mentorName: string,
+        mentorId: string,
         actionType: string,
         sourceFeature: string,
         sourceSlide?: number
     ) => {
         try {
             await supabase.from('mentor_interactions').insert({
-                session_id: sessionIdRef.current,
-                mentor_name: mentorName,
-                action_type: actionType,
-                source_feature: sourceFeature,
-                source_slide: sourceSlide,
-                device_type: getDeviceType(),
+                user_id: sessionIdRef.current,
+                mentor_id: mentorId,
+                action: actionType,
+                interacted_at: new Date().toISOString(),
+                metadata: {
+                    source_feature: sourceFeature,
+                    source_slide: sourceSlide,
+                    device: getDeviceType()
+                }
             });
         } catch (err) {
             console.error('[Analytics] Mentor interaction error:', err);
