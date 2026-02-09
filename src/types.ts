@@ -8,10 +8,12 @@ export interface Mentor {
   major: string;
   path: string;
   category: InstitutionCategory;
+  angkatan: number;
   achievements?: string[];
   instagram?: string;
   phone?: string;
   whatsapp?: string;
+  email?: string;
 }
 
 export interface SlideData {

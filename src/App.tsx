@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import AdminPage from './admin';
+import AdminLogin from './admin/login';
 import {
   Home, BrainCircuit, Database, ShieldCheck, Info, ArrowUp, Heart
 } from 'lucide-react';
 import { MOCK_MENTORS } from './constants';
-import { SlideData } from './types';
+import { getAllMentors } from './mentorService';
+import { SlideData, Mentor } from './types';
 import {
   useSlideNavigation,
   useMentorFiltering,
@@ -66,7 +70,8 @@ import { SLIDE_NAMES } from './utils/analytics';
  * - Components: SlideNavigation, 5 Slide components, SopModal
  * - Data: MOCK_MENTORS dari constants.ts
  */
-const App: React.FC = () => {
+
+const MainApp: React.FC = () => {
   // ===== NAVIGATION HOOKS =====
   const totalSlides = 6;
   const slides: SlideData[] = [
@@ -88,8 +93,46 @@ const App: React.FC = () => {
     trackPageView(currentSlide, SLIDE_NAMES[currentSlide] || 'Unknown');
   }, [currentSlide, trackPageView]);
 
+  // ===== MENTOR DATA STATE (SUPABASE) =====
+  const [mentors, setMentors] = useState<Mentor[]>(MOCK_MENTORS);
+  const [mentorsLoading, setMentorsLoading] = useState(true);
+
+  // Load mentors from Supabase on mount
+  useEffect(() => {
+    const loadMentors = async () => {
+      try {
+        const { data, error } = await getAllMentors();
+        if (error) {
+          console.error('Failed to load mentors from Supabase:', error);
+          // Fallback to MOCK_MENTORS (already set as initial state)
+        } else if (data && data.length > 0) {
+          // Convert MentorDB to Mentor type (strip id, timestamps)
+          const mentorData: Mentor[] = data.map(m => ({
+            name: m.name,
+            university: m.university,
+            major: m.major,
+            path: m.path,
+            category: m.category,
+            angkatan: m.angkatan,
+            achievements: m.achievements || [],
+            instagram: m.instagram || undefined,
+            whatsapp: m.whatsapp || undefined,
+            email: m.email || undefined
+          }));
+          setMentors(mentorData);
+        }
+      } catch (err) {
+        console.error('Error loading mentors:', err);
+        // Fallback to MOCK_MENTORS
+      } finally {
+        setMentorsLoading(false);
+      }
+    };
+    loadMentors();
+  }, []);
+
   // ===== MENTOR FILTERING HOOKS =====
-  const mentorFiltering = useMentorFiltering(MOCK_MENTORS);
+  const mentorFiltering = useMentorFiltering(mentors);
   const {
     searchTerm,
     setSearchTerm,
@@ -232,12 +275,12 @@ const App: React.FC = () => {
 
   // ===== MENTOR DETAIL MODAL STATE =====
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [detailMentor, setDetailMentor] = useState<typeof MOCK_MENTORS[0] | null>(null);
+  const [detailMentor, setDetailMentor] = useState<Mentor | null>(null);
   const [detailAlumniId, setDetailAlumniId] = useState<string>('');
 
   // ===== SMART MATCH ACTION MODAL STATE =====
   const [showSmartMatchAction, setShowSmartMatchAction] = useState(false);
-  const [smartMatchMentor, setSmartMatchMentor] = useState<typeof MOCK_MENTORS[0] | null>(null);
+  const [smartMatchMentor, setSmartMatchMentor] = useState<Mentor | null>(null);
   const [smartMatchAlumniId, setSmartMatchAlumniId] = useState<string>('');
 
   // ===== KEYBOARD SHORTCUTS =====
@@ -279,7 +322,7 @@ const App: React.FC = () => {
   /**
    * Handle tombol "Hubungi Mentor" - open SOP modal
    */
-  const handleContactClick = (mentor: typeof MOCK_MENTORS[0]) => {
+  const handleContactClick = (mentor: Mentor) => {
     openSopModal(mentor);
   };
 
@@ -313,16 +356,16 @@ const App: React.FC = () => {
   /**
    * Handle detail modal opening
    */
-  const openDetailModal = (mentor: typeof MOCK_MENTORS[0]) => {
-    const index = MOCK_MENTORS.findIndex(m => m.name === mentor.name);
+  const openDetailModal = (mentor: Mentor) => {
+    const index = mentors.findIndex(m => m.name === mentor.name);
     setDetailAlumniId(`#2025-${index + 104}`);
     setDetailMentor(mentor);
     setShowDetailModal(true);
   };
 
   /** Alumni serupa: same university atau major, max 3 */
-  const getSimilarMentors = (mentor: typeof MOCK_MENTORS[0]) =>
-    MOCK_MENTORS
+  const getSimilarMentors = (mentor: Mentor) =>
+    mentors
       .filter(m => m.name !== mentor.name && (m.university === mentor.university || m.major === mentor.major))
       .slice(0, 3);
 
@@ -330,8 +373,8 @@ const App: React.FC = () => {
    * Handle Smart Match action - when user clicks a mentor card in Smart Match
    * Opens action modal with options to contact or view detail
    */
-  const handleSmartMatchMentorClick = (mentor: typeof MOCK_MENTORS[0]) => {
-    const index = MOCK_MENTORS.findIndex(m => m.name === mentor.name);
+  const handleSmartMatchMentorClick = (mentor: Mentor) => {
+    const index = mentors.findIndex(m => m.name === mentor.name);
     setSmartMatchAlumniId(`#2025-${index + 104}`);
     setSmartMatchMentor(mentor);
     setShowSmartMatchAction(true);
@@ -340,7 +383,7 @@ const App: React.FC = () => {
   /**
    * From Smart Match Action Modal - view detail
    */
-  const handleSmartMatchViewDetail = (mentor: typeof MOCK_MENTORS[0]) => {
+  const handleSmartMatchViewDetail = (mentor: Mentor) => {
     setShowSmartMatchAction(false);
     setTimeout(() => {
       openDetailModal(mentor);
@@ -350,7 +393,7 @@ const App: React.FC = () => {
   /**
    * From Smart Match Action Modal - start WhatsApp conversation
    */
-  const handleSmartMatchContact = (mentor: typeof MOCK_MENTORS[0]) => {
+  const handleSmartMatchContact = (mentor: Mentor) => {
     setShowSmartMatchAction(false);
     setTimeout(() => {
       handleContactClick(mentor);
@@ -358,7 +401,7 @@ const App: React.FC = () => {
   };
 
   // ===== MENU ITEMS untuk navigation =====
-  const { favorites, toggleFavorite, isFavorite } = useFavorites(MOCK_MENTORS);
+  const { favorites, toggleFavorite, isFavorite } = useFavorites(mentors);
 
   const menuItems: MenuItem[] = [
     { icon: <Home size={18} />, label: 'Beranda', id: 0 },
@@ -393,7 +436,7 @@ const App: React.FC = () => {
             isMatching={isMatching}
             matchResults={matchResults}
             subPaths={getSubPaths(matchTarget)}
-            onRunMatchmaker={() => mentorMatching.runMatchmaker(MOCK_MENTORS)}
+            onRunMatchmaker={() => mentorMatching.runMatchmaker(mentors)}
             onReset={mentorMatching.resetMatching}
             onMentorSelect={handleSmartMatchMentorClick}
             onMentorCompare={addMentorToCompare}
@@ -438,7 +481,7 @@ const App: React.FC = () => {
             onViewDetail={openDetailModal}
             onFavoriteToggle={toggleFavorite}
             isFavorite={isFavorite}
-            getAllMentors={() => MOCK_MENTORS}
+            getAllMentors={() => mentors}
             onNavigateToDirektori={() => setCurrentSlide(2)}
           />
         );
@@ -608,6 +651,16 @@ const App: React.FC = () => {
         />
       )}
     </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <Routes>
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin/*" element={<AdminPage />} />
+      <Route path="/*" element={<MainApp />} />
+    </Routes>
   );
 };
 

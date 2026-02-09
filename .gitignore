@@ -63,5 +63,8 @@ debug/
 logs/
 *.pid
 
+# Claude temp files
+tmpclaude-*
+
 # SECURITY: Package manager lock files (commit these) - only for npm
 # Do NOT ignore package-lock.json - it should be committed for reproducibility

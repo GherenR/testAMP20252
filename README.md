@@ -12,9 +12,6 @@
 ## ✨ Features
 
 ### 🧠 Smart Matching
-- AI-powered mentor recommendation system
-- Personalized scoring based on student preferences
-- Instant compatibility analysis
 
 ### 🔍 Mentor Database
 - Comprehensive searchable mentor directory
@@ -37,6 +34,17 @@
 - SOP (Standards of Procedure) modal
 
 ### 📱 Responsive Design
+## Penting: Install Dependency Routing
+
+Untuk fitur login/admin dashboard berjalan, install dependency berikut:
+
+```
+npm install react-router-dom
+npm install --save-dev @types/react-router-dom
+```
+
+Pastikan juga setup routing di entry point (misal, src/main.tsx) menggunakan BrowserRouter dari react-router-dom.
+
 - Mobile-optimized interface
 - Smooth animations and transitions
 - Touch-friendly controls (min 44px targets)
