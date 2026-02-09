@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Home, BarChart3, Database, Settings, LogOut, Menu, X, ExternalLink, Upload } from 'lucide-react';
+import { Home, BarChart3, Database, Settings, LogOut, Menu, X, ExternalLink, Upload, Users } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -22,6 +22,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { path: '/admin', label: 'Dashboard', icon: Home },
         { path: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
         { path: '/admin/alumni', label: 'Alumni Database', icon: Database },
+        { path: '/admin/users', label: 'User Management', icon: Users },
         { path: '/admin/import', label: 'Import CSV', icon: Upload },
         { path: '/admin/settings', label: 'Settings', icon: Settings },
     ];

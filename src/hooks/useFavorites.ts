@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Mentor } from '../types';
+import { secureStorage } from '../utils/security';
 
 const STORAGE_KEY = 'amp_favorites';
 
 export const useFavorites = (mentors: Mentor[]) => {
   const [favoriteNames, setFavoriteNames] = useState<string[]>(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = secureStorage.get(STORAGE_KEY);
       return stored ? JSON.parse(stored) : [];
     } catch {
       return [];
@@ -15,7 +16,7 @@ export const useFavorites = (mentors: Mentor[]) => {
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(favoriteNames));
+      secureStorage.set(STORAGE_KEY, JSON.stringify(favoriteNames));
     } catch {
       // ignore
     }

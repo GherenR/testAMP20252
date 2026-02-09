@@ -196,8 +196,6 @@ export default function ImportCSVPage() {
 
         // First row is headers
         const headers = allRows[0];
-        console.log('CSV Headers found:', headers.length, 'columns');
-        console.log('Total data rows:', allRows.length - 1);
 
         // Column indices based on actual Google Form CSV structure
         // Headers like "Nama Universitas" and "Program Studi" repeat, so we use fixed positions
@@ -244,11 +242,7 @@ export default function ImportCSVPage() {
         };
 
         // Debug: log headers to console for troubleshooting
-        console.log('=== CSV HEADER MAPPING DEBUG ===');
-        headers.forEach((h, i) => console.log(`Col ${i}: "${h}"`));
-        console.log('Detected column indices:', COL);
 
-        console.log('Column mapping:', COL);
 
         const existingNames = existingMentors.map(m => m.name.toLowerCase().trim());
         const entries: CSVEntry[] = [];

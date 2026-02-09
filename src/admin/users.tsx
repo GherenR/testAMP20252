@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../supabaseClient';
+import { UserService } from '../services/UserService';
+import axios from 'axios';
 import DashboardLayout from '../components/admin/DashboardLayout';
 import RequireAdmin from '../components/admin/RequireAdmin';
 import { Plus, Edit, Trash2, UserCheck, UserX } from 'lucide-react';
@@ -26,9 +27,12 @@ export default function UserManagementPage() {
 
     async function fetchUsers() {
         setLoading(true);
-        const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: false });
-        if (error) setMessage('Gagal memuat data user');
-        setUsers(data || []);
+        try {
+            const data = await UserService.getAllUsers();
+            setUsers(data);
+        } catch {
+            setMessage('Gagal memuat data user');
+        }
         setLoading(false);
     }
 
@@ -47,25 +51,30 @@ export default function UserManagementPage() {
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setMessage('');
-        if (editingUser) {
-            // Update user
-            const { error } = await supabase.from('users').update({
-                email: form.email,
-                name: form.name,
-                role: form.role,
-            }).eq('id', editingUser.id);
-            if (error) setMessage('Gagal update user');
-            else setMessage('User berhasil diupdate');
-        } else {
-            // Add user
-            const { error } = await supabase.from('users').insert({
-                email: form.email,
-                name: form.name,
-                role: form.role,
-                password: form.password,
-            });
-            if (error) setMessage('Gagal tambah user');
-            else setMessage('User berhasil ditambah');
+        try {
+            if (editingUser) {
+                await UserService.updateUser(editingUser.id, {
+                    email: form.email,
+                    name: form.name,
+                    role: form.role,
+                });
+                setMessage('User berhasil diupdate');
+            } else {
+                // Panggil API admin untuk create user via Supabase Auth Admin API
+                const res = await axios.post('/api/admin/createUser', {
+                    email: form.email,
+                    name: form.name,
+                    role: form.role,
+                    password: form.password,
+                });
+                if (res.data && res.data.user) {
+                    setMessage('User berhasil ditambah');
+                } else {
+                    setMessage('Gagal tambah user');
+                }
+            }
+        } catch (err: any) {
+            setMessage(editingUser ? 'Gagal update user' : (err?.response?.data?.error || 'Gagal tambah user'));
         }
         setShowForm(false);
         fetchUsers();
@@ -73,9 +82,12 @@ export default function UserManagementPage() {
 
     async function handleDelete(id: string) {
         if (!window.confirm('Hapus user ini?')) return;
-        const { error } = await supabase.from('users').delete().eq('id', id);
-        if (error) setMessage('Gagal hapus user');
-        else setMessage('User berhasil dihapus');
+        try {
+            await UserService.deleteUser(id);
+            setMessage('User berhasil dihapus');
+        } catch {
+            setMessage('Gagal hapus user');
+        }
         fetchUsers();
     }
 

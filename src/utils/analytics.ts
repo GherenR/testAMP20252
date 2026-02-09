@@ -3,14 +3,15 @@
  * Helper functions for analytics tracking
  */
 
+import { secureStorage } from './security';
 // Session management
 export function getOrCreateSessionId(): string {
     const key = 'analytics_session_id';
-    let sessionId = localStorage.getItem(key);
+    let sessionId = secureStorage.get(key);
 
     if (!sessionId) {
         sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        localStorage.setItem(key, sessionId);
+        secureStorage.set(key, sessionId);
     }
 
     return sessionId;

@@ -141,10 +141,10 @@ export default function SettingsPage() {
                             {tabs.map((tab) => (
                                 <button
                                     key={tab.id}
-                                    onClick={() => setActiveTab(tab.id as any)}
+                                    onClick={() => setActiveTab(tab.id as 'profile' | 'security' | 'notifications' | 'appearance')}
                                     className={`flex items-center gap-2 px-4 py-3 rounded-lg text-left whitespace-nowrap transition ${activeTab === tab.id
-                                            ? 'bg-indigo-600 text-white'
-                                            : 'bg-slate-800 hover:bg-slate-700'
+                                        ? 'bg-indigo-600 text-white'
+                                        : 'bg-slate-800 hover:bg-slate-700'
                                         }`}
                                 >
                                     <tab.icon size={18} />

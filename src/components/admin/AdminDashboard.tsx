@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle, ClipboardList, FileText, HeartPulse, StickyNote } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
+import { secureFetch } from '../../utils/security';
 import DashboardLayout from './DashboardLayout';
 import { BarChart3, Database, Settings, Users, Eye, MousePointerClick, TrendingUp, ArrowRight, Upload } from 'lucide-react';
 
@@ -17,10 +18,15 @@ export default function AdminDashboard() {
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<any>(null);
     // Admin helpers state
-    const [activityLog, setActivityLog] = useState<any[]>([]);
-    const [notifications, setNotifications] = useState<any[]>([]);
-    const [pendingApprovals, setPendingApprovals] = useState<any[]>([]);
-    const [errorLogs, setErrorLogs] = useState<any[]>([]);
+    interface ActivityLogEntry { id: number; action: string; created_at: string;[key: string]: any }
+    interface Notification { id: number; message: string; created_at: string;[key: string]: any }
+    interface PendingApproval { id: number; user_id: string; created_at: string;[key: string]: any }
+    interface ErrorLog { id: number; error: string; created_at: string;[key: string]: any }
+
+    const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
+    const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
     const [systemHealth, setSystemHealth] = useState<{ db: boolean; api: boolean }>({ db: true, api: true });
     const [adminNotes, setAdminNotes] = useState<string>('');
 
@@ -36,10 +42,11 @@ export default function AdminDashboard() {
                 .limit(10);
             setActivityLog(
                 (logData || []).map(l => ({
-                    type: l.action,
-                    user: l.user_email,
+                    id: l.id,
+                    action: l.action,
+                    created_at: l.created_at,
+                    user_email: l.user_email,
                     detail: l.detail,
-                    time: l.created_at ? new Date(l.created_at).toLocaleString('id-ID') : '',
                 }))
             );
 
@@ -51,9 +58,10 @@ export default function AdminDashboard() {
                 .limit(10);
             setNotifications(
                 (notifData || []).map(n => ({
-                    type: n.type,
+                    id: n.id,
                     message: n.message,
-                    time: n.created_at ? new Date(n.created_at).toLocaleString('id-ID') : '',
+                    created_at: n.created_at,
+                    type: n.type,
                 }))
             );
 
@@ -65,9 +73,11 @@ export default function AdminDashboard() {
                 .limit(10);
             setPendingApprovals(
                 (approvalData || []).map(p => ({
+                    id: p.id,
+                    user_id: p.user_id,
+                    created_at: p.submitted_at,
                     type: p.type,
                     name: p.name,
-                    submitted: p.submitted_at ? new Date(p.submitted_at).toLocaleString('id-ID') : '',
                 }))
             );
 
@@ -79,9 +89,11 @@ export default function AdminDashboard() {
                 .limit(10);
             setErrorLogs(
                 (errorData || []).map(e => ({
+                    id: e.id,
+                    error: e.error,
+                    created_at: e.created_at,
                     type: e.type,
                     message: e.message,
-                    time: e.created_at ? new Date(e.created_at).toLocaleString('id-ID') : '',
                 }))
             );
 
@@ -104,7 +116,7 @@ export default function AdminDashboard() {
             }
             try {
                 // API: try fetch analytics platform endpoint
-                await fetch('/api/analytics/stats/platform?days=1');
+                await secureFetch('/api/analytics/stats/platform?days=1');
             } catch {
                 apiOk = false;
             }

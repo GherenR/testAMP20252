@@ -17,7 +17,7 @@ interface FavoritesSlideProps {
 }
 
 /**
- * FavoritesSlide - Menampilkan alumni yang difavoritkan user (disimpan di localStorage)
+ * FavoritesSlide - Menampilkan alumni yang difavoritkan user (disimpan di secureStorage)
  */
 export const FavoritesSlide: React.FC<FavoritesSlideProps> = ({
   favorites,

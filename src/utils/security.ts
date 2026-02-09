@@ -151,9 +151,9 @@ export const secureStorage = {
  */
 export const secureFetch = async (
     url: string,
-    options: RequestInit = {}
+    options?: RequestInit
 ): Promise<Response> => {
-    // Validate URL
+    // Validate and sanitize URL
     const sanitizedUrl = sanitizeUrl(url);
     if (!sanitizedUrl) {
         throw new Error('[Security] Invalid URL');
@@ -163,7 +163,7 @@ export const secureFetch = async (
         headers: {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
-            ...options.headers,
+            ...(options?.headers || {}),
         },
         credentials: 'same-origin',
         ...options,
