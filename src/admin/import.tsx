@@ -61,9 +61,84 @@ export default function ImportCSVPage() {
         setTimeout(() => setMessage(null), 5000);
     };
 
+    // Helper function to parse a CSV line with proper quote handling
+    const parseCSVLine = (line: string): string[] => {
+        const values: string[] = [];
+        let current = '';
+        let inQuotes = false;
+
+        for (let j = 0; j < line.length; j++) {
+            const char = line[j];
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                values.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        values.push(current.trim());
+        return values;
+    };
+
+    // Helper function to find column index by partial header match
+    const findColumnIndex = (headers: string[], ...patterns: string[]): number => {
+        for (const pattern of patterns) {
+            const idx = headers.findIndex(h =>
+                h.toLowerCase().includes(pattern.toLowerCase())
+            );
+            if (idx !== -1) return idx;
+        }
+        return -1;
+    };
+
     const parseCSV = useCallback((text: string): CSVEntry[] => {
         const lines = text.split('\n');
         if (lines.length < 2) return [];
+
+        // Parse header row to find column indices dynamically
+        const headers = parseCSVLine(lines[0]);
+        console.log('CSV Headers found:', headers.length, 'columns');
+        console.log('Headers:', headers.map((h, i) => `${i}: ${h.substring(0, 50)}`));
+
+        // Find important column indices by header name patterns
+        const COL = {
+            timestamp: findColumnIndex(headers, 'Timestamp'),
+            email: findColumnIndex(headers, 'Email Address', 'email'),
+            name: findColumnIndex(headers, 'Full Name', 'Nama Lengkap'),
+            domisili: findColumnIndex(headers, 'Domisili Sekarang'),
+            whatsapp: findColumnIndex(headers, 'Whatsapp', 'wa.me'),
+            instagram: findColumnIndex(headers, 'Instagram', 'Social Media'),
+            status: findColumnIndex(headers, 'Status sekarang'),
+            jenisPT: findColumnIndex(headers, 'Jenis Perguruan Tinggi'),
+            // PTN
+            univPTN: 8, // Usually right after Jenis PT
+            majorPTN: 9,
+            pathPTN: 11,
+            // Kedinasan  
+            univKedinasan: 12,
+            majorKedinasan: 13,
+            // PTS
+            univPTS: 16,
+            majorPTS: 17,
+            pathPTS: 19,
+            // Politeknik
+            univPoltek: 20,
+            majorPoltek: 21,
+            pathPoltek: 23,
+            // PTLN
+            univPTLN: 24,
+            majorPTLN: 25,
+            pathPTLN: 27,
+            // AMP Consent & Angkatan - search by exact patterns
+            consentAMP: findColumnIndex(headers, 'dimasukan dalam Alumni Mentorship Project', 'bersedia untuk datanya'),
+            angkatan: findColumnIndex(headers, 'Angkatan Berapa'),
+            prestasi: findColumnIndex(headers, 'prestasi atau pengalaman', 'Juara'),
+            domisiliAsli: findColumnIndex(headers, 'Domisili Asli'),
+        };
+
+        console.log('Column mapping:', COL);
 
         const existingNames = existingMentors.map(m => m.name.toLowerCase().trim());
         const entries: CSVEntry[] = [];
@@ -72,45 +147,29 @@ export default function ImportCSVPage() {
             const line = lines[i];
             if (!line.trim()) continue;
 
-            // Parse CSV with proper quote handling
-            const values: string[] = [];
-            let current = '';
-            let inQuotes = false;
+            const values = parseCSVLine(line);
 
-            for (let j = 0; j < line.length; j++) {
-                const char = line[j];
-                if (char === '"') {
-                    inQuotes = !inQuotes;
-                } else if (char === ',' && !inQuotes) {
-                    values.push(current.trim());
-                    current = '';
-                } else {
-                    current += char;
-                }
-            }
-            values.push(current.trim());
-
-            // Map columns based on Google Form structure (updated 2025)
-            // Index: 0=Timestamp, 1=Email, 2=Name, 3=Domisili, 4=WA, 5=Instagram, 6=Status, 7=JenisPT
-            // Index: 40=Consent AMP, 42=Angkatan, 44=Prestasi
-            const name = values[2]?.trim() || '';
-            const email = values[1]?.trim() || '';
-            const status = values[6]?.trim() || '';
-            const consent = values[40]?.trim() || '';
-            const angkatanStr = values[42]?.trim() || '2025';
-            const domisili = values[3]?.trim() || '';
+            // Get values using dynamic column indices
+            const name = values[COL.name]?.trim() || '';
+            const email = values[COL.email]?.trim() || '';
+            const status = values[COL.status]?.trim() || '';
+            const consent = COL.consentAMP >= 0 ? (values[COL.consentAMP]?.trim() || '') : '';
+            const angkatanStr = COL.angkatan >= 0 ? (values[COL.angkatan]?.trim() || '2025') : '2025';
+            const domisili = values[COL.domisili]?.trim() || '';
 
             // Skip if empty name
             if (!name) continue;
 
-            // Build rawData for debugging
+            // Build rawData for debugging - show all found values
             const rawData: Record<string, string> = {
-                'Nama': name,
-                'Email': email,
-                'Status': status,
-                'Consent AMP': consent,
-                'Angkatan': angkatanStr,
-                'Domisili': domisili,
+                'Row #': String(i),
+                'Total Columns': String(values.length),
+                [`Nama (col ${COL.name})`]: name,
+                [`Email (col ${COL.email})`]: email,
+                [`Status (col ${COL.status})`]: status,
+                [`Consent AMP (col ${COL.consentAMP})`]: consent,
+                [`Angkatan (col ${COL.angkatan})`]: angkatanStr,
+                [`Domisili (col ${COL.domisili})`]: domisili,
             };
 
             // Collect reasons and warnings
@@ -154,7 +213,7 @@ export default function ImportCSVPage() {
             reasons.push('✓ Consent AMP: Ya');
 
             // Get WhatsApp and Instagram
-            let whatsapp = values[4]?.trim() || '';
+            let whatsapp = values[COL.whatsapp]?.trim() || '';
             rawData['WhatsApp Raw'] = whatsapp;
             if (whatsapp && !whatsapp.startsWith('wa.me/')) {
                 whatsapp = whatsapp.replace(/[^0-9]/g, '');
@@ -170,7 +229,7 @@ export default function ImportCSVPage() {
                 whatsapp = '';
             }
 
-            let instagram = values[5]?.trim() || '';
+            let instagram = values[COL.instagram]?.trim() || '';
             rawData['Instagram Raw'] = instagram;
             instagram = instagram.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
             if (!instagram) {
@@ -182,50 +241,58 @@ export default function ImportCSVPage() {
             }
 
             // Get university and major based on Jenis PT
-            const jenisPT = values[7]?.trim() || '';
-            rawData['Jenis PT'] = jenisPT;
+            const jenisPT = values[COL.jenisPT]?.trim() || '';
+            rawData['Jenis PT (col ' + COL.jenisPT + ')'] = jenisPT;
             let university = '';
             let major = '';
+            let path = '';
             let category: InstitutionCategory = 'PTN';
 
-            if (jenisPT.includes('Negeri') || jenisPT === 'PTN') {
-                university = values[8]?.trim() || '';
-                major = values[9]?.trim() || '';
+            if (jenisPT.includes('Negeri') && !jenisPT.includes('Luar') || jenisPT === 'PTN') {
+                university = values[COL.univPTN]?.trim() || '';
+                major = values[COL.majorPTN]?.trim() || '';
+                path = values[COL.pathPTN]?.trim() || '';
                 category = 'PTN';
-                rawData['Universitas (PTN)'] = university;
-                rawData['Jurusan (PTN)'] = major;
+                rawData['Universitas PTN (col ' + COL.univPTN + ')'] = university;
+                rawData['Jurusan PTN (col ' + COL.majorPTN + ')'] = major;
                 reasons.push(`Jenis: PTN - ${university || '(kosong)'}`);
             } else if (jenisPT.includes('Swasta') || jenisPT === 'PTS') {
-                university = values[8]?.trim() || values[16]?.trim() || '';
-                major = values[9]?.trim() || values[17]?.trim() || '';
+                university = values[COL.univPTS]?.trim() || '';
+                major = values[COL.majorPTS]?.trim() || '';
+                path = values[COL.pathPTS]?.trim() || '';
                 category = 'PTS';
-                rawData['Universitas (PTS)'] = university;
-                rawData['Jurusan (PTS)'] = major;
+                rawData['Universitas PTS (col ' + COL.univPTS + ')'] = university;
+                rawData['Jurusan PTS (col ' + COL.majorPTS + ')'] = major;
                 reasons.push(`Jenis: PTS - ${university || '(kosong)'}`);
             } else if (jenisPT.includes('Politeknik')) {
-                university = values[20]?.trim() || '';
-                major = values[21]?.trim() || '';
+                university = values[COL.univPoltek]?.trim() || '';
+                major = values[COL.majorPoltek]?.trim() || '';
+                path = values[COL.pathPoltek]?.trim() || '';
                 category = 'PTN';
-                rawData['Politeknik'] = university;
-                rawData['Jurusan (Poltek)'] = major;
+                rawData['Politeknik (col ' + COL.univPoltek + ')'] = university;
+                rawData['Jurusan Poltek (col ' + COL.majorPoltek + ')'] = major;
                 reasons.push(`Jenis: Politeknik - ${university || '(kosong)'}`);
             } else if (jenisPT.includes('Luar Negeri') || jenisPT === 'PTLN') {
-                university = values[24]?.trim() || '';
-                major = values[25]?.trim() || '';
+                university = values[COL.univPTLN]?.trim() || '';
+                major = values[COL.majorPTLN]?.trim() || '';
+                path = values[COL.pathPTLN]?.trim() || '';
                 category = 'PTLN';
-                rawData['Universitas (PTLN)'] = university;
-                rawData['Jurusan (PTLN)'] = major;
+                rawData['Universitas PTLN (col ' + COL.univPTLN + ')'] = university;
+                rawData['Jurusan PTLN (col ' + COL.majorPTLN + ')'] = major;
                 reasons.push(`Jenis: PTLN - ${university || '(kosong)'}`);
             } else if (jenisPT.includes('Kedinasan')) {
-                university = values[12]?.trim() || '';
-                major = values[13]?.trim() || '';
+                university = values[COL.univKedinasan]?.trim() || '';
+                major = values[COL.majorKedinasan]?.trim() || '';
+                path = 'Kedinasan';
                 category = 'PTN';
-                rawData['Instansi Kedinasan'] = university;
-                rawData['Program Kedinasan'] = major;
+                rawData['Instansi Kedinasan (col ' + COL.univKedinasan + ')'] = university;
+                rawData['Program Kedinasan (col ' + COL.majorKedinasan + ')'] = major;
                 reasons.push(`Jenis: Kedinasan - ${university || '(kosong)'}`);
             } else {
-                university = values[8]?.trim() || values[16]?.trim() || values[20]?.trim() || '';
-                major = values[9]?.trim() || values[17]?.trim() || values[21]?.trim() || '';
+                // Fallback: try all PT columns
+                university = values[COL.univPTN]?.trim() || values[COL.univPTS]?.trim() || values[COL.univPoltek]?.trim() || '';
+                major = values[COL.majorPTN]?.trim() || values[COL.majorPTS]?.trim() || values[COL.majorPoltek]?.trim() || '';
+                path = values[COL.pathPTN]?.trim() || values[COL.pathPTS]?.trim() || '';
                 reasons.push(`Jenis PT tidak dikenali: "${jenisPT || '(kosong)'}"`);
             }
 
@@ -237,23 +304,23 @@ export default function ImportCSVPage() {
                 warnings.push('Tidak ada Jurusan/Prodi');
             }
 
-            // Get path
-            let path = values[11]?.trim() || values[19]?.trim() || values[23]?.trim() || values[27]?.trim() || 'Mandiri';
+            // Normalize path
             rawData['Jalur Masuk Raw'] = path;
             if (path.includes('SNBP')) path = 'SNBP';
             else if (path.includes('SNBT')) path = 'SNBT';
             else if (path.toLowerCase().includes('mandiri')) path = 'Mandiri';
             else if (path.toLowerCase().includes('beasiswa')) path = 'Beasiswa';
             else if (path.toLowerCase().includes('reguler')) path = 'Reguler';
+            else if (!path) path = 'Mandiri';
             reasons.push(`Jalur: ${path}`);
 
-            // Get achievements (index 44)
-            const achievementsRaw = values[44]?.trim() || '';
-            rawData['Prestasi Raw'] = achievementsRaw;
+            // Get achievements
+            const achievementsRaw = COL.prestasi >= 0 ? (values[COL.prestasi]?.trim() || '') : '';
+            rawData['Prestasi Raw (col ' + COL.prestasi + ')'] = achievementsRaw;
             const achievements = achievementsRaw
                 .split(/[,\n]/)
                 .map(a => a.trim())
-                .filter(a => a && a !== '-');
+                .filter(a => a && a !== '-' && a.length > 2);
 
             if (achievements.length > 0) {
                 reasons.push(`Prestasi: ${achievements.length} item`);
