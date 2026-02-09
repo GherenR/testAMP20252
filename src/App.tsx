@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import AdminPage from './admin';
 import AdminLogin from './admin/login';
+import { AdminAuthProvider } from './contexts/AdminAuthContext';
 import {
   Home, BrainCircuit, Database, ShieldCheck, Info, ArrowUp, Heart
 } from 'lucide-react';
@@ -650,7 +651,11 @@ const App: React.FC = () => {
   return (
     <Routes>
       <Route path="/admin/login" element={<AdminLogin />} />
-      <Route path="/admin/*" element={<AdminPage />} />
+      <Route path="/admin/*" element={
+        <AdminAuthProvider>
+          <AdminPage />
+        </AdminAuthProvider>
+      } />
       <Route path="/*" element={<MainApp />} />
     </Routes>
   );

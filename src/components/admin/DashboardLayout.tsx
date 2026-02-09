@@ -106,8 +106,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <div className="w-8 lg:hidden" /> {/* Spacer for alignment */}
                     </header>
 
-                    {/* Page Content */}
-                    <div className="min-h-[calc(100vh-57px)]">
+                    {/* Page Content - with smooth fade in */}
+                    <div className="min-h-[calc(100vh-57px)] animate-fadeIn">
                         {children}
                     </div>
                 </main>
