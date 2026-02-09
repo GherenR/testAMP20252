@@ -199,8 +199,10 @@ export default function ImportCSVPage() {
         console.log('CSV Headers found:', headers.length, 'columns');
         console.log('Total data rows:', allRows.length - 1);
 
-        // Find important column indices by header name patterns
+        // Column indices based on actual Google Form CSV structure
+        // Headers like "Nama Universitas" and "Program Studi" repeat, so we use fixed positions
         const COL = {
+            // Basic info - use pattern matching for unique headers
             timestamp: findColumnIndex(headers, 'Timestamp'),
             email: findColumnIndex(headers, 'Email Address', 'email'),
             name: findColumnIndex(headers, 'Full Name', 'Nama Lengkap'),
@@ -209,26 +211,32 @@ export default function ImportCSVPage() {
             instagram: findColumnIndex(headers, 'Instagram', 'Social Media'),
             status: findColumnIndex(headers, 'Status sekarang'),
             jenisPT: findColumnIndex(headers, 'Jenis Perguruan Tinggi'),
-            // PTN - find by header patterns
-            univPTN: findColumnIndex(headers, 'Nama PTN', 'PTN yang', 'Perguruan Tinggi Negeri'),
-            majorPTN: findColumnIndex(headers, 'Jurusan/Program Studi di PTN', 'Prodi di PTN', 'Jurusan PTN'),
-            pathPTN: findColumnIndex(headers, 'Jalur Masuk ke PTN', 'Jalur PTN'),
-            // Kedinasan
-            univKedinasan: findColumnIndex(headers, 'Perguruan Tinggi Kedinasan', 'Instansi Kedinasan', 'Nama PTK'),
-            majorKedinasan: findColumnIndex(headers, 'Program di Kedinasan', 'Jurusan Kedinasan', 'Prodi Kedinasan'),
-            // PTS
-            univPTS: findColumnIndex(headers, 'Nama PTS', 'Perguruan Tinggi Swasta', 'PTS yang'),
-            majorPTS: findColumnIndex(headers, 'Jurusan/Program Studi di PTS', 'Prodi di PTS', 'Jurusan PTS'),
-            pathPTS: findColumnIndex(headers, 'Jalur Masuk ke PTS', 'Jalur PTS'),
-            // Politeknik
-            univPoltek: findColumnIndex(headers, 'Nama Politeknik', 'Politeknik yang'),
-            majorPoltek: findColumnIndex(headers, 'Jurusan/Program Studi di Politeknik', 'Prodi Politeknik'),
-            pathPoltek: findColumnIndex(headers, 'Jalur Masuk ke Politeknik', 'Jalur Politeknik'),
-            // PTLN
-            univPTLN: findColumnIndex(headers, 'Nama PTLN', 'Nama PT Luar Negeri', 'Perguruan Tinggi Luar Negeri'),
-            majorPTLN: findColumnIndex(headers, 'Jurusan/Program Studi di PTLN', 'Prodi PTLN', 'Jurusan PTLN'),
-            pathPTLN: findColumnIndex(headers, 'Jalur Masuk ke PTLN', 'Jalur PTLN'),
-            // AMP Consent & Angkatan - search by exact patterns
+
+            // PTN (columns 8-11) - after "Jenis Perguruan Tinggi"
+            univPTN: 8,      // "Nama Universitas" (first occurrence)
+            majorPTN: 9,     // "Program Studi" (first occurrence)
+            pathPTN: 11,     // "Jalur Masuk" (first occurrence)
+
+            // Kedinasan (columns 12-15)
+            univKedinasan: 12,   // "Nama Instansi / Sekolah Kedinasan"
+            majorKedinasan: 13,  // "Program Studi atau Spesialisasi Studi"
+
+            // PTS (columns 16-19)
+            univPTS: 16,     // "Nama Universitas" (second occurrence)
+            majorPTS: 17,    // "Program Studi" (second occurrence)
+            pathPTS: 19,     // "Jalur Masuk" (second occurrence)
+
+            // Politeknik (columns 20-23)
+            univPoltek: 20,  // "Nama Politeknik"
+            majorPoltek: 21, // "Program Studi" (third occurrence)
+            pathPoltek: 23,  // "Jalur Masuk" (third occurrence)
+
+            // PTLN (columns 24-27)
+            univPTLN: 24,    // "Nama Universitas" (fourth occurrence - luar negeri)
+            majorPTLN: 25,   // "Program Studi" (fourth occurrence)
+            pathPTLN: 27,    // "Jalur Masuk" (fourth occurrence)
+
+            // AMP Consent & Angkatan - use pattern matching
             consentAMP: findColumnIndex(headers, 'dimasukan dalam Alumni Mentorship Project', 'bersedia untuk datanya'),
             angkatan: findColumnIndex(headers, 'Angkatan Berapa'),
             prestasi: findColumnIndex(headers, 'prestasi atau pengalaman', 'Juara'),
