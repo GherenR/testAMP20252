@@ -42,6 +42,8 @@ export default function ImportCSVPage() {
     const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
     const [selectedEntry, setSelectedEntry] = useState<CSVEntry | null>(null);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [debugInfo, setDebugInfo] = useState<{ headers: string[]; colMap: Record<string, number> } | null>(null);
+    const [showDebug, setShowDebug] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Load existing mentors on mount
@@ -187,10 +189,10 @@ export default function ImportCSVPage() {
         return -1;
     };
 
-    const parseCSV = useCallback((text: string): CSVEntry[] => {
+    const parseCSV = useCallback((text: string): { entries: CSVEntry[]; debugInfo: { headers: string[]; colMap: Record<string, number> } } => {
         // Parse entire CSV properly handling multi-line quoted fields
         const allRows = parseCSVContent(text);
-        if (allRows.length < 2) return [];
+        if (allRows.length < 2) return { entries: [], debugInfo: { headers: [], colMap: {} } };
 
         // First row is headers
         const headers = allRows[0];
@@ -455,7 +457,7 @@ export default function ImportCSVPage() {
             });
         }
 
-        return entries;
+        return { entries, debugInfo: { headers, colMap: COL } };
     }, [existingMentors]);
 
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -469,8 +471,9 @@ export default function ImportCSVPage() {
         const reader = new FileReader();
         reader.onload = (e) => {
             const text = e.target?.result as string;
-            const parsed = parseCSV(text);
-            setCsvData(parsed);
+            const { entries, debugInfo } = parseCSV(text);
+            setCsvData(entries);
+            setDebugInfo(debugInfo);
             setIsProcessing(false);
         };
         reader.readAsText(file);
@@ -487,8 +490,9 @@ export default function ImportCSVPage() {
             const reader = new FileReader();
             reader.onload = (ev) => {
                 const text = ev.target?.result as string;
-                const parsed = parseCSV(text);
-                setCsvData(parsed);
+                const { entries, debugInfo } = parseCSV(text);
+                setCsvData(entries);
+                setDebugInfo(debugInfo);
                 setIsProcessing(false);
             };
             reader.readAsText(file);
@@ -631,6 +635,46 @@ export default function ImportCSVPage() {
                                 <p className="text-2xl font-bold text-red-400">{invalidEntries.length}</p>
                                 <p className="text-xs text-red-400">Tidak Valid</p>
                             </div>
+                        </div>
+                    )}
+
+                    {/* Debug Info Panel */}
+                    {debugInfo && csvData.length > 0 && (
+                        <div className="bg-slate-800 rounded-xl mb-4 overflow-hidden">
+                            <button
+                                onClick={() => setShowDebug(!showDebug)}
+                                className="w-full bg-yellow-900/30 px-4 py-3 flex items-center justify-between text-left"
+                            >
+                                <span className="font-bold text-yellow-400 flex items-center gap-2">
+                                    <Info size={18} /> Debug: Column Mapping
+                                </span>
+                                {showDebug ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                            </button>
+                            {showDebug && (
+                                <div className="p-4 space-y-4 text-sm max-h-[400px] overflow-y-auto">
+                                    <div>
+                                        <p className="font-semibold text-yellow-400 mb-2">Detected Column Indices:</p>
+                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                            {Object.entries(debugInfo.colMap).map(([key, val]) => (
+                                                <div key={key} className={`p-2 rounded ${val === -1 ? 'bg-red-900/50 text-red-300' : 'bg-slate-700'}`}>
+                                                    <span className="font-medium">{key}:</span> {val === -1 ? 'NOT FOUND' : val}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-yellow-400 mb-2">CSV Headers ({debugInfo.headers.length} columns):</p>
+                                        <div className="space-y-1 text-xs font-mono bg-slate-900 p-3 rounded max-h-[200px] overflow-y-auto">
+                                            {debugInfo.headers.map((h, i) => (
+                                                <div key={i} className="flex gap-2">
+                                                    <span className="text-slate-500 w-8">{i}:</span>
+                                                    <span className="text-green-300">{h || '(empty)'}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
