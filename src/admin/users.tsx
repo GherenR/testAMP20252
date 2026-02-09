@@ -66,15 +66,22 @@ export default function UserManagementPage() {
                     name: form.name,
                     role: form.role,
                     password: form.password,
+                }).catch((err) => {
+                    // Tangani error 404 atau error lain
+                    if (err?.response?.status === 404) {
+                        setMessage('API /api/admin/createUser tidak ditemukan. Fitur ini hanya berjalan di Next.js/Vercel, bukan di Vite.');
+                    } else {
+                        setMessage(err?.response?.data?.error || 'Gagal tambah user');
+                    }
+                    throw err;
                 });
-                if (res.data && res.data.user) {
+                if (res && res.data && res.data.user) {
                     setMessage('User berhasil ditambah');
-                } else {
-                    setMessage('Gagal tambah user');
                 }
             }
         } catch (err: any) {
-            setMessage(editingUser ? 'Gagal update user' : (err?.response?.data?.error || 'Gagal tambah user'));
+            if (!editingUser && !message) setMessage('Gagal tambah user');
+            if (editingUser) setMessage('Gagal update user');
         }
         setShowForm(false);
         fetchUsers();
