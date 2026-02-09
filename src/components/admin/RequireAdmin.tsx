@@ -14,9 +14,13 @@ export default function RequireAdmin({ children }: { children: React.ReactNode }
                 navigate('/admin/login');
                 return;
             }
-            // Ambil data user dari Supabase (misal, role di user_metadata)
-            const role = user.user_metadata?.role;
-            if (role === 'admin') {
+            // Check role from user_metadata or app_metadata
+            // For now, allow any authenticated user as admin
+            // You can restrict this later by checking specific emails or roles
+            const allowedEmails = ['gherenramandra@gmail.com', 'saputragheren@gmail.com'];
+            const isAllowed = allowedEmails.includes(user.email || '');
+
+            if (isAllowed) {
                 setIsAdmin(true);
             } else {
                 navigate('/');
