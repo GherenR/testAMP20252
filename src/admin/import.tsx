@@ -61,25 +61,119 @@ export default function ImportCSVPage() {
         setTimeout(() => setMessage(null), 5000);
     };
 
-    // Helper function to parse a CSV line with proper quote handling
-    const parseCSVLine = (line: string): string[] => {
-        const values: string[] = [];
-        let current = '';
+    // === NORMALIZATION HELPERS ===
+
+    // Capitalize each word properly: "gheren ramandra" → "Gheren Ramandra"
+    const normalizeName = (name: string): string => {
+        return name
+            .trim()
+            .toLowerCase()
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+    };
+
+    // Normalize WhatsApp: ensure format wa.me/62xxx
+    const normalizeWhatsApp = (wa: string): string => {
+        if (!wa) return '';
+        // Remove all non-numeric characters
+        let number = wa.replace(/[^0-9]/g, '');
+        if (!number) return '';
+        // Convert 08xx to 628xx
+        if (number.startsWith('0')) {
+            number = '62' + number.slice(1);
+        }
+        // Add 62 if doesn't start with it
+        if (!number.startsWith('62')) {
+            number = '62' + number;
+        }
+        return `wa.me/${number}`;
+    };
+
+    // Normalize Instagram: remove @ and URL prefix, keep username only
+    const normalizeInstagram = (ig: string): string => {
+        if (!ig) return '';
+        return ig
+            .trim()
+            .replace(/^@/, '')
+            .replace(/^https?:\/\/(www\.)?instagram\.com\//, '')
+            .replace(/\/$/, '')
+            .toLowerCase();
+    };
+
+    // Normalize email: lowercase
+    const normalizeEmail = (email: string): string => {
+        return email.trim().toLowerCase();
+    };
+
+    // Normalize university name: Title Case with special handling
+    const normalizeUniversity = (uni: string): string => {
+        if (!uni) return '';
+        // Don't change if already has proper casing (contains uppercase in middle)
+        if (/[a-z][A-Z]/.test(uni) || uni.includes('(')) {
+            return uni.trim();
+        }
+        // Title case
+        return uni.trim()
+            .toLowerCase()
+            .split(' ')
+            .map(word => {
+                // Keep acronyms uppercase
+                if (word.length <= 3 && word.toUpperCase() === word) {
+                    return word.toUpperCase();
+                }
+                return word.charAt(0).toUpperCase() + word.slice(1);
+            })
+            .join(' ');
+    };
+
+    // Helper function to parse entire CSV content handling multi-line quoted fields
+    const parseCSVContent = (text: string): string[][] => {
+        const rows: string[][] = [];
+        let currentRow: string[] = [];
+        let currentField = '';
         let inQuotes = false;
 
-        for (let j = 0; j < line.length; j++) {
-            const char = line[j];
+        for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+            const nextChar = text[i + 1];
+
             if (char === '"') {
-                inQuotes = !inQuotes;
+                // Handle escaped quotes ""
+                if (inQuotes && nextChar === '"') {
+                    currentField += '"';
+                    i++; // Skip next quote
+                } else {
+                    inQuotes = !inQuotes;
+                }
             } else if (char === ',' && !inQuotes) {
-                values.push(current.trim());
-                current = '';
+                currentRow.push(currentField.trim());
+                currentField = '';
+            } else if ((char === '\n' || char === '\r') && !inQuotes) {
+                // End of row (skip \r in \r\n)
+                if (char === '\r' && nextChar === '\n') {
+                    i++; // Skip \n
+                }
+                currentRow.push(currentField.trim());
+                if (currentRow.length > 1 || currentRow[0] !== '') {
+                    rows.push(currentRow);
+                }
+                currentRow = [];
+                currentField = '';
             } else {
-                current += char;
+                currentField += char;
             }
         }
-        values.push(current.trim());
-        return values;
+
+        // Don't forget the last field/row
+        if (currentField || currentRow.length > 0) {
+            currentRow.push(currentField.trim());
+            if (currentRow.length > 1 || currentRow[0] !== '') {
+                rows.push(currentRow);
+            }
+        }
+
+        return rows;
     };
 
     // Helper function to find column index by partial header match
@@ -94,13 +188,14 @@ export default function ImportCSVPage() {
     };
 
     const parseCSV = useCallback((text: string): CSVEntry[] => {
-        const lines = text.split('\n');
-        if (lines.length < 2) return [];
+        // Parse entire CSV properly handling multi-line quoted fields
+        const allRows = parseCSVContent(text);
+        if (allRows.length < 2) return [];
 
-        // Parse header row to find column indices dynamically
-        const headers = parseCSVLine(lines[0]);
+        // First row is headers
+        const headers = allRows[0];
         console.log('CSV Headers found:', headers.length, 'columns');
-        console.log('Headers:', headers.map((h, i) => `${i}: ${h.substring(0, 50)}`));
+        console.log('Total data rows:', allRows.length - 1);
 
         // Find important column indices by header name patterns
         const COL = {
@@ -143,22 +238,25 @@ export default function ImportCSVPage() {
         const existingNames = existingMentors.map(m => m.name.toLowerCase().trim());
         const entries: CSVEntry[] = [];
 
-        for (let i = 1; i < lines.length; i++) {
-            const line = lines[i];
-            if (!line.trim()) continue;
+        // Process data rows (skip header at index 0)
+        for (let i = 1; i < allRows.length; i++) {
+            const values = allRows[i];
 
-            const values = parseCSVLine(line);
+            // Skip rows with insufficient columns (likely empty or malformed)
+            if (values.length < 10) continue;
 
-            // Get values using dynamic column indices
-            const name = values[COL.name]?.trim() || '';
-            const email = values[COL.email]?.trim() || '';
+            // Get values using dynamic column indices and NORMALIZE them
+            const nameRaw = values[COL.name]?.trim() || '';
+            const name = normalizeName(nameRaw);
+            const emailRaw = values[COL.email]?.trim() || '';
+            const email = normalizeEmail(emailRaw);
             const status = values[COL.status]?.trim() || '';
             const consent = COL.consentAMP >= 0 ? (values[COL.consentAMP]?.trim() || '') : '';
             const angkatanStr = COL.angkatan >= 0 ? (values[COL.angkatan]?.trim() || '2025') : '2025';
             const domisili = values[COL.domisili]?.trim() || '';
 
             // Skip if empty name
-            if (!name) continue;
+            if (!nameRaw) continue;
 
             // Build rawData for debugging - show all found values
             const rawData: Record<string, string> = {
@@ -212,16 +310,10 @@ export default function ImportCSVPage() {
             reasons.push('✓ Status: Mahasiswa');
             reasons.push('✓ Consent AMP: Ya');
 
-            // Get WhatsApp and Instagram
-            let whatsapp = values[COL.whatsapp]?.trim() || '';
-            rawData['WhatsApp Raw'] = whatsapp;
-            if (whatsapp && !whatsapp.startsWith('wa.me/')) {
-                whatsapp = whatsapp.replace(/[^0-9]/g, '');
-                if (whatsapp && !whatsapp.startsWith('62')) {
-                    whatsapp = '62' + whatsapp.replace(/^0/, '');
-                }
-                whatsapp = `wa.me/${whatsapp}`;
-            }
+            // Get WhatsApp and Instagram - USE NORMALIZATION
+            const whatsappRaw = values[COL.whatsapp]?.trim() || '';
+            rawData['WhatsApp Raw'] = whatsappRaw;
+            let whatsapp = normalizeWhatsApp(whatsappRaw);
 
             // Check for missing contact info
             if (!whatsapp || whatsapp === 'wa.me/') {
@@ -229,9 +321,9 @@ export default function ImportCSVPage() {
                 whatsapp = '';
             }
 
-            let instagram = values[COL.instagram]?.trim() || '';
-            rawData['Instagram Raw'] = instagram;
-            instagram = instagram.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
+            const instagramRaw = values[COL.instagram]?.trim() || '';
+            rawData['Instagram Raw'] = instagramRaw;
+            const instagram = normalizeInstagram(instagramRaw);
             if (!instagram) {
                 warnings.push('Tidak ada Instagram');
             }
