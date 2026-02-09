@@ -183,6 +183,7 @@ const MainApp: React.FC = () => {
   // ===== AUTO-SCROLL TO RESULTS ON MOBILE =====
   /**
    * Saat matchResults update di Smart Match (mobile), auto-scroll ke hasil
+   * NOTE: Hanya untuk Smart Match, TIDAK untuk Direktori (user request: biar scroll manual)
    */
   useEffect(() => {
     if (currentSlide === 1 && matchResults && window.innerWidth < 1024) {
@@ -193,17 +194,8 @@ const MainApp: React.FC = () => {
     }
   }, [matchResults, currentSlide]);
 
-  /**
-   * Saat filteredMentors berubah di Direktori (mobile), auto-scroll ke grid
-   */
-  useEffect(() => {
-    if (currentSlide === 2 && searchTerm && window.innerWidth < 1024) {
-      setTimeout(() => {
-        const mentorGrid = document.getElementById('mentor-grid');
-        mentorGrid?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 250); // Optimal timing"}}]
-    }
-  }, [filteredMentors, currentSlide, searchTerm]);
+  // NOTE: Auto-scroll untuk Direktori dihapus sesuai request user
+  // User lebih suka scroll manual setelah search
 
   // ===== SCROLL TO TOP BUTTON VISIBILITY (Mobile Only) =====
   /**

@@ -250,9 +250,9 @@ export default function AlumniEditorPage() {
                     ) : (
                         <div className="space-y-3">
                             {filteredAlumni.map((a) => (
-                                <div key={a.id} className="bg-slate-800 rounded-xl p-4 hover:bg-slate-700/50 transition">
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="flex-1 min-w-0">
+                                <div key={a.id} className="bg-slate-800 rounded-xl p-4 hover:bg-slate-700/50 transition overflow-hidden">
+                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                        <div className="flex-1 min-w-0 overflow-hidden">
                                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                                                 <span className="bg-indigo-600 text-xs px-2 py-0.5 rounded font-mono">
                                                     #{a.id}
@@ -270,28 +270,28 @@ export default function AlumniEditorPage() {
                                             <p className="text-sm text-slate-300 truncate">
                                                 {a.university} - {a.major}
                                             </p>
-                                            <p className="text-xs text-slate-400 mt-1">
+                                            <p className="text-xs text-slate-400 mt-1 truncate">
                                                 Jalur: {a.path}
                                             </p>
 
                                             {/* Contact Info */}
-                                            <div className="flex flex-wrap gap-3 mt-2 text-xs">
+                                            <div className="flex flex-wrap gap-2 sm:gap-3 mt-2 text-xs overflow-hidden">
                                                 {a.whatsapp && (
-                                                    <span className="flex items-center gap-1 text-green-400">
-                                                        <Phone size={12} /> {a.whatsapp.replace('wa.me/', '')}
+                                                    <span className="flex items-center gap-1 text-green-400 truncate max-w-[150px] sm:max-w-none">
+                                                        <Phone size={12} className="flex-shrink-0" /> <span className="truncate">{a.whatsapp.replace('wa.me/', '')}</span>
                                                     </span>
                                                 )}
                                                 {a.instagram && (
-                                                    <span className="flex items-center gap-1 text-pink-400">
-                                                        <Instagram size={12} /> @{a.instagram}
-                                                    </span>
-                                                )}
-                                                {a.email && (
-                                                    <span className="flex items-center gap-1 text-blue-400 truncate max-w-[200px]">
-                                                        <Mail size={12} /> {a.email}
+                                                    <span className="flex items-center gap-1 text-pink-400 truncate max-w-[120px] sm:max-w-none">
+                                                        <Instagram size={12} className="flex-shrink-0" /> @{a.instagram}
                                                     </span>
                                                 )}
                                             </div>
+                                            {a.email && (
+                                                <span className="flex items-center gap-1 text-blue-400 truncate text-xs mt-1">
+                                                    <Mail size={12} className="flex-shrink-0" /> {a.email}
+                                                </span>
+                                            )}
 
                                             {/* Achievements */}
                                             {a.achievements && a.achievements.length > 0 && (
@@ -311,21 +311,23 @@ export default function AlumniEditorPage() {
                                             )}
                                         </div>
 
-                                        {/* Actions */}
-                                        <div className="flex flex-col gap-2">
+                                        {/* Actions - horizontal on mobile, vertical on desktop */}
+                                        <div className="flex sm:flex-col gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-700">
                                             <button
                                                 onClick={() => handleEdit(a)}
-                                                className="p-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg"
+                                                className="flex-1 sm:flex-none p-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center justify-center gap-2 text-sm"
                                                 title="Edit"
                                             >
                                                 <Edit2 size={18} />
+                                                <span className="sm:hidden">Edit</span>
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(a.id)}
-                                                className="p-2 bg-red-600 hover:bg-red-700 rounded-lg"
+                                                className="flex-1 sm:flex-none p-2 bg-red-600 hover:bg-red-700 rounded-lg flex items-center justify-center gap-2 text-sm"
                                                 title="Hapus"
                                             >
                                                 <Trash2 size={18} />
+                                                <span className="sm:hidden">Hapus</span>
                                             </button>
                                         </div>
                                     </div>

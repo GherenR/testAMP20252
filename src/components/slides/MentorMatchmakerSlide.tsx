@@ -143,7 +143,7 @@ export const MentorMatchmakerSlide: React.FC<MentorMatchmakerSlideProps> = ({
               <input
                 id="university-input"
                 type="text"
-                placeholder="Ketik UI, ITB, UGM..."
+                placeholder="Ketik bebas: UI, ITB, Harvard..."
                 autoComplete="off"
                 className="w-full pl-12 sm:pl-14 pr-4 sm:pr-5 py-4 sm:py-5 bg-slate-50 border-2 border-transparent rounded-2xl font-bold text-slate-800 placeholder:text-slate-400 outline-none focus:border-indigo-600 transition-all text-sm min-h-[48px] touch-none"
                 value={matchUniversity}
@@ -168,6 +168,9 @@ export const MentorMatchmakerSlide: React.FC<MentorMatchmakerSlideProps> = ({
                 </div>
               )}
             </div>
+            <p className="text-[10px] text-slate-400 -mt-1">
+              💡 Ketik nama universitas apapun, tidak harus dari saran
+            </p>
           </div>
 
           {/* Major Input */}
