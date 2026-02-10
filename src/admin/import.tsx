@@ -9,6 +9,7 @@ import {
 } from '../mentorService';
 import { Upload, FileSpreadsheet, Check, X, AlertCircle, Users, UserPlus, RefreshCw, ChevronDown, ChevronUp, Eye, Info } from 'lucide-react';
 import type { InstitutionCategory } from '../types';
+import { logDataImport } from '../utils/activityLogger';
 
 interface CSVEntry {
     name: string;
@@ -734,6 +735,7 @@ export default function ImportCSVPage() {
             setImportedCount(data.length);
             setImportComplete(true);
             showMessage('success', `${data.length} alumni berhasil ditambahkan ke database!`);
+            logDataImport(data.length, fileName);
 
             // Refresh existing mentors
             await loadExistingMentors();

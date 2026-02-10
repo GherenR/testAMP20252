@@ -4,6 +4,7 @@ import axios from 'axios';
 import DashboardLayout from '../components/admin/DashboardLayout';
 import RequireAdmin from '../components/admin/RequireAdmin';
 import { Plus, Edit, Trash2, UserCheck, UserX } from 'lucide-react';
+import { logUserCreate, logUserUpdate, logUserDelete } from '../utils/activityLogger';
 
 interface UserRow {
     id: string;
@@ -59,6 +60,7 @@ export default function UserManagementPage() {
                     role: form.role,
                 });
                 setMessage('User berhasil diupdate');
+                logUserUpdate(form.email, `name=${form.name}, role=${form.role}`);
             } else {
                 // Panggil API admin untuk create user via Supabase Auth Admin API
                 const res = await axios.post('/api/admin/createUser', {
@@ -69,6 +71,7 @@ export default function UserManagementPage() {
                 });
                 if (res && res.data && res.data.success) {
                     setMessage('✅ User berhasil ditambah');
+                    logUserCreate(form.email, form.role);
                 }
             }
         } catch (err: any) {
@@ -98,9 +101,16 @@ export default function UserManagementPage() {
 
     async function handleDelete(id: string) {
         if (!window.confirm('Hapus user ini?')) return;
+
+        // Get user email before deletion for logging
+        const userToDelete = users.find(u => u.id === id);
+
         try {
             await UserService.deleteUser(id);
             setMessage('User berhasil dihapus');
+            if (userToDelete) {
+                logUserDelete(userToDelete.email);
+            }
         } catch {
             setMessage('Gagal hapus user');
         }

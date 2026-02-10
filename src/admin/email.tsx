@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../components/admin/DashboardLayout';
 import RequireAdmin from '../components/admin/RequireAdmin';
 import { getAllMentors, MentorDB } from '../mentorService';
-import { Mail, Send, FileText, Users, Filter, Check, AlertCircle, Copy, Loader2 } from 'lucide-react';
+import { Mail, Send, FileText, Users, Filter, Check, AlertCircle, Copy, Loader2, Edit, RefreshCw, ExternalLink } from 'lucide-react';
 
 interface EmailTemplate {
     id: string;
@@ -68,30 +68,55 @@ Tim AMP IKAHATA`
     {
         id: 'custom',
         name: 'Custom Message',
-        subject: '',
-        body: ''
+        subject: 'Pesan dari AMP IKAHATA',
+        body: `Halo {name}!
+
+[Tulis pesan kamu di sini]
+
+Salam,
+Tim AMP IKAHATA`
     }
 ];
 
 export default function EmailPage() {
     const [mentors, setMentors] = useState<MentorDB[]>([]);
     const [loading, setLoading] = useState(true);
-    const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate>(DEFAULT_TEMPLATES[0]);
-    const [customSubject, setCustomSubject] = useState('');
-    const [customBody, setCustomBody] = useState('');
-    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [sending, setSending] = useState(false);
+    const [selectedTemplateId, setSelectedTemplateId] = useState<string>('welcome');
+
+    // Editable subject and body (applies to any template)
+    const [editSubject, setEditSubject] = useState(DEFAULT_TEMPLATES[0].subject);
+    const [editBody, setEditBody] = useState(DEFAULT_TEMPLATES[0].body);
+
+    const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
     // Filters
     const [filterCategory, setFilterCategory] = useState<string>('All');
     const [filterAngkatan, setFilterAngkatan] = useState<string>('All');
     const [filterHasEmail, setFilterHasEmail] = useState(true);
 
+    // Selected mentors for sending
+    const [selectedMentorIds, setSelectedMentorIds] = useState<Set<number>>(new Set());
+
     // Preview
     const [previewMentor, setPreviewMentor] = useState<MentorDB | null>(null);
+
+    // Send progress
+    const [sendProgress, setSendProgress] = useState<{ sent: number; total: number; errors: string[] } | null>(null);
 
     useEffect(() => {
         loadMentors();
     }, []);
+
+    // When template changes, update editable fields
+    const handleTemplateChange = (templateId: string) => {
+        const template = DEFAULT_TEMPLATES.find(t => t.id === templateId);
+        if (template) {
+            setSelectedTemplateId(templateId);
+            setEditSubject(template.subject);
+            setEditBody(template.body);
+        }
+    };
 
     const loadMentors = async () => {
         const { data } = await getAllMentors();
@@ -122,16 +147,6 @@ export default function EmailPage() {
             .replace(/{whatsapp}/g, mentor.whatsapp || '');
     };
 
-    const getEmailSubject = (): string => {
-        if (selectedTemplate.id === 'custom') return customSubject;
-        return selectedTemplate.subject;
-    };
-
-    const getEmailBody = (): string => {
-        if (selectedTemplate.id === 'custom') return customBody;
-        return selectedTemplate.body;
-    };
-
     const copyEmailList = () => {
         const emails = filteredMentors
             .filter(m => m.email)
@@ -142,24 +157,146 @@ export default function EmailPage() {
         setTimeout(() => setMessage(null), 3000);
     };
 
-    const openMailClient = (mentor: MentorDB) => {
-        const subject = encodeURIComponent(replacePlaceholders(getEmailSubject(), mentor));
-        const body = encodeURIComponent(replacePlaceholders(getEmailBody(), mentor));
-        window.open(`mailto:${mentor.email}?subject=${subject}&body=${body}`, '_blank');
+    const copyEmailContent = (mentor: MentorDB) => {
+        const content = `To: ${mentor.email}\nSubject: ${replacePlaceholders(editSubject, mentor)}\n\n${replacePlaceholders(editBody, mentor)}`;
+        navigator.clipboard.writeText(content);
+        setMessage({ type: 'success', text: `✅ Email content copied for ${mentor.name}` });
+        setTimeout(() => setMessage(null), 3000);
     };
 
-    const openBulkMail = () => {
-        const emails = filteredMentors
-            .filter(m => m.email)
-            .map(m => m.email)
-            .join(',');
-        const subject = encodeURIComponent(getEmailSubject().replace(/{name}/g, 'Rekan Mentor'));
-        const body = encodeURIComponent(getEmailBody()
-            .replace(/{name}/g, 'Rekan Mentor')
-            .replace(/{university}/g, '[Universitas]')
-            .replace(/{major}/g, '[Jurusan]')
-            .replace(/{angkatan}/g, '[Angkatan]'));
-        window.open(`mailto:${emails}?subject=${subject}&body=${body}`, '_blank');
+    // Open Gmail compose (more reliable than mailto:)
+    const openGmailCompose = (mentor: MentorDB) => {
+        const subject = encodeURIComponent(replacePlaceholders(editSubject, mentor));
+        const body = encodeURIComponent(replacePlaceholders(editBody, mentor));
+        const to = encodeURIComponent(mentor.email || '');
+        window.open(`https://mail.google.com/mail/?view=cm&to=${to}&su=${subject}&body=${body}`, '_blank');
+    };
+
+    // Send email via API
+    const sendEmailDirect = async (mentor: MentorDB): Promise<boolean> => {
+        try {
+            const response = await fetch('/api/send-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    to: mentor.email,
+                    subject: replacePlaceholders(editSubject, mentor),
+                    body: replacePlaceholders(editBody, mentor)
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || data.error || 'Failed to send');
+            }
+
+            return true;
+        } catch (error: any) {
+            console.error('Send error:', error);
+            throw error;
+        }
+    };
+
+    // Send to single mentor
+    const sendToMentor = async (mentor: MentorDB) => {
+        if (!mentor.email) {
+            setMessage({ type: 'error', text: `❌ ${mentor.name} tidak punya email` });
+            return;
+        }
+
+        setSending(true);
+        try {
+            await sendEmailDirect(mentor);
+            setMessage({ type: 'success', text: `✅ Email berhasil dikirim ke ${mentor.name}` });
+        } catch (error: any) {
+            // If API not configured, offer Gmail as alternative
+            if (error.message?.includes('not configured')) {
+                setMessage({
+                    type: 'info',
+                    text: `⚠️ Email API belum diset. Gunakan tombol "Buka Gmail" untuk mengirim manual.`
+                });
+            } else {
+                setMessage({ type: 'error', text: `❌ Gagal kirim ke ${mentor.name}: ${error.message}` });
+            }
+        }
+        setSending(false);
+        setTimeout(() => setMessage(null), 5000);
+    };
+
+    // Bulk send to selected mentors
+    const sendBulkEmail = async () => {
+        const selectedMentors = filteredMentors.filter(m => selectedMentorIds.has(m.id) && m.email);
+
+        if (selectedMentors.length === 0) {
+            setMessage({ type: 'error', text: '❌ Pilih minimal 1 mentor dengan email' });
+            return;
+        }
+
+        if (!window.confirm(`Kirim email ke ${selectedMentors.length} mentor?`)) return;
+
+        setSending(true);
+        setSendProgress({ sent: 0, total: selectedMentors.length, errors: [] });
+
+        const errors: string[] = [];
+        let sent = 0;
+
+        for (const mentor of selectedMentors) {
+            try {
+                await sendEmailDirect(mentor);
+                sent++;
+            } catch (error: any) {
+                errors.push(`${mentor.name}: ${error.message}`);
+
+                // If API not configured, stop and show message
+                if (error.message?.includes('not configured')) {
+                    setMessage({
+                        type: 'info',
+                        text: `⚠️ Email API belum dikonfigurasi. Tambahkan RESEND_API_KEY di Vercel Environment Variables. Daftar gratis di resend.com`
+                    });
+                    setSending(false);
+                    setSendProgress(null);
+                    return;
+                }
+            }
+            setSendProgress({ sent, total: selectedMentors.length, errors });
+
+            // Small delay to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+
+        setSending(false);
+
+        if (errors.length === 0) {
+            setMessage({ type: 'success', text: `✅ Berhasil kirim ${sent} email!` });
+        } else {
+            setMessage({ type: 'error', text: `⚠️ Terkirim: ${sent}, Gagal: ${errors.length}` });
+        }
+
+        setSelectedMentorIds(new Set());
+        setTimeout(() => {
+            setMessage(null);
+            setSendProgress(null);
+        }, 5000);
+    };
+
+    const toggleSelectMentor = (id: number) => {
+        const newSet = new Set(selectedMentorIds);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
+        setSelectedMentorIds(newSet);
+    };
+
+    const selectAllFiltered = () => {
+        const emailMentors = filteredMentors.filter(m => m.email);
+        if (selectedMentorIds.size === emailMentors.length) {
+            setSelectedMentorIds(new Set());
+        } else {
+            setSelectedMentorIds(new Set(emailMentors.map(m => m.id)));
+        }
     };
 
     if (loading) {
@@ -183,11 +320,30 @@ export default function EmailPage() {
                     </h1>
 
                     {message && (
-                        <div className={`mb-4 p-4 rounded-xl flex items-center gap-3 ${message.type === 'success'
-                                ? 'bg-green-900/50 border border-green-500'
-                                : 'bg-red-900/50 border border-red-500'
+                        <div className={`mb-4 p-4 rounded-xl flex items-center gap-3 ${message.type === 'success' ? 'bg-green-900/50 border border-green-500' :
+                                message.type === 'error' ? 'bg-red-900/50 border border-red-500' :
+                                    'bg-blue-900/50 border border-blue-500'
                             }`}>
-                            {message.text}
+                            {message.type === 'success' && <Check size={20} />}
+                            {message.type === 'error' && <AlertCircle size={20} />}
+                            {message.type === 'info' && <AlertCircle size={20} />}
+                            <span className="flex-1">{message.text}</span>
+                        </div>
+                    )}
+
+                    {/* Send Progress */}
+                    {sendProgress && (
+                        <div className="mb-4 p-4 bg-indigo-900/50 border border-indigo-500 rounded-xl">
+                            <div className="flex items-center gap-3">
+                                <Loader2 className="animate-spin" size={20} />
+                                <span>Mengirim: {sendProgress.sent}/{sendProgress.total}</span>
+                            </div>
+                            <div className="mt-2 bg-slate-700 rounded-full h-2">
+                                <div
+                                    className="bg-indigo-500 h-2 rounded-full transition-all"
+                                    style={{ width: `${(sendProgress.sent / sendProgress.total) * 100}%` }}
+                                />
+                            </div>
                         </div>
                     )}
 
@@ -196,13 +352,13 @@ export default function EmailPage() {
                         <div className="space-y-4">
                             {/* Template Selection */}
                             <div className="bg-slate-800 rounded-xl p-4">
-                                <label className="block text-sm text-slate-400 mb-2">Template</label>
+                                <label className="block text-sm text-slate-400 mb-2">Template (pilih untuk load)</label>
                                 <div className="grid grid-cols-2 gap-2">
                                     {DEFAULT_TEMPLATES.map(t => (
                                         <button
                                             key={t.id}
-                                            onClick={() => setSelectedTemplate(t)}
-                                            className={`p-3 rounded-lg text-left transition ${selectedTemplate.id === t.id
+                                            onClick={() => handleTemplateChange(t.id)}
+                                            className={`p-3 rounded-lg text-left transition ${selectedTemplateId === t.id
                                                     ? 'bg-indigo-600 text-white'
                                                     : 'bg-slate-700 hover:bg-slate-600'
                                                 }`}
@@ -214,42 +370,44 @@ export default function EmailPage() {
                                 </div>
                             </div>
 
-                            {/* Subject */}
+                            {/* Editable Subject */}
                             <div className="bg-slate-800 rounded-xl p-4">
-                                <label className="block text-sm text-slate-400 mb-2">Subject</label>
-                                {selectedTemplate.id === 'custom' ? (
-                                    <input
-                                        type="text"
-                                        value={customSubject}
-                                        onChange={e => setCustomSubject(e.target.value)}
-                                        placeholder="Masukkan subject email..."
-                                        className="w-full px-3 py-2 bg-slate-700 rounded border border-slate-600"
-                                    />
-                                ) : (
-                                    <p className="px-3 py-2 bg-slate-700/50 rounded">{selectedTemplate.subject}</p>
-                                )}
+                                <label className="block text-sm text-slate-400 mb-2 flex items-center gap-2">
+                                    <Edit size={14} /> Subject (bisa diedit)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editSubject}
+                                    onChange={e => setEditSubject(e.target.value)}
+                                    placeholder="Subject email..."
+                                    className="w-full px-3 py-2 bg-slate-700 rounded border border-slate-600 focus:border-indigo-500 outline-none"
+                                />
                             </div>
 
-                            {/* Body */}
+                            {/* Editable Body */}
                             <div className="bg-slate-800 rounded-xl p-4">
-                                <label className="block text-sm text-slate-400 mb-2">Body</label>
-                                {selectedTemplate.id === 'custom' ? (
-                                    <textarea
-                                        value={customBody}
-                                        onChange={e => setCustomBody(e.target.value)}
-                                        placeholder="Masukkan isi email... Gunakan {name}, {university}, {major}, {angkatan} untuk placeholder"
-                                        rows={10}
-                                        className="w-full px-3 py-2 bg-slate-700 rounded border border-slate-600 font-mono text-sm"
-                                    />
-                                ) : (
-                                    <pre className="px-3 py-2 bg-slate-700/50 rounded whitespace-pre-wrap text-sm font-mono">
-                                        {selectedTemplate.body}
-                                    </pre>
-                                )}
+                                <label className="block text-sm text-slate-400 mb-2 flex items-center gap-2">
+                                    <Edit size={14} /> Body (bisa diedit)
+                                </label>
+                                <textarea
+                                    value={editBody}
+                                    onChange={e => setEditBody(e.target.value)}
+                                    placeholder="Isi email... Gunakan {name}, {university}, {major}, {angkatan} untuk placeholder"
+                                    rows={12}
+                                    className="w-full px-3 py-2 bg-slate-700 rounded border border-slate-600 focus:border-indigo-500 outline-none font-mono text-sm"
+                                />
                                 <p className="text-xs text-slate-500 mt-2">
                                     Placeholders: {'{name}'}, {'{university}'}, {'{major}'}, {'{angkatan}'}, {'{email}'}, {'{whatsapp}'}
                                 </p>
                             </div>
+
+                            {/* Reset Template Button */}
+                            <button
+                                onClick={() => handleTemplateChange(selectedTemplateId)}
+                                className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm"
+                            >
+                                <RefreshCw size={16} /> Reset ke Template Asli
+                            </button>
                         </div>
 
                         {/* Right: Recipients & Preview */}
@@ -290,40 +448,82 @@ export default function EmailPage() {
                                     />
                                     <span className="text-sm text-slate-400">Hanya yang punya email</span>
                                 </label>
-                                <div className="mt-3 p-3 bg-slate-700/50 rounded-lg">
-                                    <div className="flex items-center gap-2">
-                                        <Users size={18} className="text-blue-400" />
-                                        <span className="font-semibold">{filteredMentors.filter(m => m.email).length}</span>
-                                        <span className="text-slate-400">penerima dengan email</span>
-                                    </div>
+                            </div>
+
+                            {/* Recipients List with Checkboxes */}
+                            <div className="bg-slate-800 rounded-xl p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                                        <Users size={20} /> Penerima ({filteredMentors.filter(m => m.email).length})
+                                    </h2>
+                                    <button
+                                        onClick={selectAllFiltered}
+                                        className="text-sm text-indigo-400 hover:text-indigo-300"
+                                    >
+                                        {selectedMentorIds.size === filteredMentors.filter(m => m.email).length ? 'Batal Pilih Semua' : 'Pilih Semua'}
+                                    </button>
                                 </div>
+
+                                <div className="max-h-48 overflow-y-auto space-y-1">
+                                    {filteredMentors.filter(m => m.email).slice(0, 50).map(m => (
+                                        <label
+                                            key={m.id}
+                                            className={`flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-slate-700/50 ${selectedMentorIds.has(m.id) ? 'bg-indigo-900/30' : ''
+                                                }`}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedMentorIds.has(m.id)}
+                                                onChange={() => toggleSelectMentor(m.id)}
+                                                className="w-4 h-4"
+                                            />
+                                            <span className="text-sm truncate flex-1">{m.name}</span>
+                                            <span className="text-xs text-slate-500 truncate max-w-[120px]">{m.email}</span>
+                                        </label>
+                                    ))}
+                                    {filteredMentors.filter(m => m.email).length > 50 && (
+                                        <p className="text-xs text-slate-500 p-2">+{filteredMentors.filter(m => m.email).length - 50} lainnya...</p>
+                                    )}
+                                </div>
+
+                                {selectedMentorIds.size > 0 && (
+                                    <div className="mt-3 p-2 bg-indigo-900/30 rounded-lg text-sm">
+                                        <strong>{selectedMentorIds.size}</strong> mentor dipilih
+                                    </div>
+                                )}
                             </div>
 
                             {/* Actions */}
                             <div className="bg-slate-800 rounded-xl p-4">
-                                <h2 className="text-lg font-semibold mb-3">Aksi</h2>
+                                <h2 className="text-lg font-semibold mb-3">Kirim Email</h2>
                                 <div className="space-y-2">
                                     <button
-                                        onClick={copyEmailList}
-                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg transition"
+                                        onClick={sendBulkEmail}
+                                        disabled={sending || selectedMentorIds.size === 0}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition font-semibold"
                                     >
-                                        <Copy size={18} />
-                                        Copy Semua Email
+                                        {sending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+                                        Kirim ke {selectedMentorIds.size} Mentor (Direct)
                                     </button>
-                                    <button
-                                        onClick={openBulkMail}
-                                        disabled={filteredMentors.filter(m => m.email).length === 0}
-                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg transition"
-                                    >
-                                        <Send size={18} />
-                                        Buka Mail Client (Bulk)
-                                    </button>
+                                    <p className="text-xs text-slate-500 text-center">
+                                        Membutuhkan RESEND_API_KEY di Vercel. Daftar gratis di resend.com
+                                    </p>
+                                    <div className="border-t border-slate-700 my-3 pt-3">
+                                        <p className="text-sm text-slate-400 mb-2">Alternatif (manual):</p>
+                                        <button
+                                            onClick={copyEmailList}
+                                            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition text-sm"
+                                        >
+                                            <Copy size={16} />
+                                            Copy Semua Alamat Email
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
                             {/* Preview */}
                             <div className="bg-slate-800 rounded-xl p-4">
-                                <h2 className="text-lg font-semibold mb-3">Preview</h2>
+                                <h2 className="text-lg font-semibold mb-3">Preview & Kirim Satuan</h2>
                                 <select
                                     onChange={e => {
                                         const mentor = filteredMentors.find(m => m.id === Number(e.target.value));
@@ -332,7 +532,7 @@ export default function EmailPage() {
                                     className="w-full px-3 py-2 bg-slate-700 rounded border border-slate-600 mb-3"
                                 >
                                     <option value="">Pilih mentor untuk preview...</option>
-                                    {filteredMentors.slice(0, 20).map(m => (
+                                    {filteredMentors.slice(0, 30).map(m => (
                                         <option key={m.id} value={m.id}>{m.name} - {m.email || '(no email)'}</option>
                                     ))}
                                 </select>
@@ -346,23 +546,40 @@ export default function EmailPage() {
                                         <div>
                                             <span className="text-xs text-slate-500">Subject:</span>
                                             <p className="text-sm font-semibold">
-                                                {replacePlaceholders(getEmailSubject(), previewMentor)}
+                                                {replacePlaceholders(editSubject, previewMentor)}
                                             </p>
                                         </div>
                                         <div>
                                             <span className="text-xs text-slate-500">Body:</span>
-                                            <pre className="text-sm whitespace-pre-wrap mt-1 text-slate-300">
-                                                {replacePlaceholders(getEmailBody(), previewMentor)}
+                                            <pre className="text-sm whitespace-pre-wrap mt-1 text-slate-300 max-h-32 overflow-y-auto">
+                                                {replacePlaceholders(editBody, previewMentor)}
                                             </pre>
                                         </div>
                                         {previewMentor.email && (
-                                            <button
-                                                onClick={() => openMailClient(previewMentor)}
-                                                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition text-sm"
-                                            >
-                                                <Send size={16} />
-                                                Kirim ke {previewMentor.name}
-                                            </button>
+                                            <div className="flex gap-2 pt-2">
+                                                <button
+                                                    onClick={() => sendToMentor(previewMentor)}
+                                                    disabled={sending}
+                                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 rounded-lg transition text-sm"
+                                                >
+                                                    <Send size={14} />
+                                                    Kirim Direct
+                                                </button>
+                                                <button
+                                                    onClick={() => openGmailCompose(previewMentor)}
+                                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition text-sm"
+                                                >
+                                                    <ExternalLink size={14} />
+                                                    Buka Gmail
+                                                </button>
+                                                <button
+                                                    onClick={() => copyEmailContent(previewMentor)}
+                                                    className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition"
+                                                    title="Copy content"
+                                                >
+                                                    <Copy size={14} />
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
                                 )}

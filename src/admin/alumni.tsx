@@ -11,6 +11,7 @@ import {
 } from '../mentorService';
 import { Database, Search, Edit2, Save, X, Plus, Trash2, Phone, Mail, Instagram, Award, RefreshCw, AlertCircle, Check } from 'lucide-react';
 import type { InstitutionCategory } from '../types';
+import { logMentorCreate, logMentorUpdate, logMentorDelete } from '../utils/activityLogger';
 
 export default function AlumniEditorPage() {
     const [alumni, setAlumni] = useState<MentorDB[]>([]);
@@ -95,6 +96,7 @@ export default function AlumniEditorPage() {
             setShowEditModal(false);
             setEditingAlumni(null);
             showMessage('success', 'Data alumni berhasil diperbarui!');
+            logMentorUpdate(data.name, String(data.id));
         }
         setSaving(false);
     };
@@ -126,12 +128,16 @@ export default function AlumniEditorPage() {
                 achievements: [],
             });
             showMessage('success', 'Alumni baru berhasil ditambahkan!');
+            logMentorCreate(data.name, String(data.id));
         }
         setSaving(false);
     };
 
     const handleDelete = async (id: number) => {
         if (!confirm('Yakin ingin menghapus alumni ini? Tindakan ini tidak bisa dibatalkan.')) return;
+
+        // Get mentor name before deletion for logging
+        const mentorToDelete = alumni.find(a => a.id === id);
 
         setSaving(true);
         const { error } = await deleteMentor(id);
@@ -141,6 +147,9 @@ export default function AlumniEditorPage() {
         } else {
             setAlumni(prev => prev.filter(a => a.id !== id));
             showMessage('success', 'Alumni berhasil dihapus!');
+            if (mentorToDelete) {
+                logMentorDelete(mentorToDelete.name, String(id));
+            }
         }
         setSaving(false);
     };

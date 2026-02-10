@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Lock, Mail, Sparkles } from 'lucide-react';
+import { logAdminLogin } from '../utils/activityLogger';
 
 // Animated grid background component
 function AnimatedGridBackground() {
@@ -109,6 +110,8 @@ export default function AdminLogin() {
         if (error) {
             setError('Email atau password salah');
         } else {
+            // Log admin login
+            logAdminLogin();
             navigate(redirect);
         }
     };

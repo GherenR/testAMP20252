@@ -3,6 +3,7 @@ import DashboardLayout from '../components/admin/DashboardLayout';
 import RequireAdmin from '../components/admin/RequireAdmin';
 import { getAllMentors, MentorDB } from '../mentorService';
 import { Download, FileSpreadsheet, FileText, Loader2, Check, Filter } from 'lucide-react';
+import { logDataExport } from '../utils/activityLogger';
 
 export default function ExportPage() {
     const [mentors, setMentors] = useState<MentorDB[]>([]);
@@ -69,6 +70,7 @@ export default function ExportPage() {
             URL.revokeObjectURL(url);
 
             setMessage({ type: 'success', text: `✅ Berhasil export ${filteredMentors.length} data ke CSV` });
+            logDataExport(filteredMentors.length, 'CSV');
         } catch (err) {
             setMessage({ type: 'error', text: '❌ Gagal export data' });
         }
@@ -89,6 +91,7 @@ export default function ExportPage() {
             URL.revokeObjectURL(url);
 
             setMessage({ type: 'success', text: `✅ Berhasil export ${filteredMentors.length} data ke JSON` });
+            logDataExport(filteredMentors.length, 'JSON');
         } catch (err) {
             setMessage({ type: 'error', text: '❌ Gagal export data' });
         }
@@ -113,6 +116,7 @@ export default function ExportPage() {
             URL.revokeObjectURL(url);
 
             setMessage({ type: 'success', text: `✅ Berhasil export ${lines.length} kontak WhatsApp` });
+            logDataExport(lines.length, 'WhatsApp Contacts');
         } catch (err) {
             setMessage({ type: 'error', text: '❌ Gagal export data' });
         }
@@ -142,8 +146,8 @@ export default function ExportPage() {
 
                     {message && (
                         <div className={`mb-4 p-4 rounded-xl flex items-center gap-3 ${message.type === 'success'
-                                ? 'bg-green-900/50 border border-green-500'
-                                : 'bg-red-900/50 border border-red-500'
+                            ? 'bg-green-900/50 border border-green-500'
+                            : 'bg-red-900/50 border border-red-500'
                             }`}>
                             {message.type === 'success' ? <Check size={20} /> : null}
                             {message.text}
