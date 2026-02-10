@@ -83,7 +83,7 @@ export const MentorCard: React.FC<MentorCardProps> = ({
             title="Pilih mentor ini"
           >
             <ArrowUpRight size={20} className="sm:hidden" />
-            <span className="hidden sm:inline text-xs font-black">Select</span>
+            <span className="hidden sm:inline text-xs font-black">Pilih</span>
           </button>
 
           {/* Compare Button */}

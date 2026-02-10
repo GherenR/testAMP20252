@@ -197,9 +197,9 @@ export const MentorMatchmakerSlide: React.FC<MentorMatchmakerSlideProps> = ({
             <button
               onClick={onRunMatchmaker}
               disabled={isMatching}
-              className="bg-slate-950 text-white py-4 sm:py-5 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-2xl hover:bg-indigo-600 transition-all active:scale-95 disabled:opacity-50 text-sm sm:text-base min-h-[44px] sm:min-h-[48px] touch-none"
+              className="bg-slate-950 text-white py-4 sm:py-5 px-8 sm:px-10 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-2xl hover:bg-indigo-600 transition-all active:scale-95 disabled:opacity-50 text-sm sm:text-base min-h-[44px] sm:min-h-[48px] touch-none"
             >
-              {isMatching ? 'Menghitung...' : 'Mulai Simulasi'} <Sparkles size={18} className="sm:size-5" />
+              {isMatching ? 'Menghitung...' : 'Mulai Pencarian'} <Sparkles size={18} className="sm:size-5" />
             </button>
 
             {/* Reset Button */}

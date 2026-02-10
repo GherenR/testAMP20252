@@ -104,11 +104,14 @@ export const MentorDetailModal: React.FC<MentorDetailModalProps> = ({
                         <div className="space-y-3">
                             <h4 className="text-lg font-black text-slate-950">Alumni Serupa</h4>
                             <p className="text-xs text-slate-500">Jurusan atau universitas sama — bisa jadi pilihan lain</p>
-                            <div className="flex flex-wrap gap-3">
+                            <div className="flex flex-wrap gap-3 max-h-56 overflow-y-auto custom-scrollbar">
                                 {similarMentors.slice(0, 3).map((m) => (
                                     <button
                                         key={m.name}
-                                        onClick={() => onViewSimilar(m)}
+                                        onClick={() => {
+                                            onClose();
+                                            setTimeout(() => onViewSimilar(m), 250);
+                                        }}
                                         className="flex items-center gap-3 p-4 bg-slate-50 hover:bg-indigo-50 border-2 border-slate-100 hover:border-indigo-200 rounded-2xl transition-all text-left group"
                                     >
                                         <img

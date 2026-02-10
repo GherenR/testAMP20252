@@ -301,7 +301,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         </label>
                         <div className="relative">
                             <School className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                            <select
+                            <select aria-label="Pilih"
                                 value={kelas}
                                 onChange={(e) => setKelas(e.target.value)}
                                 className="w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 focus:border-indigo-500 focus:outline-none transition-colors appearance-none cursor-pointer"
@@ -322,7 +322,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         </label>
                         <div className="relative">
                             <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                            <select
+                            <select aria-label="Pilih"
                                 value={angkatan}
                                 onChange={(e) => setAngkatan(e.target.value ? parseInt(e.target.value) : '')}
                                 className="w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 focus:border-indigo-500 focus:outline-none transition-colors appearance-none cursor-pointer"

@@ -1,12 +1,11 @@
 import { useEffect, useRef } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { getOrCreateSessionId, getDeviceType } from '../utils/analytics';
 
 // Ganti baris 5 & 6 menjadi:
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from '../supabaseClient';
 
 let sessionId = '';
 
