@@ -60,53 +60,64 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
 
     // Fetch user profile from database
     const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
-        try {
-            // Add timeout to profile fetch (10 seconds)
-            const timeoutPromise = new Promise<{ data: null; error: null }>((resolve) =>
-                setTimeout(() => {
-                    console.warn('Profile fetch timed out');
-                    resolve({ data: null, error: null });
-                }, 10000)
-            );
+        let attempts = 0;
+        let lastError = null;
+        while (attempts < 2) { // Try twice before giving up
+            try {
+                // Add timeout to profile fetch (10 seconds)
+                const timeoutPromise = new Promise<{ data: null; error: any }>((resolve) =>
+                    setTimeout(() => {
+                        console.warn('Profile fetch timed out');
+                        resolve({ data: null, error: { message: 'timeout' } });
+                    }, 10000)
+                );
 
-            const fetchPromise = supabase
-                .from('user_profiles')
-                .select('*')
-                .eq('id', userId)
-                .single();
+                const fetchPromise = supabase
+                    .from('user_profiles')
+                    .select('*')
+                    .eq('id', userId)
+                    .single();
 
-            const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
+                const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
-            // Tambahkan log detail
-            console.log('[fetchProfile] userId:', userId, '| data:', data, '| error:', error);
+                // Tambahkan log detail
+                console.log('[fetchProfile] userId:', userId, '| data:', data, '| error:', error);
 
-            if (error || !data) {
-                if (error) console.warn('Error fetching profile:', error.message, '| userId:', userId);
-                if (!data) console.warn('No profile data found for userId:', userId);
-                return null;
+                if (error || !data) {
+                    lastError = error;
+                    if (error?.message === 'timeout') {
+                        attempts++;
+                        continue; // Retry once on timeout
+                    }
+                    if (error) console.warn('Error fetching profile:', error.message, '| userId:', userId);
+                    if (!data) console.warn('No profile data found for userId:', userId);
+                    return null;
+                }
+
+                return {
+                    id: data.id,
+                    email: data.email,
+                    fullName: data.full_name,
+                    kelas: data.kelas,
+                    angkatan: data.angkatan,
+                    school: data.school,
+                    phone: data.phone,
+                    instagram: data.instagram,
+                    targetUniversity1: data.target_university_1,
+                    targetMajor1: data.target_major_1,
+                    targetUniversity2: data.target_university_2,
+                    targetMajor2: data.target_major_2,
+                    targetUniversity: data.target_university,
+                    targetMajor: data.target_major,
+                    createdAt: data.created_at
+                } as UserProfile;
+            } catch (err) {
+                lastError = err;
+                attempts++;
             }
-
-            return {
-                id: data.id,
-                email: data.email,
-                fullName: data.full_name,
-                kelas: data.kelas,
-                angkatan: data.angkatan,
-                school: data.school,
-                phone: data.phone,
-                instagram: data.instagram,
-                targetUniversity1: data.target_university_1,
-                targetMajor1: data.target_major_1,
-                targetUniversity2: data.target_university_2,
-                targetMajor2: data.target_major_2,
-                targetUniversity: data.target_university,
-                targetMajor: data.target_major,
-                createdAt: data.created_at
-            } as UserProfile;
-        } catch (err) {
-            console.warn('Profile fetch failed:', err instanceof Error ? err.message : 'Unknown error', '| userId:', userId);
-            return null;
         }
+        console.warn('Profile fetch failed after retries:', lastError, '| userId:', userId);
+        return null;
     }, []);
 
     // Initialize auth state

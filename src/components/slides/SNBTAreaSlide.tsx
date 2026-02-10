@@ -409,10 +409,18 @@ export const SNBTAreaSlide: React.FC = () => {
             {profileError ? (
                 <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white text-center p-8">
                     <h1 className="text-2xl font-bold mb-2">Data Profil Tidak Ditemukan</h1>
-                    <p className="mb-4">Akun kamu sudah login, tapi data profil tidak ditemukan.<br />Silakan logout lalu login ulang, atau hubungi admin jika masalah berlanjut.</p>
+                    <p className="mb-4">
+                        Akun kamu sudah login, tapi data profil tidak ditemukan atau terjadi timeout.<br />
+                        Coba klik tombol di bawah untuk memuat ulang data.<br />
+                        Jika masalah berlanjut, silakan logout lalu login ulang, atau hubungi admin.
+                    </p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="px-6 py-3 bg-indigo-600 rounded-xl font-bold text-white hover:bg-indigo-700 transition-colors mt-2"
+                    >Coba Lagi</button>
                     <button
                         onClick={handleLogout}
-                        className="px-6 py-3 bg-indigo-600 rounded-xl font-bold text-white hover:bg-indigo-700 transition-colors mt-2"
+                        className="px-6 py-3 bg-slate-700 rounded-xl font-bold text-white hover:bg-slate-800 transition-colors mt-2"
                     >Logout</button>
                 </div>
             ) : null}

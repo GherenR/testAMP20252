@@ -47,7 +47,8 @@ export default function UserManagementPage() {
     async function fetchUsers() {
         setLoading(true);
         try {
-            const data = await UserService.getAllUsers();
+            // Ambil 100 user pertama, bisa diubah jika ingin paginasi
+            const data = await UserService.getAllUsers({ limit: 100, offset: 0 });
             setUsers(data);
             setFilteredUsers(data);
         } catch {
@@ -265,8 +266,8 @@ export default function UserManagementPage() {
                     {/* Message */}
                     {message && (
                         <div className={`mb-4 p-3 rounded-lg text-sm border ${message.includes('✅')
-                                ? 'bg-green-500/10 border-green-500/30 text-green-400'
-                                : 'bg-red-500/10 border-red-500/30 text-red-400'
+                            ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                            : 'bg-red-500/10 border-red-500/30 text-red-400'
                             }`}>
                             {message}
                         </div>

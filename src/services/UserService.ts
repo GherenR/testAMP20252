@@ -31,37 +31,31 @@ export interface User {
 }
 
 export const UserService = {
-    // Get all users from users table with extended profile data
-    async getAllUsers() {
-        // First get all users
-        const { data: users, error: usersError } = await supabase
+    // Get all users from users table with extended profile data (JOIN + paginasi)
+    async getAllUsers({ limit = 100, offset = 0 } = {}) {
+        // Join users with user_profiles, paginated
+        const { data, error } = await supabase
             .from('users')
-            .select('*')
-            .order('created_at', { ascending: false });
+            .select('*, user_profiles: user_profiles(*)')
+            .order('created_at', { ascending: false })
+            .range(offset, offset + limit - 1);
 
-        if (usersError) throw usersError;
+        if (error) throw error;
 
-        // Then get extended profile data
-        const { data: profiles } = await supabase
-            .from('user_profiles')
-            .select('id, full_name, kelas, angkatan, phone, instagram, target_university_1, target_major_1, target_university_2, target_major_2');
-
-        // Merge data
-        const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
-
-        return (users || []).map(user => {
-            const profile = profileMap.get(user.id);
+        // Map join result ke User type
+        return (data || []).map((user: any) => {
+            const profile = user.user_profiles?.[0] || user.user_profiles || {};
             return {
                 ...user,
-                full_name: profile?.full_name || user.name,
-                kelas: profile?.kelas,
-                angkatan: profile?.angkatan,
-                phone: profile?.phone,
-                instagram: profile?.instagram,
-                target_university_1: profile?.target_university_1,
-                target_major_1: profile?.target_major_1,
-                target_university_2: profile?.target_university_2,
-                target_major_2: profile?.target_major_2,
+                full_name: profile.full_name || user.name,
+                kelas: profile.kelas,
+                angkatan: profile.angkatan,
+                phone: profile.phone,
+                instagram: profile.instagram,
+                target_university_1: profile.target_university_1,
+                target_major_1: profile.target_major_1,
+                target_university_2: profile.target_university_2,
+                target_major_2: profile.target_major_2,
             } as User;
         });
     },
