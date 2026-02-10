@@ -1,9 +1,11 @@
 import React, { ReactNode, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export interface MenuItem {
   id: number;
   icon: ReactNode;
   label: string;
+  path?: string; // Optional route path for external pages
 }
 
 interface SlideNavigationProps {
@@ -16,6 +18,7 @@ interface SlideNavigationProps {
  * SlideNavigation Component
  * Menampilkan navigation menu horizontal dengan icon dan label
  * Bisa di-scroll pada mobile, menampilkan indicator slide aktif
+ * Supports both slide-based navigation and route-based navigation
  */
 export const SlideNavigation: React.FC<SlideNavigationProps> = ({
   menuItems,
@@ -23,6 +26,17 @@ export const SlideNavigation: React.FC<SlideNavigationProps> = ({
   onSlideChange
 }) => {
   const navRef = useRef<HTMLElement>(null);
+  const navigate = useNavigate();
+
+  const handleClick = (item: MenuItem) => {
+    if (item.path) {
+      // Navigate to route
+      navigate(item.path);
+    } else {
+      // Change slide
+      onSlideChange(item.id);
+    }
+  };
 
   return (
     <nav
@@ -37,14 +51,14 @@ export const SlideNavigation: React.FC<SlideNavigationProps> = ({
     >
       {menuItems.map((item) => (
         <button
-          key={item.id}
-          onClick={() => onSlideChange(item.id)}
-          className={`flex items-center gap-1 sm:gap-3 px-3 sm:px-4 md:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl transition-all duration-300 shrink-0 group min-h-[48px] sm:min-h-[52px] text-[9px] sm:text-[10px] md:text-[11px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] md:tracking-[0.25em] ${currentSlide === item.id
+          key={item.path || item.id}
+          onClick={() => handleClick(item)}
+          className={`flex items-center gap-1 sm:gap-3 px-3 sm:px-4 md:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl transition-all duration-300 shrink-0 group min-h-[48px] sm:min-h-[52px] text-[9px] sm:text-[10px] md:text-[11px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] md:tracking-[0.25em] ${!item.path && currentSlide === item.id
             ? 'bg-indigo-600 text-white shadow-lg hover:shadow-xl scale-105'
             : 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-100 border-2 border-slate-200 hover:border-indigo-300'
             }`}
           title={item.label}
-          aria-current={currentSlide === item.id ? 'page' : undefined}
+          aria-current={!item.path && currentSlide === item.id ? 'page' : undefined}
         >
           <span className="transition-colors text-sm sm:text-base flex items-center justify-center">{item.icon}</span>
           <span className="hidden sm:inline whitespace-nowrap">

@@ -13,21 +13,25 @@ import ActivityLogPage from './activity';
 import DuplicatesPage from './duplicates';
 import EmailPage from './email';
 import BulkOperationsPage from './bulk';
+import TryoutManagement from './tryouts';
 
 export default function AdminPage() {
     return (
-        <Routes>
-            <Route path="/" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
-            <Route path="/analytics" element={<AnalyticsPage />} />
-            <Route path="/alumni" element={<AlumniEditorPage />} />
-            <Route path="/import" element={<ImportCSVPage />} />
-            <Route path="/export" element={<ExportPage />} />
-            <Route path="/duplicates" element={<DuplicatesPage />} />
-            <Route path="/bulk" element={<BulkOperationsPage />} />
-            <Route path="/email" element={<EmailPage />} />
-            <Route path="/activity" element={<ActivityLogPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/users" element={<UserManagementPage />} />
-        </Routes>
+        <RequireAdmin>
+            <Routes>
+                <Route path="/" element={<AdminDashboard />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
+                <Route path="/alumni" element={<AlumniEditorPage />} />
+                <Route path="/import" element={<ImportCSVPage />} />
+                <Route path="/export" element={<ExportPage />} />
+                <Route path="/duplicates" element={<DuplicatesPage />} />
+                <Route path="/bulk" element={<BulkOperationsPage />} />
+                <Route path="/email" element={<EmailPage />} />
+                <Route path="/activity" element={<ActivityLogPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/users" element={<UserManagementPage />} />
+                <Route path="/tryouts" element={<TryoutManagement />} />
+            </Routes>
+        </RequireAdmin>
     );
 }

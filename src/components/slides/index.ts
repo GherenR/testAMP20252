@@ -4,3 +4,6 @@ export { MentorDatabaseSlide } from './MentorDatabaseSlide';
 export { EtiquetteGuideSlide } from './EtiquetteGuideSlide';
 export { AboutSlide } from './AboutSlide';
 export { FavoritesSlide } from './FavoritesSlide';
+export { PeluangSlide } from './PeluangSlide';
+export { TryoutSlide } from './TryoutSlide';
+export { SNBTAreaSlide } from './SNBTAreaSlide';

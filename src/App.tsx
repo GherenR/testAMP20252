@@ -3,8 +3,9 @@ import { Routes, Route } from 'react-router-dom';
 import AdminPage from './admin';
 import AdminLogin from './admin/login';
 import { AdminAuthProvider } from './contexts/AdminAuthContext';
+import { UserAuthProvider } from './contexts/UserAuthContext';
 import {
-  Home, BrainCircuit, Database, ShieldCheck, Info, ArrowUp, Heart
+  Home, BrainCircuit, Database, Info, ArrowUp, Heart, GraduationCap
 } from 'lucide-react';
 import { MOCK_MENTORS } from './constants';
 import { getAllMentors } from './mentorService';
@@ -22,9 +23,8 @@ import {
   HeroSlide,
   MentorMatchmakerSlide,
   MentorDatabaseSlide,
-  EtiquetteGuideSlide,
   AboutSlide,
-  FavoritesSlide,
+  SNBTAreaSlide,
   SopModal,
   MentorComparisonModal,
   MentorDetailModal,
@@ -74,14 +74,12 @@ import { SLIDE_NAMES } from './utils/analytics';
 
 const MainApp: React.FC = () => {
   // ===== NAVIGATION HOOKS =====
-  const totalSlides = 6;
+  const totalSlides = 4;
   const slides: SlideData[] = [
     { id: 'hero' },
     { id: 'matchmaker' },
     { id: 'database' },
-    { id: 'etiquette' },
-    { id: 'about' },
-    { id: 'favorites' }
+    { id: 'about' }
   ];
 
   const slideNavigation = useSlideNavigation(totalSlides);
@@ -400,9 +398,8 @@ const MainApp: React.FC = () => {
     { icon: <Home size={18} />, label: 'Beranda', id: 0 },
     { icon: <BrainCircuit size={18} />, label: 'Smart Match', id: 1 },
     { icon: <Database size={18} />, label: 'Direktori', id: 2 },
-    { icon: <ShieldCheck size={18} />, label: 'Etika Chat', id: 3 },
-    { icon: <Info size={18} />, label: 'Tentang Kami', id: 4 },
-    { icon: <Heart size={18} />, label: 'Favorit', id: 5 },
+    { icon: <Info size={18} />, label: 'Tentang Kami', id: 3 },
+    { icon: <GraduationCap size={18} />, label: 'SNBT Area', id: -1, path: '/snbtarea' },
   ];
 
   // ===== SLIDE CONTENT MAPPING =====
@@ -460,24 +457,7 @@ const MainApp: React.FC = () => {
           />
         );
       case 3:
-        return <EtiquetteGuideSlide />;
-      case 4:
         return <AboutSlide />;
-      case 5:
-        return (
-          <FavoritesSlide
-            favorites={favorites}
-            onMentorContact={handleContactClick}
-            onMentorInstagram={handleInstagramClick}
-            onMentorCompare={addMentorToCompare}
-            comparedMentors={selectedMentors.map(m => m.name)}
-            onViewDetail={openDetailModal}
-            onFavoriteToggle={toggleFavorite}
-            isFavorite={isFavorite}
-            getAllMentors={() => mentors}
-            onNavigateToDirektori={() => setCurrentSlide(2)}
-          />
-        );
       default:
         return null;
     }
@@ -656,7 +636,16 @@ const App: React.FC = () => {
           <AdminPage />
         </AdminAuthProvider>
       } />
-      <Route path="/*" element={<MainApp />} />
+      <Route path="/snbtarea" element={
+        <UserAuthProvider>
+          <SNBTAreaSlide />
+        </UserAuthProvider>
+      } />
+      <Route path="/*" element={
+        <UserAuthProvider>
+          <MainApp />
+        </UserAuthProvider>
+      } />
     </Routes>
   );
 };

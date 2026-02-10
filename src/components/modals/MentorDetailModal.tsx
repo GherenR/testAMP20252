@@ -108,7 +108,7 @@ export const MentorDetailModal: React.FC<MentorDetailModalProps> = ({
                                 {similarMentors.slice(0, 3).map((m) => (
                                     <button
                                         key={m.name}
-                                        onClick={() => { onViewSimilar(m); onClose(); }}
+                                        onClick={() => onViewSimilar(m)}
                                         className="flex items-center gap-3 p-4 bg-slate-50 hover:bg-indigo-50 border-2 border-slate-100 hover:border-indigo-200 rounded-2xl transition-all text-left group"
                                     >
                                         <img

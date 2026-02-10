@@ -1,23 +1,27 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '../../contexts/AdminAuthContext';
+import { ShieldX } from 'lucide-react';
 
 export default function RequireAdmin({ children }: { children: React.ReactNode }) {
     const { isAdmin, isLoading, user } = useAdminAuth();
     const navigate = useNavigate();
+    const [showUnauthorized, setShowUnauthorized] = useState(false);
 
     useEffect(() => {
-        // Only redirect after loading is complete
         if (!isLoading) {
             if (!user) {
                 navigate('/admin/login', { replace: true });
             } else if (!isAdmin) {
-                navigate('/', { replace: true });
+                setShowUnauthorized(true);
+                const timer = setTimeout(() => {
+                    navigate('/dashboard', { replace: true });
+                }, 3000);
+                return () => clearTimeout(timer);
             }
         }
     }, [isLoading, user, isAdmin, navigate]);
 
-    // Show minimal loading indicator that matches dashboard style
     if (isLoading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
@@ -30,7 +34,19 @@ export default function RequireAdmin({ children }: { children: React.ReactNode }
         );
     }
 
-    // Don't render anything if not admin (will redirect)
+    if (showUnauthorized) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+                <div className="text-center">
+                    <ShieldX className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                    <h1 className="text-2xl font-bold text-white mb-2">Akses Ditolak</h1>
+                    <p className="text-slate-400 mb-4">Kamu tidak memiliki izin untuk mengakses halaman admin.</p>
+                    <p className="text-slate-500 text-sm">Mengalihkan ke beranda...</p>
+                </div>
+            </div>
+        );
+    }
+
     if (!isAdmin) return null;
 
     return <>{children}</>;

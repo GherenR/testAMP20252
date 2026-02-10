@@ -5,19 +5,40 @@ import type { User } from '@supabase/supabase-js';
 interface AdminAuthContextType {
     user: User | null;
     isAdmin: boolean;
+    adminRole: string | null; // 'admin' | 'super_admin' | null
     isLoading: boolean;
     checkAuth: () => Promise<void>;
 }
 
 const AdminAuthContext = createContext<AdminAuthContextType | null>(null);
 
-const ALLOWED_EMAILS = ['gherenramandra@gmail.com', 'saputragheren@gmail.com'];
-
 export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [isAdmin, setIsAdmin] = useState(false);
+    const [adminRole, setAdminRole] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [hasChecked, setHasChecked] = useState(false);
+
+    // Check admin status from users table (main admin table)
+    const checkAdminStatus = async (userId: string): Promise<{ isAdmin: boolean; role: string | null }> => {
+        try {
+            const { data, error } = await supabase
+                .from('users')
+                .select('role')
+                .eq('id', userId)
+                .single();
+
+            if (error || !data) {
+                return { isAdmin: false, role: null };
+            }
+
+            // Only admin and super_admin can access admin dashboard
+            const isAdminRole = data.role === 'admin' || data.role === 'super_admin';
+            return { isAdmin: isAdminRole, role: data.role };
+        } catch {
+            return { isAdmin: false, role: null };
+        }
+    };
 
     const checkAuth = useCallback(async () => {
         // Only show loading on first check
@@ -31,14 +52,19 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
             if (error || !user) {
                 setUser(null);
                 setIsAdmin(false);
+                setAdminRole(null);
             } else {
                 setUser(user);
-                setIsAdmin(ALLOWED_EMAILS.includes(user.email || ''));
+                // Check admin status from database
+                const { isAdmin: adminStatus, role } = await checkAdminStatus(user.id);
+                setIsAdmin(adminStatus);
+                setAdminRole(role);
             }
         } catch (err) {
             console.error('Auth check error:', err);
             setUser(null);
             setIsAdmin(false);
+            setAdminRole(null);
         } finally {
             setIsLoading(false);
             setHasChecked(true);
@@ -49,13 +75,17 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         checkAuth();
 
         // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
             if (session?.user) {
                 setUser(session.user);
-                setIsAdmin(ALLOWED_EMAILS.includes(session.user.email || ''));
+                // Check admin status from database
+                const { isAdmin: adminStatus, role } = await checkAdminStatus(session.user.id);
+                setIsAdmin(adminStatus);
+                setAdminRole(role);
             } else {
                 setUser(null);
                 setIsAdmin(false);
+                setAdminRole(null);
             }
             setIsLoading(false);
         });
@@ -64,7 +94,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     }, [checkAuth]);
 
     return (
-        <AdminAuthContext.Provider value={{ user, isAdmin, isLoading, checkAuth }}>
+        <AdminAuthContext.Provider value={{ user, isAdmin, adminRole, isLoading, checkAuth }}>
             {children}
         </AdminAuthContext.Provider>
     );
