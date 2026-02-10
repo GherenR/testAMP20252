@@ -203,6 +203,97 @@ export default function ImportCSVPage() {
         return indices;
     };
 
+    // Helper: Smart extract university from row - scan all columns
+    const smartExtractUniversity = (values: string[], headers: string[]): { value: string; colIdx: number } => {
+        // Known university patterns - expanded list
+        const univPatterns = ['universitas', 'institut', 'politeknik', 'sekolah tinggi', 'akademi', 'university', 'college', 'itb', 'ugm', 'ui ', 'unpad', 'undip', 'unair', 'its ', 'ipb', 'unj', 'uny', 'uns', 'um ', 'unesa', 'unimed', 'usu', 'unhas', 'unand', 'unsri', 'unri', 'unila', 'unsoed', 'unja', 'untan', 'unlam', 'unmul', 'untad', 'unhalu', 'unsrat', 'unimal', 'binus', 'telkom', 'petra', 'atma jaya', 'trisakti', 'tarumanagara', 'pelita harapan', 'prasetiya mulya', 'paramadina', 'stmik', 'stie', 'stt', 'stkip', 'stan', 'stis', 'stpdn', 'ipdn', 'stip', 'stiami', 'lp3i', 'gunadarma', 'mercu buana', 'muhammadiyah', 'katolik', 'kristen'];
+
+        // First, try columns with university-related headers
+        const headerPatterns = ['nama universitas', 'nama politeknik', 'nama instansi', 'perguruan tinggi', 'kampus', 'universitas', 'politeknik', 'instansi'];
+        for (let i = 0; i < headers.length; i++) {
+            const headerLower = headers[i].toLowerCase();
+            if (headerPatterns.some(p => headerLower.includes(p))) {
+                const val = values[i]?.trim();
+                if (val && val.length > 2 && val !== '-' && val.toLowerCase() !== 'tidak ada') {
+                    console.log(`[smartExtractUniversity] Found via header "${headers[i]}" at col ${i}: "${val}"`);
+                    return { value: val, colIdx: i };
+                }
+            }
+        }
+
+        // Second, scan all columns for values that look like university names
+        for (let i = 0; i < values.length; i++) {
+            const val = values[i]?.trim().toLowerCase() || '';
+            if (val && val.length > 3 && univPatterns.some(p => val.includes(p))) {
+                console.log(`[smartExtractUniversity] Found via pattern at col ${i}: "${values[i].trim()}"`);
+                return { value: values[i].trim(), colIdx: i };
+            }
+        }
+
+        // Third fallback: look for any column header that mentions university-related terms
+        // and just return that value even if it doesn't match our patterns
+        for (let i = 0; i < headers.length; i++) {
+            const headerLower = headers[i].toLowerCase();
+            if (headerLower.includes('universitas') || headerLower.includes('kampus') || headerLower.includes('instansi')) {
+                const val = values[i]?.trim();
+                // Accept any value that's longer than 3 chars and not a dash
+                if (val && val.length > 3 && val !== '-' && !val.includes('tidak')) {
+                    console.log(`[smartExtractUniversity] Found via header fallback "${headers[i]}" at col ${i}: "${val}"`);
+                    return { value: val, colIdx: i };
+                }
+            }
+        }
+
+        console.log('[smartExtractUniversity] No university found!');
+        return { value: '', colIdx: -1 };
+    };
+
+    // Helper: Smart extract major/jurusan from row
+    const smartExtractMajor = (values: string[], headers: string[], skipColIdx: number): { value: string; colIdx: number } => {
+        // Known major/jurusan patterns - expanded list
+        const majorPatterns = ['teknik', 'ilmu', 'pendidikan', 'manajemen', 'akuntansi', 'hukum', 'kedokteran', 'farmasi', 'arsitektur', 'desain', 'komunikasi', 'psikologi', 'ekonomi', 'bisnis', 'informatika', 'komputer', 'sistem informasi', 'elektro', 'mesin', 'sipil', 'kimia', 'fisika', 'matematika', 'biologi', 'statistika', 'sastra', 'hubungan internasional', 'administrasi', 'keperawatan', 'gizi', 'kesehatan', 'pertanian', 'peternakan', 'perikanan', 'kehutanan', 'geologi', 'geofisika', 'planologi', 'lingkungan', 'industri', 'metalurgi', 'material', 'biomedis', 'aerospace', 'penerbangan', 'perkapalan', 'kelautan', 'oseanografi', 'sains', 'science', 'engineering', 'kebidanan', 'radiologi', 'analis', 'agroteknologi', 'agribisnis', 'pariwisata', 'perhotelan', 'multimedia', 'broadcasting', 'animasi', 'fotografi'];
+
+        // First, try columns with major-related headers
+        const headerPatterns = ['program studi', 'jurusan', 'prodi', 'major', 'spesialisasi', 'konsentrasi', 'bidang studi'];
+        for (let i = 0; i < headers.length; i++) {
+            if (i === skipColIdx) continue;
+            const headerLower = headers[i].toLowerCase();
+            if (headerPatterns.some(p => headerLower.includes(p))) {
+                const val = values[i]?.trim();
+                if (val && val.length > 2 && val !== '-' && val.toLowerCase() !== 'tidak ada') {
+                    console.log(`[smartExtractMajor] Found via header "${headers[i]}" at col ${i}: "${val}"`);
+                    return { value: val, colIdx: i };
+                }
+            }
+        }
+
+        // Second, scan all columns for values that look like major names
+        for (let i = 0; i < values.length; i++) {
+            if (i === skipColIdx) continue;
+            const val = values[i]?.trim().toLowerCase() || '';
+            if (val && val.length > 3 && majorPatterns.some(p => val.includes(p))) {
+                console.log(`[smartExtractMajor] Found via pattern at col ${i}: "${values[i].trim()}"`);
+                return { value: values[i].trim(), colIdx: i };
+            }
+        }
+
+        // Third fallback: look for any column header that mentions major-related terms
+        for (let i = 0; i < headers.length; i++) {
+            if (i === skipColIdx) continue;
+            const headerLower = headers[i].toLowerCase();
+            if (headerLower.includes('jurusan') || headerLower.includes('prodi') || headerLower.includes('program studi')) {
+                const val = values[i]?.trim();
+                if (val && val.length > 2 && val !== '-' && !val.includes('tidak')) {
+                    console.log(`[smartExtractMajor] Found via header fallback "${headers[i]}" at col ${i}: "${val}"`);
+                    return { value: val, colIdx: i };
+                }
+            }
+        }
+
+        console.log('[smartExtractMajor] No major found!');
+        return { value: '', colIdx: -1 };
+    };
+
     const parseCSV = useCallback((text: string): { entries: CSVEntry[]; debugInfo: { headers: string[]; colMap: Record<string, number> } } => {
         // Parse entire CSV properly handling multi-line quoted fields
         const allRows = parseCSVContent(text);
@@ -217,9 +308,12 @@ export default function ImportCSVPage() {
         const pathCols = findAllColumnIndices(headers, 'Jalur Masuk', 'Jalur Penerimaan');
 
         console.log('[CSV Debug] Headers:', headers);
+        console.log('[CSV Debug] Total columns:', headers.length);
         console.log('[CSV Debug] University columns found:', univCols.map(i => `${i}: ${headers[i]}`));
         console.log('[CSV Debug] Major columns found:', majorCols.map(i => `${i}: ${headers[i]}`));
 
+        // Print all headers with index for debugging
+        headers.forEach((h, i) => console.log(`  [Header ${i}]: "${h}"`));
         // Column indices - use dynamic detection with fallback to hardcoded
         const COL = {
             // Basic info - use pattern matching for unique headers
@@ -434,14 +528,14 @@ export default function ImportCSVPage() {
                 const tryMajorCols = [COL.majorPTN, COL.majorPTS, COL.majorPoltek, COL.majorPTLN, COL.majorKedinasan];
 
                 for (const col of tryUnivCols) {
-                    if (values[col]?.trim()) {
+                    if (col >= 0 && values[col]?.trim()) {
                         university = values[col].trim();
                         rawData['[FALLBACK] Found Univ at col ' + col] = university;
                         break;
                     }
                 }
                 for (const col of tryMajorCols) {
-                    if (values[col]?.trim()) {
+                    if (col >= 0 && values[col]?.trim()) {
                         major = values[col].trim();
                         rawData['[FALLBACK] Found Major at col ' + col] = major;
                         break;
@@ -449,6 +543,26 @@ export default function ImportCSVPage() {
                 }
                 path = values[COL.pathPTN]?.trim() || values[COL.pathPTS]?.trim() || '';
                 reasons.push(`Jenis PT tidak dikenali: "${jenisPT || '(kosong)'}" - menggunakan fallback`);
+            }
+
+            // SMART FALLBACK: If still no university/major, use AI-like pattern matching
+            let smartUnivColIdx = -1;
+            if (!university) {
+                const smartUniv = smartExtractUniversity(values, headers);
+                if (smartUniv.value) {
+                    university = smartUniv.value;
+                    smartUnivColIdx = smartUniv.colIdx;
+                    rawData['[SMART] Found Univ at col ' + smartUniv.colIdx] = university;
+                    reasons.push(`Smart detect univ: col ${smartUniv.colIdx}`);
+                }
+            }
+            if (!major) {
+                const smartMajor = smartExtractMajor(values, headers, smartUnivColIdx);
+                if (smartMajor.value) {
+                    major = smartMajor.value;
+                    rawData['[SMART] Found Major at col ' + smartMajor.colIdx] = major;
+                    reasons.push(`Smart detect major: col ${smartMajor.colIdx}`);
+                }
             }
 
             // Check missing university/major
