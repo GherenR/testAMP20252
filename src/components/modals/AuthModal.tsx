@@ -163,7 +163,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     setError(error.message);
                 }
             } else {
-                setSuccess('Akun berhasil dibuat! Cek email untuk verifikasi.');
+                setSuccess('Akun berhasil dibuat! Cek email untuk verifikasi. Email verifikasi kemungkinan besar masuk ke folder Spam atau Promotion.');
                 setTimeout(() => {
                     resetForm();
                     setMode('login');
