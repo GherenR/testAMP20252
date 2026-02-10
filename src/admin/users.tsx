@@ -53,8 +53,9 @@ export default function UserManagementPage() {
             setFilteredUsers(data);
         } catch {
             setMessage('Gagal memuat data user');
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     }
 
     function openEdit(user: User) {

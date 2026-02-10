@@ -62,64 +62,39 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
 
     // Fetch user profile from database
     const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
-        let attempts = 0;
-        let lastError = null;
-        while (attempts < 2) { // Try twice before giving up
-            try {
-                // Add timeout to profile fetch (10 seconds)
-                const timeoutPromise = new Promise<{ data: null; error: any }>((resolve) =>
-                    setTimeout(() => {
-                        console.warn('Profile fetch timed out');
-                        resolve({ data: null, error: { message: 'timeout' } });
-                    }, 10000)
-                );
-
-                const fetchPromise = supabase
-                    .from('user_profiles')
-                    .select('*')
-                    .eq('id', userId)
-                    .single();
-
-                const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
-
-                // Tambahkan log detail
-                console.log('[fetchProfile] userId:', userId, '| data:', data, '| error:', error);
-
-                if (error || !data) {
-                    lastError = error;
-                    if (error?.message === 'timeout') {
-                        attempts++;
-                        continue; // Retry once on timeout
-                    }
-                    if (error) console.warn('Error fetching profile:', error.message, '| userId:', userId);
-                    if (!data) console.warn('No profile data found for userId:', userId);
-                    return null;
-                }
-
-                return {
-                    id: data.id,
-                    email: data.email,
-                    fullName: data.full_name,
-                    kelas: data.kelas,
-                    angkatan: data.angkatan,
-                    school: data.school,
-                    phone: data.phone,
-                    instagram: data.instagram,
-                    targetUniversity1: data.target_university_1,
-                    targetMajor1: data.target_major_1,
-                    targetUniversity2: data.target_university_2,
-                    targetMajor2: data.target_major_2,
-                    targetUniversity: data.target_university,
-                    targetMajor: data.target_major,
-                    createdAt: data.created_at
-                } as UserProfile;
-            } catch (err) {
-                lastError = err;
-                attempts++;
+        // Fetch profile langsung dari tabel users
+        try {
+            const { data, error } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', userId)
+                .single();
+            if (error || !data) {
+                if (error) console.warn('Error fetching user:', error.message, '| userId:', userId);
+                if (!data) console.warn('No user data found for userId:', userId);
+                return null;
             }
+            return {
+                id: data.id,
+                email: data.email,
+                fullName: data.full_name,
+                kelas: data.kelas,
+                angkatan: data.angkatan,
+                school: data.school,
+                phone: data.phone,
+                instagram: data.instagram,
+                targetUniversity1: data.target_university_1,
+                targetMajor1: data.target_major_1,
+                targetUniversity2: data.target_university_2,
+                targetMajor2: data.target_major_2,
+                targetUniversity: data.target_university,
+                targetMajor: data.target_major,
+                createdAt: data.created_at
+            } as UserProfile;
+        } catch (err) {
+            console.warn('Profile fetch failed:', err, '| userId:', userId);
+            return null;
         }
-        console.warn('Profile fetch failed after retries:', lastError, '| userId:', userId);
-        return null;
     }, []);
 
     // Initialize auth state
@@ -213,12 +188,13 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (!error && data.user && data.user.identities && data.user.identities.length > 0) {
-            // Create profile in user_profiles with extended data
-            await supabase.from('user_profiles').insert({
+            // Insert langsung ke tabel users (semua data profile di sini)
+            await supabase.from('users').upsert({
                 id: data.user.id,
                 email: email,
+                name: fullName,
                 full_name: fullName,
-                role: 'user', // IMPORTANT: All signups get 'user' role by default
+                role: 'user',
                 kelas: kelas || null,
                 angkatan: angkatan || null,
                 phone: phone || null,
@@ -226,16 +202,7 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
                 target_university_1: targetUniversity1 || null,
                 target_major_1: targetMajor1 || null,
                 target_university_2: targetUniversity2 || null,
-                target_major_2: targetMajor2 || null
-            });
-
-            // Also insert into users table for admin dashboard sync
-            // (trigger will also do this, but we add here for safety)
-            await supabase.from('users').upsert({
-                id: data.user.id,
-                email: email,
-                name: fullName,
-                role: 'user',
+                target_major_2: targetMajor2 || null,
                 created_at: new Date().toISOString()
             }, { onConflict: 'id' });
         }
@@ -281,7 +248,7 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
             if (data.targetMajor !== undefined) updateData.target_major = data.targetMajor;
 
             const { error } = await supabase
-                .from('user_profiles')
+                .from('users')
                 .update(updateData)
                 .eq('id', user.id);
 
@@ -328,7 +295,7 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
 export function useUserAuth() {
     const context = useContext(UserAuthContext);
     if (!context) {
-        throw new Error('useUserAuth must be used within UserAuthProvider');
+        throw new Error('useUserAuth must be used within a UserAuthProvider');
     }
     return context;
 }
