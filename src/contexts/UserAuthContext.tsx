@@ -222,7 +222,11 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
 
     // Sign out
     const signOut = async () => {
-        await supabase.auth.signOut();
+        try {
+            await supabase.auth.signOut();
+        } catch (err) {
+            console.warn('Logout error:', err);
+        }
         setUser(null);
         setProfile(null);
     };
