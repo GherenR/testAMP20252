@@ -208,13 +208,28 @@ export default function ImportCSVPage() {
         // Known university patterns - expanded list
         const univPatterns = ['universitas', 'institut', 'politeknik', 'sekolah tinggi', 'akademi', 'university', 'college', 'itb', 'ugm', 'ui ', 'unpad', 'undip', 'unair', 'its ', 'ipb', 'unj', 'uny', 'uns', 'um ', 'unesa', 'unimed', 'usu', 'unhas', 'unand', 'unsri', 'unri', 'unila', 'unsoed', 'unja', 'untan', 'unlam', 'unmul', 'untad', 'unhalu', 'unsrat', 'unimal', 'binus', 'telkom', 'petra', 'atma jaya', 'trisakti', 'tarumanagara', 'pelita harapan', 'prasetiya mulya', 'paramadina', 'stmik', 'stie', 'stt', 'stkip', 'stan', 'stis', 'stpdn', 'ipdn', 'stip', 'stiami', 'lp3i', 'gunadarma', 'mercu buana', 'muhammadiyah', 'katolik', 'kristen'];
 
+        // EXCLUSION LIST: Values that are categories, not actual university names
+        const excludeValues = [
+            'perguruan tinggi negeri', 'perguruan tinggi swasta', 'perguruan tinggi luar negeri',
+            'ptn', 'pts', 'ptln', 'kedinasan', 'politeknik negeri', 'politeknik swasta',
+            'universitas negeri', 'universitas swasta', 'institut negeri', 'institut swasta',
+            'sekolah tinggi negeri', 'sekolah tinggi swasta',
+            'negeri', 'swasta', 'luar negeri'
+        ];
+
+        // Helper to check if value is just a category
+        const isCategory = (val: string): boolean => {
+            const valLower = val.toLowerCase().trim();
+            return excludeValues.some(ex => valLower === ex || valLower === ex.replace(/ /g, ''));
+        };
+
         // First, try columns with university-related headers
         const headerPatterns = ['nama universitas', 'nama politeknik', 'nama instansi', 'perguruan tinggi', 'kampus', 'universitas', 'politeknik', 'instansi'];
         for (let i = 0; i < headers.length; i++) {
             const headerLower = headers[i].toLowerCase();
             if (headerPatterns.some(p => headerLower.includes(p))) {
                 const val = values[i]?.trim();
-                if (val && val.length > 2 && val !== '-' && val.toLowerCase() !== 'tidak ada') {
+                if (val && val.length > 2 && val !== '-' && val.toLowerCase() !== 'tidak ada' && !isCategory(val)) {
                     console.log(`[smartExtractUniversity] Found via header "${headers[i]}" at col ${i}: "${val}"`);
                     return { value: val, colIdx: i };
                 }
@@ -224,7 +239,7 @@ export default function ImportCSVPage() {
         // Second, scan all columns for values that look like university names
         for (let i = 0; i < values.length; i++) {
             const val = values[i]?.trim().toLowerCase() || '';
-            if (val && val.length > 3 && univPatterns.some(p => val.includes(p))) {
+            if (val && val.length > 3 && !isCategory(values[i]?.trim() || '') && univPatterns.some(p => val.includes(p))) {
                 console.log(`[smartExtractUniversity] Found via pattern at col ${i}: "${values[i].trim()}"`);
                 return { value: values[i].trim(), colIdx: i };
             }
@@ -236,8 +251,8 @@ export default function ImportCSVPage() {
             const headerLower = headers[i].toLowerCase();
             if (headerLower.includes('universitas') || headerLower.includes('kampus') || headerLower.includes('instansi')) {
                 const val = values[i]?.trim();
-                // Accept any value that's longer than 3 chars and not a dash
-                if (val && val.length > 3 && val !== '-' && !val.includes('tidak')) {
+                // Accept any value that's longer than 3 chars and not a dash, and NOT a category
+                if (val && val.length > 3 && val !== '-' && !val.includes('tidak') && !isCategory(val)) {
                     console.log(`[smartExtractUniversity] Found via header fallback "${headers[i]}" at col ${i}: "${val}"`);
                     return { value: val, colIdx: i };
                 }
@@ -471,6 +486,19 @@ export default function ImportCSVPage() {
             let path = '';
             let category: InstitutionCategory = 'PTN';
 
+            // EXCLUSION LIST: Values that are categories, not actual university names
+            const categoryValues = [
+                'perguruan tinggi negeri', 'perguruan tinggi swasta', 'perguruan tinggi luar negeri',
+                'ptn', 'pts', 'ptln', 'kedinasan', 'politeknik negeri', 'politeknik swasta',
+                'universitas negeri', 'universitas swasta', 'institut negeri', 'institut swasta',
+                'sekolah tinggi negeri', 'sekolah tinggi swasta',
+                'negeri', 'swasta', 'luar negeri'
+            ];
+            const isJustCategory = (val: string): boolean => {
+                const valLower = val.toLowerCase().trim();
+                return categoryValues.some(ex => valLower === ex || valLower === ex.replace(/ /g, ''));
+            };
+
             // Log all potential university/major columns for debugging
             rawData['[DEBUG] All Univ Cols'] = `PTN:${COL.univPTN}=${values[COL.univPTN] || ''}, PTS:${COL.univPTS}=${values[COL.univPTS] || ''}, Poltek:${COL.univPoltek}=${values[COL.univPoltek] || ''}, PTLN:${COL.univPTLN}=${values[COL.univPTLN] || ''}`;
             rawData['[DEBUG] All Major Cols'] = `PTN:${COL.majorPTN}=${values[COL.majorPTN] || ''}, PTS:${COL.majorPTS}=${values[COL.majorPTS] || ''}, Poltek:${COL.majorPoltek}=${values[COL.majorPoltek] || ''}, PTLN:${COL.majorPTLN}=${values[COL.majorPTLN] || ''}`;
@@ -483,52 +511,57 @@ export default function ImportCSVPage() {
             const isKedinasan = jenisPTLower.includes('kedinasan') || jenisPTLower.includes('sekolah tinggi');
 
             if (isPTN) {
-                university = values[COL.univPTN]?.trim() || '';
+                const univVal = values[COL.univPTN]?.trim() || '';
+                university = isJustCategory(univVal) ? '' : univVal; // Skip if just category
                 major = values[COL.majorPTN]?.trim() || '';
                 path = values[COL.pathPTN]?.trim() || '';
                 category = 'PTN';
-                rawData['Universitas PTN (col ' + COL.univPTN + ')'] = university;
+                rawData['Universitas PTN (col ' + COL.univPTN + ')'] = univVal;
                 rawData['Jurusan PTN (col ' + COL.majorPTN + ')'] = major;
-                reasons.push(`Jenis: PTN - ${university || '(kosong)'}`);
+                reasons.push(`Jenis: PTN - ${university || '(kolom salah/kategori)'}`);
             } else if (isPTS) {
-                university = values[COL.univPTS]?.trim() || '';
+                const univVal = values[COL.univPTS]?.trim() || '';
+                university = isJustCategory(univVal) ? '' : univVal;
                 major = values[COL.majorPTS]?.trim() || '';
                 path = values[COL.pathPTS]?.trim() || '';
                 category = 'PTS';
-                rawData['Universitas PTS (col ' + COL.univPTS + ')'] = university;
+                rawData['Universitas PTS (col ' + COL.univPTS + ')'] = univVal;
                 rawData['Jurusan PTS (col ' + COL.majorPTS + ')'] = major;
-                reasons.push(`Jenis: PTS - ${university || '(kosong)'}`);
+                reasons.push(`Jenis: PTS - ${university || '(kolom salah/kategori)'}`);
             } else if (isPoltek) {
-                university = values[COL.univPoltek]?.trim() || '';
+                const univVal = values[COL.univPoltek]?.trim() || '';
+                university = isJustCategory(univVal) ? '' : univVal;
                 major = values[COL.majorPoltek]?.trim() || '';
                 path = values[COL.pathPoltek]?.trim() || '';
                 category = 'PTN';
-                rawData['Politeknik (col ' + COL.univPoltek + ')'] = university;
+                rawData['Politeknik (col ' + COL.univPoltek + ')'] = univVal;
                 rawData['Jurusan Poltek (col ' + COL.majorPoltek + ')'] = major;
-                reasons.push(`Jenis: Politeknik - ${university || '(kosong)'}`);
+                reasons.push(`Jenis: Politeknik - ${university || '(kolom salah/kategori)'}`);
             } else if (isPTLN) {
-                university = values[COL.univPTLN]?.trim() || '';
+                const univVal = values[COL.univPTLN]?.trim() || '';
+                university = isJustCategory(univVal) ? '' : univVal;
                 major = values[COL.majorPTLN]?.trim() || '';
                 path = values[COL.pathPTLN]?.trim() || '';
                 category = 'PTLN';
-                rawData['Universitas PTLN (col ' + COL.univPTLN + ')'] = university;
+                rawData['Universitas PTLN (col ' + COL.univPTLN + ')'] = univVal;
                 rawData['Jurusan PTLN (col ' + COL.majorPTLN + ')'] = major;
-                reasons.push(`Jenis: PTLN - ${university || '(kosong)'}`);
+                reasons.push(`Jenis: PTLN - ${university || '(kolom salah/kategori)'}`);
             } else if (isKedinasan) {
-                university = values[COL.univKedinasan]?.trim() || '';
+                const univVal = values[COL.univKedinasan]?.trim() || '';
+                university = isJustCategory(univVal) ? '' : univVal;
                 major = values[COL.majorKedinasan]?.trim() || '';
                 path = 'Kedinasan';
                 category = 'PTN';
-                rawData['Instansi Kedinasan (col ' + COL.univKedinasan + ')'] = university;
+                rawData['Instansi Kedinasan (col ' + COL.univKedinasan + ')'] = univVal;
                 rawData['Program Kedinasan (col ' + COL.majorKedinasan + ')'] = major;
-                reasons.push(`Jenis: Kedinasan - ${university || '(kosong)'}`);
+                reasons.push(`Jenis: Kedinasan - ${university || '(kolom salah/kategori)'}`);
             } else {
                 // Fallback: scan ALL columns for any filled university/major value
                 const tryUnivCols = [COL.univPTN, COL.univPTS, COL.univPoltek, COL.univPTLN, COL.univKedinasan];
                 const tryMajorCols = [COL.majorPTN, COL.majorPTS, COL.majorPoltek, COL.majorPTLN, COL.majorKedinasan];
 
                 for (const col of tryUnivCols) {
-                    if (col >= 0 && values[col]?.trim()) {
+                    if (col >= 0 && values[col]?.trim() && !isJustCategory(values[col].trim())) {
                         university = values[col].trim();
                         rawData['[FALLBACK] Found Univ at col ' + col] = university;
                         break;
