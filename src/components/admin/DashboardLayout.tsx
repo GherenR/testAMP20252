@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Home, BarChart3, Database, Settings, LogOut, Menu, X, ExternalLink, Upload, Users } from 'lucide-react';
+import { Home, BarChart3, Database, Settings, LogOut, Menu, X, ExternalLink, Upload, Users, Download, History, Copy, Mail, Settings2 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -21,9 +21,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const menuItems = [
         { path: '/admin', label: 'Dashboard', icon: Home },
         { path: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
-        { path: '/admin/alumni', label: 'Alumni Database', icon: Database },
-        { path: '/admin/users', label: 'User Management', icon: Users },
+        { path: '/admin/alumni', label: 'Database Mentor', icon: Database },
         { path: '/admin/import', label: 'Import CSV', icon: Upload },
+        { path: '/admin/export', label: 'Export Data', icon: Download },
+        { path: '/admin/duplicates', label: 'Cek Duplikat', icon: Copy },
+        { path: '/admin/bulk', label: 'Bulk Operations', icon: Settings2 },
+        { path: '/admin/email', label: 'Email & Broadcast', icon: Mail },
+        { path: '/admin/activity', label: 'Activity Log', icon: History },
+        { path: '/admin/users', label: 'User Admin', icon: Users },
         { path: '/admin/settings', label: 'Settings', icon: Settings },
     ];
 
