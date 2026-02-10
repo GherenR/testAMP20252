@@ -49,6 +49,7 @@ interface UserAuthContextType {
     signOut: () => Promise<void>;
     updateProfile: (data: Partial<UserProfile>) => Promise<{ error: Error | null }>;
     refreshProfile: () => Promise<void>;
+    sessionExpired: boolean;
 }
 
 const UserAuthContext = createContext<UserAuthContextType | null>(null);
@@ -57,6 +58,7 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [sessionExpired, setSessionExpired] = useState(false);
 
     // Fetch user profile from database
     const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
@@ -162,9 +164,12 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
 
             if (event === 'SIGNED_IN' && session?.user) {
                 setUser(session.user);
+                setSessionExpired(false);
                 const userProfile = await fetchProfile(session.user.id);
                 if (isMounted) setProfile(userProfile);
             } else if (event === 'SIGNED_OUT') {
+                // Only set sessionExpired if previously authenticated
+                if (user) setSessionExpired(true);
                 setUser(null);
                 setProfile(null);
             }
@@ -174,7 +179,7 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
             isMounted = false;
             subscription.unsubscribe();
         };
-    }, [fetchProfile]);
+    }, [fetchProfile, user]);
 
     // Sign up with extended profile data
     const signUp = async (signUpData: SignUpData) => {
@@ -311,7 +316,8 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
                 signIn,
                 signOut,
                 updateProfile,
-                refreshProfile
+                refreshProfile,
+                sessionExpired
             }}
         >
             {children}

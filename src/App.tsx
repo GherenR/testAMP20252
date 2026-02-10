@@ -72,8 +72,11 @@ import { SLIDE_NAMES } from './utils/analytics';
  * - Data: MOCK_MENTORS dari constants.ts
  */
 
+import { useUserAuth } from './contexts/UserAuthContext';
+
 const MainApp: React.FC = () => {
-  // ===== NAVIGATION HOOKS =====
+  // ===== SESSION EXPIRED NOTIFICATION =====
+  const { sessionExpired } = useUserAuth();
   const totalSlides = 4;
   const slides: SlideData[] = [
     { id: 'hero' },
@@ -178,6 +181,14 @@ const MainApp: React.FC = () => {
     setToastMessage(msg);
     setShowToast(true);
   };
+
+  // Show session expired toast if needed
+  useEffect(() => {
+    if (sessionExpired) {
+      setToastMessage('Sesi login kamu sudah habis. Silakan login ulang.');
+      setShowToast(true);
+    }
+  }, [sessionExpired]);
 
   // ===== AUTO-SCROLL TO RESULTS ON MOBILE =====
   /**

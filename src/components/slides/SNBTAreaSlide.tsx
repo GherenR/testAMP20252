@@ -377,9 +377,20 @@ export const SNBTAreaSlide: React.FC = () => {
     }, [isAuthenticated, profile, isLoading]);
 
     // Handler logout agar redirect ke halaman utama setelah signOut
+    const [logoutLoading, setLogoutLoading] = useState(false);
+    const [logoutError, setLogoutError] = useState<string | null>(null);
     const handleLogout = async () => {
-        await signOut();
-        navigate('/', { replace: true });
+        if (logoutLoading) return;
+        setLogoutLoading(true);
+        setLogoutError(null);
+        try {
+            await signOut();
+            navigate('/', { replace: true });
+        } catch (err: any) {
+            setLogoutError('Gagal logout. Coba lagi.');
+        } finally {
+            setLogoutLoading(false);
+        }
     };
 
     return (
@@ -417,11 +428,22 @@ export const SNBTAreaSlide: React.FC = () => {
                     <button
                         onClick={() => window.location.reload()}
                         className="px-6 py-3 bg-indigo-600 rounded-xl font-bold text-white hover:bg-indigo-700 transition-colors mt-2"
+                        disabled={logoutLoading}
                     >Coba Lagi</button>
                     <button
                         onClick={handleLogout}
-                        className="px-6 py-3 bg-slate-700 rounded-xl font-bold text-white hover:bg-slate-800 transition-colors mt-2"
-                    >Logout</button>
+                        className={`px-6 py-3 bg-slate-700 rounded-xl font-bold text-white hover:bg-slate-800 transition-colors mt-2 flex items-center justify-center gap-2 ${logoutLoading ? 'opacity-60 cursor-not-allowed' : ''}`}
+                        disabled={logoutLoading}
+                    >
+                        {logoutLoading ? (
+                            <svg className="animate-spin mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                            </svg>
+                        ) : null}
+                        Logout
+                    </button>
+                    {logoutError && <div className="text-red-400 text-sm mt-2">{logoutError}</div>}
                 </div>
             ) : null}
 
