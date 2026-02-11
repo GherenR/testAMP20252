@@ -5,27 +5,51 @@ import type { User } from '@supabase/supabase-js';
 interface AdminAuthContextType {
     user: User | null;
     isAdmin: boolean;
-    adminRole: string | null; // 'admin' | 'super_admin' | null
+    adminRole: string | null;
     isLoading: boolean;
     checkAuth: () => Promise<void>;
 }
 
 const AdminAuthContext = createContext<AdminAuthContextType | null>(null);
 
+// Persist admin status in sessionStorage so it survives page refreshes
+const ADMIN_STORAGE_KEY = 'admin_confirmed';
+
+function getStoredAdminStatus(): { isAdmin: boolean; role: string | null } {
+    try {
+        const stored = sessionStorage.getItem(ADMIN_STORAGE_KEY);
+        if (stored) return JSON.parse(stored);
+    } catch { /* ignore */ }
+    return { isAdmin: false, role: null };
+}
+
+function setStoredAdminStatus(isAdmin: boolean, role: string | null) {
+    try {
+        if (isAdmin) {
+            sessionStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify({ isAdmin, role }));
+        } else {
+            sessionStorage.removeItem(ADMIN_STORAGE_KEY);
+        }
+    } catch { /* ignore */ }
+}
+
 export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
+    // Initialize from sessionStorage for instant restore on page refresh
+    const stored = getStoredAdminStatus();
     const [user, setUser] = useState<User | null>(null);
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [adminRole, setAdminRole] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isAdmin, setIsAdmin] = useState(stored.isAdmin);
+    const [adminRole, setAdminRole] = useState<string | null>(stored.role);
+    // If we have stored admin status, don't show loading (instant restore)
+    const [isLoading, setIsLoading] = useState(!stored.isAdmin);
 
-    // Track if admin has been confirmed - once true, only SIGNED_OUT can reset it
-    const adminConfirmedRef = useRef(false);
+    // Track if admin has been confirmed in this session
+    const adminConfirmedRef = useRef(stored.isAdmin);
 
-    // Check admin status from users table (main admin table)
+    // Check admin status from users table
     const checkAdminStatus = async (userId: string): Promise<{ isAdmin: boolean; role: string | null }> => {
         try {
             const timeoutPromise = new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error('ADMIN_CHECK_TIMEOUT')), 8000)
+                setTimeout(() => reject(new Error('ADMIN_CHECK_TIMEOUT')), 10000)
             );
             const queryPromise = supabase
                 .from('users')
@@ -36,7 +60,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
             const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
             if (error || !data) {
-                console.warn('[AdminAuth] checkAdminStatus failed:', error);
+                console.warn('[AdminAuth] checkAdminStatus query failed:', error);
                 return { isAdmin: false, role: null };
             }
 
@@ -50,23 +74,23 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
             console.log('[AdminAuth] checkAdminStatus result:', { hasAccess, finalRole });
             return { isAdmin: hasAccess, role: finalRole };
         } catch (err: any) {
-            if (err?.message === 'ADMIN_CHECK_TIMEOUT') {
-                console.error('[AdminAuth] Admin status check timed out');
-            }
+            console.error('[AdminAuth] checkAdminStatus exception:', err?.message);
+            // On timeout/error, return null role to signal "don't know" vs "not admin"
             return { isAdmin: false, role: null };
         }
     };
 
     useEffect(() => {
-        console.log('[AdminAuth] Provider mounted');
+        console.log('[AdminAuth] Provider mounted | stored admin:', stored.isAdmin);
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log('[AdminAuth] Auth event:', event, '| Has user:', !!session?.user, '| Admin confirmed:', adminConfirmedRef.current);
+            console.log('[AdminAuth] Event:', event, '| User:', !!session?.user, '| Confirmed:', adminConfirmedRef.current);
 
-            // SIGNED_OUT is the ONLY event that resets admin state
+            // SIGNED_OUT is the ONLY event that fully resets admin state
             if (event === 'SIGNED_OUT') {
-                console.log('[AdminAuth] Explicit sign out - resetting all state');
+                console.log('[AdminAuth] SIGNED_OUT - full reset');
                 adminConfirmedRef.current = false;
+                setStoredAdminStatus(false, null);
                 setUser(null);
                 setIsAdmin(false);
                 setAdminRole(null);
@@ -77,33 +101,43 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
             if (session?.user) {
                 setUser(session.user);
 
-                // Only check admin status if not yet confirmed
-                // This prevents tab switches from re-querying and potentially failing
-                if (!adminConfirmedRef.current && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
-                    console.log('[AdminAuth] First-time admin check for:', session.user.email);
+                // If already confirmed as admin (via ref or sessionStorage), skip re-check
+                if (adminConfirmedRef.current) {
+                    console.log('[AdminAuth] Already confirmed, skipping check for:', event);
+                    setIsLoading(false);
+                    return;
+                }
+
+                // First-time check on SIGNED_IN or INITIAL_SESSION
+                if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                    console.log('[AdminAuth] Checking admin status for:', session.user.email);
                     const status = await checkAdminStatus(session.user.id);
 
                     if (status.isAdmin) {
                         adminConfirmedRef.current = true;
+                        setStoredAdminStatus(true, status.role);
                         setIsAdmin(true);
                         setAdminRole(status.role);
-                        console.log('[AdminAuth] Admin confirmed:', status.role);
+                        console.log('[AdminAuth] ✅ Admin confirmed:', status.role);
+                    } else if (status.role === null && stored.isAdmin) {
+                        // Query failed/timed out but we had stored admin status
+                        // Keep the stored status - don't revoke on network failure
+                        console.warn('[AdminAuth] Check failed but stored admin exists - keeping access');
+                        adminConfirmedRef.current = true;
                     } else {
                         setIsAdmin(false);
-                        setAdminRole(status.role);
-                        console.log('[AdminAuth] Not admin');
+                        setAdminRole(null);
+                        setStoredAdminStatus(false, null);
+                        console.log('[AdminAuth] ❌ Not admin');
                     }
-                } else if (adminConfirmedRef.current) {
-                    // Already confirmed as admin - skip re-check
-                    // This handles TOKEN_REFRESHED and repeated INITIAL_SESSION (tab switches)
-                    console.log('[AdminAuth] Already confirmed admin, skipping re-check for event:', event);
                 }
+                // TOKEN_REFRESHED: just update user, keep admin state
             }
 
             setIsLoading(false);
         });
 
-        // Safety: if no auth event fires within 12 seconds, stop loading
+        // Safety timeout - if no auth event fires, stop loading
         const safetyTimer = setTimeout(() => {
             setIsLoading(prev => {
                 if (prev) {
