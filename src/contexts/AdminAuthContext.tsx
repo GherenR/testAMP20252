@@ -98,13 +98,16 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (session?.user) {
                 setUser(session.user);
-                // Only re-check admin status on actual new login, not token refreshes
-                if (event === 'SIGNED_IN') {
+                // Check admin status on SIGNED_IN and INITIAL_SESSION
+                // INITIAL_SESSION fires when the page loads with an existing session
+                // SIGNED_IN fires after a fresh login
+                // Both need admin status checked before we set isLoading=false
+                if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
                     const status = await checkAdminStatus(session.user.id);
                     setIsAdmin(status.isAdmin);
                     setAdminRole(status.role);
                 }
-                // For TOKEN_REFRESHED and INITIAL_SESSION, keep existing admin state
+                // For TOKEN_REFRESHED, keep existing admin state
             } else if (event === 'SIGNED_OUT') {
                 setUser(null);
                 setIsAdmin(false);
