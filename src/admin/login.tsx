@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Lock, Mail, Sparkles } from 'lucide-react';
 import { logAdminLogin } from '../utils/activityLogger';
+import { warmupDatabase } from '../mentorService';
 
 // Animated grid background component
 function AnimatedGridBackground() {
@@ -180,6 +181,8 @@ export default function AdminLogin() {
             }
 
             // Step 3: Success - user is admin
+            // Warm up database connection before navigating to data-heavy pages
+            warmupDatabase(); // fire-and-forget, don't await
             setLoading(false);
             logAdminLogin();
             navigate(redirect);

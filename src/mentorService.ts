@@ -44,20 +44,55 @@ export interface ServiceResponse<T> {
 }
 
 /**
- * Get all mentors from database
+ * Helper: run a Supabase query with timeout + auto-retry
+ */
+async function withRetry<T>(
+    queryFn: () => PromiseLike<{ data: T | null; error: any }>,
+    options: { timeout?: number; retries?: number; label?: string } = {}
+): Promise<{ data: T | null; error: any }> {
+    const { timeout = 10000, retries = 1, label = 'query' } = options;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            const timeoutPromise = new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('TIMEOUT')), timeout)
+            );
+            const result = await Promise.race([queryFn(), timeoutPromise]);
+            // If query succeeded (even with Supabase error), return it
+            return result;
+        } catch (err: any) {
+            if (err?.message === 'TIMEOUT' && attempt < retries) {
+                console.warn(`${label}: attempt ${attempt + 1} timed out, retrying...`);
+                continue;
+            }
+            throw err;
+        }
+    }
+    // Should never reach here
+    throw new Error('TIMEOUT');
+}
+
+/**
+ * Warm up the database connection with a lightweight query.
+ * Call this after login to "wake up" Supabase before navigating to data-heavy pages.
+ */
+export async function warmupDatabase(): Promise<void> {
+    try {
+        await supabase.from('mentors').select('id').limit(1);
+    } catch {
+        // Silently ignore - this is just a warm-up
+    }
+}
+
+/**
+ * Get all mentors from database (with timeout + auto-retry)
  */
 export async function getAllMentors(): Promise<ServiceResponse<MentorDB[]>> {
     try {
-        const queryPromise = supabase
-            .from('mentors')
-            .select('*')
-            .order('name', { ascending: true });
-
-        const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('TIMEOUT')), 10000)
+        const { data, error } = await withRetry(
+            () => supabase.from('mentors').select('*').order('name', { ascending: true }),
+            { label: 'getAllMentors' }
         );
-
-        const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
         if (error) {
             console.error('Error fetching mentors:', error);
@@ -67,8 +102,8 @@ export async function getAllMentors(): Promise<ServiceResponse<MentorDB[]>> {
         return { data: data || [], error: null };
     } catch (err: any) {
         if (err?.message === 'TIMEOUT') {
-            console.error('Mentor fetch timeout');
-            return { data: null, error: 'Koneksi timeout. Coba refresh halaman.' };
+            console.error('Mentor fetch timeout after retries');
+            return { data: null, error: 'Koneksi timeout setelah retry. Coba refresh halaman.' };
         }
         console.error('Unexpected error:', err);
         return { data: null, error: 'Failed to fetch mentors' };
