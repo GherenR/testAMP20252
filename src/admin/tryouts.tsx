@@ -36,6 +36,48 @@ const SUBTES_LIST = [
     { kode: 'penalaran-matematika', nama: 'Penalaran Matematika', jumlah: 20 },
 ];
 
+/**
+ * Normalizes subtest codes from external sources (JSON import, AI)
+ * to match internal SUBTES_LIST codes.
+ */
+const normalizeSubtesCode = (input: string): string => {
+    const clean = input.toLowerCase().trim().replace(/_/g, '-');
+
+    // Exact mapping for known variations
+    const mapping: Record<string, string> = {
+        'literasi-bahasa-indonesia': 'literasi-indonesia',
+        'bahasa-indonesia': 'literasi-indonesia',
+        'literasi-indo': 'literasi-indonesia',
+        'indo': 'literasi-indonesia',
+
+        'literasi-bahasa-inggris': 'literasi-inggris',
+        'bahasa-inggris': 'literasi-inggris',
+        'literasi-ing': 'literasi-inggris',
+        'inggris': 'literasi-inggris',
+
+        'penalaran-mtk': 'penalaran-matematika',
+        'matematika': 'penalaran-matematika',
+        'mtk': 'penalaran-matematika',
+
+        'pbm': 'pemahaman-bacaan-menulis',
+        'ppu': 'pengetahuan-pemahaman-umum',
+        'pk': 'pengetahuan-kuantitatif',
+        'pu': 'penalaran-umum'
+    };
+
+    if (mapping[clean]) return mapping[clean];
+
+    // Fuzzy check against SUBTES_LIST
+    const found = SUBTES_LIST.find(s =>
+        s.kode === clean ||
+        s.nama.toLowerCase() === clean ||
+        clean.includes(s.kode) ||
+        s.kode.includes(clean)
+    );
+
+    return found ? found.kode : clean;
+};
+
 const TryoutManagement: React.FC = () => {
     const [tryouts, setTryouts] = useState<Tryout[]>([]);
     const [loading, setLoading] = useState(true);
@@ -166,7 +208,7 @@ const TryoutManagement: React.FC = () => {
                 questions.forEach((q, idx) => {
                     allQuestions.push({
                         tryout_id: selectedTryoutForGen.id,
-                        subtes: q.subtes,
+                        subtes: subtes, // Use the key from the loop which is already normalized
                         nomor_soal: idx + 1,
                         pertanyaan: q.pertanyaan,
                         opsi: q.opsi,
@@ -262,7 +304,7 @@ const TryoutManagement: React.FC = () => {
                         return;
                     }
 
-                    const subKey = String(item.subtes).toLowerCase().trim();
+                    const subKey = normalizeSubtesCode(String(item.subtes));
 
                     if (!newQuestions[subKey]) {
                         newQuestions[subKey] = [];
@@ -297,7 +339,10 @@ const TryoutManagement: React.FC = () => {
                     alert(`Berhasil mengimpor ${validCount} soal.\nAda ${errorMessages.length} soal yang di-skip karena error (lihat console untuk detail).`);
                     console.warn('Import Errors:', errorMessages);
                 } else {
-                    alert(`Berhasil mengimpor ${validCount} soal!`);
+                    const subtestSummary = Object.entries(newQuestions)
+                        .map(([k, v]) => `- ${SUBTES_LIST.find(s => s.kode === k)?.nama || k}: ${v.length} soal`)
+                        .join('\n');
+                    alert(`Berhasil mengimpor ${validCount} soal!\n\nRingkasan:\n${subtestSummary}`);
                 }
 
                 // Clear input
