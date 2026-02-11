@@ -62,6 +62,7 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
 
     // Fetch user profile from database
     const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
+        console.log("Fetching profile for userId:", userId);
         // Fetch profile langsung dari tabel users
         try {
             const { data, error } = await supabase
@@ -114,6 +115,9 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
 
                 const authPromise = supabase.auth.getUser().then(res => res.data.user);
                 const authUser = await Promise.race([authPromise, timeoutPromise]);
+
+                console.log("Auth user from Supabase:", authUser);
+                console.log("Auth user id:", authUser?.id);
 
                 if (!isMounted) return;
 
