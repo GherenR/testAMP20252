@@ -497,18 +497,18 @@ const TryoutManagement: React.FC = () => {
                                     </div>
                                     <div className="flex gap-2">
                                         <button
+                                            onClick={() => openManageModal(t)}
+                                            className="px-3 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg flex items-center gap-2 font-bold text-sm transition-colors border border-blue-200"
+                                            title="Kelola Soal & Pembahasan"
+                                        >
+                                            <FileText size={16} /> Atur Soal
+                                        </button>
+                                        <button
                                             onClick={() => openGenerateModal(t)}
                                             className="p-2 text-violet-600 hover:bg-violet-50 rounded-lg"
                                             title="Generate Soal AI"
                                         >
                                             <Sparkles size={18} />
-                                        </button>
-                                        <button
-                                            onClick={() => openManageModal(t)}
-                                            className="px-3 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg flex items-center gap-2 font-bold text-sm transition-colors"
-                                            title="Kelola Soal & Pembahasan"
-                                        >
-                                            <FileText size={16} /> Atur Soal
                                         </button>
                                         <button onClick={() => handleEdit(t)} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
                                             <Edit2 size={18} />
