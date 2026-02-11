@@ -397,11 +397,7 @@ const TryoutManagement: React.FC = () => {
                 }
 
                 setGeneratedQuestions(prev => {
-                    const next = { ...prev };
-                    Object.entries(newQuestions).forEach(([subtes, qs]) => {
-                        next[subtes] = [...(next[subtes] || []), ...qs];
-                    });
-                    return next;
+                    return { ...prev, ...newQuestions };
                 });
 
                 if (errorMessages.length > 0) {
@@ -608,6 +604,33 @@ const TryoutManagement: React.FC = () => {
         setSelectedQuestionIds(prev =>
             prev.includes(id) ? prev.filter(qid => qid !== id) : [...prev, id]
         );
+    };
+
+    const deleteSubtestQuestions = async (subtes: string) => {
+        if (!selectedTryoutForManage) return;
+        if (!confirm(`Hapus SELURUH soal di subtes "${subtes}"? Tindakan ini tidak dapat dibatalkan.`)) return;
+
+        setSubmitting(true);
+        try {
+            const { error } = await supabase.from('tryout_soal')
+                .delete()
+                .eq('tryout_id', selectedTryoutForManage.id)
+                .eq('subtes', subtes);
+
+            if (error) {
+                alert('Gagal menghapus subtes: ' + error.message);
+            } else {
+                setManagedQuestions(prev => {
+                    const next = { ...prev };
+                    delete next[subtes];
+                    return next;
+                });
+                alert(`Berhasil menghapus seluruh soal di ${subtes}.`);
+                fetchSoalCount(selectedTryoutForManage.id).then(c => setSoalCounts(prev => ({ ...prev, [selectedTryoutForManage.id]: c })));
+            }
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const toggleSubtesSelection = (subtes: string, selectAll: boolean) => {
@@ -1177,7 +1200,10 @@ const TryoutManagement: React.FC = () => {
                                 ) : (
                                     /* Question List */
                                     <div className="space-y-4">
-                                        {SUBTES_LIST.map(subtes => {
+                                        {[...SUBTES_LIST, ...Object.keys(managedQuestions)
+                                            .filter(k => !SUBTES_LIST.some(s => s.kode === k))
+                                            .map(k => ({ kode: k, nama: `Unknown/Old Subtes: ${k}`, jumlah: 0 }))
+                                        ].map(subtes => {
                                             const questions = managedQuestions[subtes.kode] || [];
                                             const isExpanded = manageExpandedSubtes === subtes.kode;
                                             return (
@@ -1199,15 +1225,25 @@ const TryoutManagement: React.FC = () => {
                                                                 <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-xs ml-2">{questions.length}</span>
                                                             </button>
                                                         </div>
-                                                        <button
-                                                            onClick={() => {
-                                                                setIsAddingManual(true);
-                                                                setManualForm(prev => ({ ...prev, subtes: subtes.kode }));
-                                                            }}
-                                                            className="px-3 py-1.5 bg-white border border-blue-200 text-blue-600 rounded-lg text-sm font-bold hover:bg-blue-50 flex items-center gap-2"
-                                                        >
-                                                            <Plus size={16} /> Tambah Manual
-                                                        </button>
+                                                        <div className="flex gap-2">
+                                                            {questions.length > 0 && (
+                                                                <button
+                                                                    onClick={() => deleteSubtestQuestions(subtes.kode)}
+                                                                    className="px-3 py-1.5 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm font-bold hover:bg-red-100 flex items-center gap-2"
+                                                                >
+                                                                    <Trash2 size={16} /> Hapus Semua
+                                                                </button>
+                                                            )}
+                                                            <button
+                                                                onClick={() => {
+                                                                    setIsAddingManual(true);
+                                                                    setManualForm(prev => ({ ...prev, subtes: subtes.kode }));
+                                                                }}
+                                                                className="px-3 py-1.5 bg-white border border-blue-200 text-blue-600 rounded-lg text-sm font-bold hover:bg-blue-50 flex items-center gap-2"
+                                                            >
+                                                                <Plus size={16} /> Tambah Manual
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                     {isExpanded && (
                                                         <div className="p-4 space-y-4 bg-white">
