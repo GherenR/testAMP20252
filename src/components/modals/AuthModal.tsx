@@ -565,7 +565,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                             </button>
                         )}
                         <button
-                            type="submit"
+                            type={mode === 'signup' && signupStep < totalSteps ? 'button' : 'submit'}
+                            onClick={mode === 'signup' && signupStep < totalSteps ? handleSignupStepNext : undefined}
                             disabled={isLoading}
                             className="flex-1 py-3.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >

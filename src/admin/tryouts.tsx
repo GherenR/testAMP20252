@@ -35,6 +35,8 @@ const SUBTES_LIST = [
 const TryoutManagement: React.FC = () => {
     const [tryouts, setTryouts] = useState<Tryout[]>([]);
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
     const [showModal, setShowModal] = useState(false);
     const [editingTryout, setEditingTryout] = useState<Tryout | null>(null);
     const [form, setForm] = useState({
@@ -60,13 +62,21 @@ const TryoutManagement: React.FC = () => {
     }, []);
 
     const fetchTryouts = async () => {
-        const { data, error } = await supabase
-            .from('tryouts')
-            .select('*')
-            .order('created_at', { ascending: false });
+        try {
+            const { data, error } = await supabase
+                .from('tryouts')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-        if (!error && data) setTryouts(data);
-        setLoading(false);
+            if (error) {
+                console.error('Fetch tryouts error:', error);
+            }
+            if (data) setTryouts(data);
+        } catch (err) {
+            console.error('Fetch tryouts exception:', err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     // Fetch soal count for a tryout
@@ -162,6 +172,8 @@ const TryoutManagement: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setSubmitting(true);
+        setSubmitError(null);
 
         const payload = {
             nama: form.nama,
@@ -172,16 +184,37 @@ const TryoutManagement: React.FC = () => {
             is_active: form.is_active
         };
 
-        if (editingTryout) {
-            await supabase.from('tryouts').update(payload).eq('id', editingTryout.id);
-        } else {
-            await supabase.from('tryouts').insert(payload);
-        }
+        try {
+            // Add timeout to prevent infinite hang (15 seconds)
+            const timeoutPromise = new Promise<{ error: { message: string } }>((resolve) =>
+                setTimeout(() => resolve({ error: { message: 'Request timeout - coba lagi' } }), 15000)
+            );
 
-        setShowModal(false);
-        setEditingTryout(null);
-        resetForm();
-        fetchTryouts();
+            let dbPromise;
+            if (editingTryout) {
+                dbPromise = supabase.from('tryouts').update(payload).eq('id', editingTryout.id);
+            } else {
+                dbPromise = supabase.from('tryouts').insert(payload);
+            }
+
+            const result = await Promise.race([dbPromise, timeoutPromise]);
+
+            if (result.error) {
+                console.error('Save tryout error:', result.error);
+                setSubmitError(result.error.message || 'Gagal menyimpan tryout');
+                return;
+            }
+
+            setShowModal(false);
+            setEditingTryout(null);
+            resetForm();
+            fetchTryouts();
+        } catch (err) {
+            console.error('Save tryout exception:', err);
+            setSubmitError('Terjadi kesalahan saat menyimpan');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const handleEdit = (tryout: Tryout) => {
@@ -199,8 +232,18 @@ const TryoutManagement: React.FC = () => {
 
     const handleDelete = async (id: string) => {
         if (confirm('Hapus tryout ini?')) {
-            await supabase.from('tryouts').delete().eq('id', id);
-            fetchTryouts();
+            try {
+                const { error } = await supabase.from('tryouts').delete().eq('id', id);
+                if (error) {
+                    console.error('Delete tryout error:', error);
+                    alert('Gagal menghapus tryout: ' + error.message);
+                    return;
+                }
+                fetchTryouts();
+            } catch (err) {
+                console.error('Delete tryout exception:', err);
+                alert('Terjadi kesalahan saat menghapus');
+            }
         }
     };
 
@@ -354,8 +397,26 @@ const TryoutManagement: React.FC = () => {
                                     />
                                     <label htmlFor="is_active" className="text-sm text-slate-700">Aktifkan tryout (visible ke user)</label>
                                 </div>
-                                <button type="submit" className="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center justify-center gap-2">
-                                    <Save size={18} /> Simpan
+                                {submitError && (
+                                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                                        {submitError}
+                                    </div>
+                                )}
+                                <button
+                                    type="submit"
+                                    disabled={submitting}
+                                    className="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    {submitting ? (
+                                        <>
+                                            <Loader2 className="animate-spin" size={18} />
+                                            Menyimpan...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save size={18} /> Simpan
+                                        </>
+                                    )}
                                 </button>
                             </form>
                         </div>

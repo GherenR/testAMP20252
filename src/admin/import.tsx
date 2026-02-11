@@ -334,7 +334,7 @@ export default function ImportCSVPage() {
         const COL = {
             // Basic info - use pattern matching for unique headers
             timestamp: findColumnIndex(headers, 'Timestamp'),
-            email: findColumnIndex(headers, 'Email Address', 'email'),
+            email: findColumnIndex(headers, 'Email Address', 'Alamat Email', 'email', 'e-mail', 'mail'),
             name: findColumnIndex(headers, 'Full Name', 'Nama Lengkap'),
             domisili: findColumnIndex(headers, 'Domisili Sekarang'),
             whatsapp: findColumnIndex(headers, 'Whatsapp', 'wa.me'),

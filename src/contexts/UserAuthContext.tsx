@@ -105,25 +105,27 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
         const initAuth = async () => {
             setIsLoading(true);
             try {
-                // Add timeout to prevent infinite loading (10 seconds)
+                // Add timeout to prevent infinite loading (8 seconds)
                 const timeoutPromise = new Promise<null>((resolve) =>
                     setTimeout(() => {
                         console.warn('Auth check timed out - continuing as guest');
                         resolve(null);
-                    }, 10000)
+                    }, 8000)
                 );
 
-                const authPromise = supabase.auth.getUser().then(res => res.data.user);
+                // Use getSession() for faster initial load (no network round-trip to verify JWT)
+                const authPromise = supabase.auth.getSession().then(res => res.data.session?.user ?? null);
                 const authUser = await Promise.race([authPromise, timeoutPromise]);
-
-                console.log("Auth user from Supabase:", authUser);
-                console.log("Auth user id:", authUser?.id);
 
                 if (!isMounted) return;
 
                 if (authUser) {
                     setUser(authUser);
-                    // Profile will be fetched by the auth state change handler
+                    // Fetch profile directly - don't rely solely on onAuthStateChange
+                    const userProfile = await fetchProfile(authUser.id);
+                    if (isMounted) {
+                        setProfile(userProfile);
+                    }
                 }
             } catch (err) {
                 if (!isMounted) return;
@@ -140,7 +142,7 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!isMounted) return;
 
-            if (event === 'SIGNED_IN' && session?.user) {
+            if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
                 setUser(session.user);
                 setSessionExpired(false);
 
