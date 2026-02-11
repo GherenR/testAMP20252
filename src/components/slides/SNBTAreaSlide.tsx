@@ -31,7 +31,7 @@ import { useNavigate, Routes, Route } from 'react-router-dom';
 import {
     Target, BookOpen, TrendingUp, Award, Lock,
     ChevronRight, Sparkles, BarChart3, Brain,
-    CheckCircle, Users, Zap, ArrowRight, LogOut, Home, User, Settings
+    CheckCircle, Users, Zap, ArrowRight, LogOut, Home, User, Settings, ArrowLeft
 } from 'lucide-react';
 import { useUserAuth } from '../../contexts/UserAuthContext';
 import { AuthModal } from '../modals/AuthModal';
@@ -478,20 +478,26 @@ export const SNBTAreaSlide: React.FC = () => {
                         />
                     } />
                     <Route path="peluang" element={
-                        <div className="relative">
+                        <div className="relative min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950">
                             <button
                                 onClick={() => navigate('/snbt')}
                                 className="absolute top-4 left-4 z-10 flex items-center gap-2 px-4 py-2 bg-slate-800/80 backdrop-blur-sm text-white rounded-xl hover:bg-slate-700 transition-all"
                             >
                                 <ChevronRight className="rotate-180" size={18} />
-                                Kembali
+                                <span className="hidden sm:inline">Kembali</span>
                             </button>
                             <PeluangSlide isLoggedIn={true} />
                         </div>
                     } />
                     <Route path="tryout/*" element={
-                        <div className="relative">
-                            {/* Note: TryoutSlide now handles its own back navigation internally or via routes */}
+                        <div className="relative min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950">
+                            <button
+                                onClick={() => navigate('/snbt')}
+                                className="absolute top-4 left-4 z-10 flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm text-white rounded-xl hover:bg-white/20 transition-all"
+                            >
+                                <ArrowLeft size={18} />
+                                <span className="hidden sm:inline">Kembali ke Dashboard</span>
+                            </button>
                             <TryoutSlide isLoggedIn={true} />
                         </div>
                     } />
