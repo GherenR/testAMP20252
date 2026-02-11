@@ -33,6 +33,7 @@ interface CSVEntry {
 export default function ImportCSVPage() {
     const [csvData, setCsvData] = useState<CSVEntry[]>([]);
     const [existingMentors, setExistingMentors] = useState<MentorDB[]>([]);
+    const [existingLoaded, setExistingLoaded] = useState(false);
     const [fileName, setFileName] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
@@ -53,10 +54,15 @@ export default function ImportCSVPage() {
     }, []);
 
     const loadExistingMentors = async () => {
-        const { data } = await getAllMentors();
+        setExistingLoaded(false);
+        const { data, error } = await getAllMentors();
         if (data) {
             setExistingMentors(data);
+        } else {
+            console.error('Failed to load existing mentors:', error);
+            showMessage('error', `⚠ Gagal memuat data mentor existing: ${error}. Deteksi duplikat mungkin tidak akurat.`);
         }
+        setExistingLoaded(true);
     };
 
     const showMessage = (type: 'success' | 'error', text: string) => {
@@ -334,7 +340,8 @@ export default function ImportCSVPage() {
         const COL = {
             // Basic info - use pattern matching for unique headers
             timestamp: findColumnIndex(headers, 'Timestamp'),
-            email: findColumnIndex(headers, 'Email Address', 'Alamat Email', 'email', 'e-mail', 'mail'),
+            email: findColumnIndex(headers, 'Email Address', 'Alamat Email', 'e-mail address', 'email', 'e-mail', 'Email'),
+            // Note: 'Email' (exact) is last resort; we avoid generic 'mail' which could match unrelated headers
             name: findColumnIndex(headers, 'Full Name', 'Nama Lengkap'),
             domisili: findColumnIndex(headers, 'Domisili Sekarang'),
             whatsapp: findColumnIndex(headers, 'Whatsapp', 'wa.me'),
@@ -394,8 +401,21 @@ export default function ImportCSVPage() {
             // Get values using dynamic column indices and NORMALIZE them
             const nameRaw = values[COL.name]?.trim() || '';
             const name = normalizeName(nameRaw);
-            const emailRaw = values[COL.email]?.trim() || '';
-            const email = normalizeEmail(emailRaw);
+            let emailRaw = COL.email >= 0 ? (values[COL.email]?.trim() || '') : '';
+            let email = normalizeEmail(emailRaw);
+
+            // Fallback: scan all columns for an email-like value if column not found or empty
+            if (!email) {
+                for (let ci = 0; ci < values.length; ci++) {
+                    const v = values[ci]?.trim() || '';
+                    if (v.includes('@') && v.includes('.') && v.length > 5) {
+                        emailRaw = v;
+                        email = normalizeEmail(v);
+                        break;
+                    }
+                }
+            }
+
             const status = values[COL.status]?.trim() || '';
             const consent = COL.consentAMP >= 0 ? (values[COL.consentAMP]?.trim() || '') : '';
             const angkatanStr = COL.angkatan >= 0 ? (values[COL.angkatan]?.trim() || '2025') : '2025';
@@ -664,13 +684,19 @@ export default function ImportCSVPage() {
         return { entries, debugInfo: { headers, colMap: COL } };
     }, [existingMentors]);
 
-    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
 
         setIsProcessing(true);
         setFileName(file.name);
         setImportComplete(false);
+
+        // Ensure existing mentors are loaded before parsing CSV
+        if (!existingLoaded || existingMentors.length === 0) {
+            showMessage('error', 'Memuat data mentor existing dulu...');
+            await loadExistingMentors();
+        }
 
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -683,13 +709,19 @@ export default function ImportCSVPage() {
         reader.readAsText(file);
     };
 
-    const handleDrop = (e: React.DragEvent) => {
+    const handleDrop = async (e: React.DragEvent) => {
         e.preventDefault();
         const file = e.dataTransfer.files[0];
         if (file && file.name.endsWith('.csv')) {
             setIsProcessing(true);
             setFileName(file.name);
             setImportComplete(false);
+
+            // Ensure existing mentors are loaded before parsing CSV
+            if (!existingLoaded || existingMentors.length === 0) {
+                showMessage('error', 'Memuat data mentor existing dulu...');
+                await loadExistingMentors();
+            }
 
             const reader = new FileReader();
             reader.onload = (ev) => {
