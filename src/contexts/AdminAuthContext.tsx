@@ -32,9 +32,20 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
                 return { isAdmin: false, role: null };
             }
 
+            const rawRole = data.role;
+            // Normalize role: lowercase and trim
+            const normalizedRole = rawRole?.toLowerCase().trim();
+
+            const isSuperAdmin = normalizedRole === 'super_admin' || normalizedRole === 'super admin';
+            const isAdmin = normalizedRole === 'admin';
+
             // Only admin and super_admin can access admin dashboard
-            const isAdminRole = data.role === 'admin' || data.role === 'super_admin';
-            return { isAdmin: isAdminRole, role: data.role };
+            const isAdminRole = isAdmin || isSuperAdmin;
+
+            // Return 'super_admin' internally if it's any variation of super admin
+            const finalRole = isSuperAdmin ? 'super_admin' : (isAdmin ? 'admin' : rawRole);
+
+            return { isAdmin: isAdminRole, role: finalRole };
         } catch {
             return { isAdmin: false, role: null };
         }

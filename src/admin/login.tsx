@@ -122,7 +122,19 @@ export default function AdminLogin() {
             .eq('id', authData.user?.id)
             .single();
 
-        if (userError || !userData || (userData.role !== 'admin' && userData.role !== 'super_admin')) {
+        if (userError || !userData) {
+            await supabase.auth.signOut();
+            setLoading(false);
+            setError('Akses ditolak. Gagal verifikasi role.');
+            return;
+        }
+
+        const rawRole = userData.role;
+        const normalizedRole = rawRole?.toLowerCase().trim();
+        const isSuperAdmin = normalizedRole === 'super_admin' || normalizedRole === 'super admin';
+        const isAdmin = normalizedRole === 'admin';
+
+        if (!isAdmin && !isSuperAdmin) {
             // Not an admin - sign out immediately
             await supabase.auth.signOut();
             setLoading(false);
