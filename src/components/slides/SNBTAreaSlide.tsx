@@ -250,14 +250,31 @@ const DashboardHome: React.FC<{
 
             // 1. Completed Tryouts & High Score
             const { data: attempts } = await supabase.from('tryout_attempts')
-                .select('skor_total, completed_at')
-                .eq('user_id', user.id)
-                .not('completed_at', 'is', null);
+                .select('skor_total, skor_akhir, completed_at, waktu_selesai, skor_per_subtes')
+                .eq('user_id', user.id);
 
             if (attempts) {
-                const completed = attempts.length;
-                const maxScore = attempts.reduce((max: number, curr: any) => Math.max(max, curr.skor_total || 0), 0);
-                setStats(prev => ({ ...prev, completed, highScore: maxScore }));
+                // Filter for completed attempts (support both new and legacy schema)
+                const completedAttempts = attempts.filter(a => a.completed_at || a.waktu_selesai);
+                const completed = completedAttempts.length;
+
+                // Calculate max score (robust fallback: IRT -> Total -> Derived from JSON)
+                const maxScore = completedAttempts.reduce((max: number, curr: any) => {
+                    let score = curr.skor_akhir || curr.skor_total || 0;
+
+                    // Fallback: Calculate from skor_per_subtes if top-level is 0/null
+                    if (!score && curr.skor_per_subtes) {
+                        const scores = Object.values(curr.skor_per_subtes || {}) as any[];
+                        if (scores.length > 0) {
+                            // Average of normalized scores (IRT approximation)
+                            score = scores.reduce((a, b) => a + (b.skorNormalized || 0), 0) / scores.length;
+                        }
+                    }
+
+                    return Math.max(max, score);
+                }, 0);
+
+                setStats(prev => ({ ...prev, completed, highScore: Math.round(maxScore) }));
             }
 
             // 2. Saved Prodi

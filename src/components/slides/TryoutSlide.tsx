@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Play, Clock, Calendar, Lock, ChevronRight, Trophy, BookOpen,
-    ArrowLeft, CheckCircle, Timer, AlertTriangle, Unlock,
-    Target, Award, XCircle, Save, RotateCcw, X
+    ArrowLeft, ArrowRight, CheckCircle, Timer, AlertTriangle, Unlock,
+    Target, Award, XCircle, Save, RotateCcw, X, MinusCircle
 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { SUBTES_CONFIG } from '../../data/bankSoal';
@@ -774,77 +774,13 @@ const TryoutResult = () => {
             {/* Review Modal */}
             {selectedSubtestForReview && (
                 <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 overflow-y-auto">
-                    <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative flex flex-col">
-                        <div className="sticky top-0 bg-white p-6 border-b border-slate-200 z-10 flex justify-between items-center">
-                            <div>
-                                <h2 className="text-2xl font-bold text-slate-900">Pembahasan Soal</h2>
-                                <p className="text-slate-500">
-                                    {SUBTES_CONFIG.find(c => c.kode === selectedSubtestForReview)?.nama}
-                                </p>
-                            </div>
-                            <button
-                                onClick={() => setSelectedSubtestForReview(null)}
-                                className="p-2 hover:bg-slate-100 rounded-lg text-slate-600"
-                            >
-                                <X size={24} />
-                            </button>
-                        </div>
-
-                        <div className="p-8 space-y-8 overflow-y-auto">
-                            {soalList.filter(s => s.subtes === selectedSubtestForReview).map((soal, idx) => {
-                                const jawabanUser = attempt.jawaban?.[soal.id];
-                                const isCorrect = jawabanUser === soal.jawaban_benar;
-                                const isSkipped = jawabanUser === undefined;
-
-                                return (
-                                    <div key={soal.id} className={`p-6 rounded-2xl border-2 ${isCorrect ? 'border-green-100 bg-green-50/50' : 'border-red-100 bg-red-50/50'}`}>
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div className="flex items-center gap-3">
-                                                <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${isCorrect ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
-                                                    {soal.nomor_soal}
-                                                </span>
-                                                <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${soal.tingkat_kesulitan === 'sulit' ? 'bg-red-100 text-red-700' :
-                                                    soal.tingkat_kesulitan === 'mudah' ? 'bg-green-100 text-green-700' :
-                                                        'bg-blue-100 text-blue-700'
-                                                    }`}>
-                                                    {soal.tingkat_kesulitan || 'Sedang'}
-                                                </span>
-                                            </div>
-                                            <span className={`text-sm font-bold ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
-                                                {isCorrect ? 'Benar (+3)' : isSkipped ? 'Kosong (0)' : 'Salah (0)'}
-                                            </span>
-                                        </div>
-
-                                        <p className="text-slate-800 font-medium mb-4 whitespace-pre-line">{soal.pertanyaan}</p>
-
-                                        <div className="space-y-2 mb-4">
-                                            {soal.opsi.map((opt, i) => (
-                                                <div key={i} className={`p-3 rounded-lg text-sm flex items-center gap-3 ${i === soal.jawaban_benar ? 'bg-green-200 text-green-900 font-bold' :
-                                                    i === jawabanUser ? 'bg-red-200 text-red-900' :
-                                                        'bg-white border border-slate-200 text-slate-500'
-                                                    }`}>
-                                                    <span className="w-6">{String.fromCharCode(65 + i)}.</span>
-                                                    <span>{opt}</span>
-                                                    {i === soal.jawaban_benar && <CheckCircle size={16} className="ml-auto text-green-700" />}
-                                                    {i === jawabanUser && i !== soal.jawaban_benar && <XCircle size={16} className="ml-auto text-red-700" />}
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        <div className="bg-white p-4 rounded-xl border border-slate-200">
-                                            <p className="text-xs text-slate-500 font-bold uppercase mb-2">Pembahasan</p>
-                                            <p className="text-slate-700 text-sm whitespace-pre-line">{soal.pembahasan || 'Tidak ada pembahasan.'}</p>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-
-                            {soalList.filter(s => s.subtes === selectedSubtestForReview).length === 0 && (
-                                <div className="text-center text-slate-500 py-12">
-                                    Tidak ada soal untuk subtes ini.
-                                </div>
-                            )}
-                        </div>
+                    <div className="bg-white rounded-3xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden relative">
+                        <ReviewModalContent
+                            subtes={selectedSubtestForReview}
+                            onClose={() => setSelectedSubtestForReview(null)}
+                            soalList={soalList}
+                            attempt={attempt}
+                        />
                     </div>
                 </div>
             )}
@@ -854,6 +790,177 @@ const TryoutResult = () => {
             </button>
         </div>
     );
+};
+
+// Extracted Component for Review Modal Logic to keep it clean
+const ReviewModalContent = ({ subtes, onClose, soalList, attempt }: { subtes: string, onClose: () => void, soalList: TryoutSoal[], attempt: TryoutAttempt }) => {
+    const [activeIndex, setActiveIndex] = useState(0);
+
+    // Filter and Sort questions for this subtest
+    const questions = soalList
+        .filter(s => s.subtes === subtes)
+        .sort((a, b) => a.nomor_soal - b.nomor_soal);
+
+    if (questions.length === 0) {
+        return (
+            <div className="p-8 text-center">
+                <p className="text-slate-500 mb-4">Tidak ada soal untuk subtes ini.</p>
+                <button onClick={onClose} className="px-4 py-2 bg-slate-200 rounded-lg font-bold">Tutup</button>
+            </div>
+        );
+    }
+
+    const activeQuestion = questions[activeIndex];
+    const jawabanUser = attempt.jawaban?.[activeQuestion.id];
+    const isCorrect = jawabanUser === activeQuestion.jawaban_benar;
+    const isSkipped = jawabanUser === undefined;
+
+    return (
+        <div className="flex flex-col h-full">
+            {/* Header */}
+            <div className="flex justify-between items-center p-6 border-b border-slate-200 bg-white z-10">
+                <div>
+                    <h2 className="text-xl font-bold text-slate-800">Pembahasan Soal</h2>
+                    <p className="text-slate-500 text-sm">
+                        {SUBTES_CONFIG.find(c => c.kode === subtes)?.nama}
+                    </p>
+                </div>
+                <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600">
+                    <X size={24} />
+                </button>
+            </div>
+
+            {/* Content Body - Split View */}
+            <div className="flex flex-1 overflow-hidden">
+                {/* Left: Navigation Grid (Desktop) */}
+                <div className="w-1/3 border-r border-slate-200 p-6 overflow-y-auto hidden md:block bg-slate-50">
+                    <h3 className="font-bold text-slate-700 mb-4">Navigasi Soal</h3>
+                    <div className="grid grid-cols-5 gap-3">
+                        {questions.map((q, idx) => {
+                            const userAns = attempt.jawaban?.[q.id];
+                            const correct = userAns === q.jawaban_benar;
+                            const skipped = userAns === undefined;
+
+                            let bgClass = 'bg-white border-slate-300 text-slate-700'; // Default/Skipped but viewing logic might differ
+                            if (skipped) bgClass = 'bg-white border-slate-300 text-slate-400';
+                            if (!skipped && correct) bgClass = 'bg-green-100 border-green-500 text-green-700';
+                            if (!skipped && !correct) bgClass = 'bg-red-100 border-red-500 text-red-700';
+
+                            if (idx === activeIndex) bgClass += ' ring-2 ring-indigo-500 ring-offset-2';
+
+                            return (
+                                <button
+                                    key={q.id}
+                                    onClick={() => setActiveIndex(idx)}
+                                    className={`aspect-square rounded-lg border font-bold text-sm flex items-center justify-center transition-all ${bgClass}`}
+                                >
+                                    {q.nomor_soal}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <div className="mt-8 space-y-2 text-xs text-slate-500">
+                        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-green-100 border border-green-500 rounded"></div> Benar</div>
+                        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-red-100 border border-red-500 rounded"></div> Salah</div>
+                        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-white border border-slate-300 rounded"></div> Kosong/Lewati</div>
+                    </div>
+                </div>
+
+                {/* Right: Question Detail */}
+                <div className="flex-1 flex flex-col bg-white overflow-hidden">
+                    {/* Question Content */}
+                    <div className="flex-1 overflow-y-auto p-6 lg:p-10">
+                        <div className="max-w-3xl mx-auto">
+                            {/* Status Banner */}
+                            <div className={`mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm ${isCorrect ? 'bg-green-100 text-green-700' :
+                                isSkipped ? 'bg-slate-100 text-slate-600' : 'bg-red-100 text-red-700'
+                                }`}>
+                                {isCorrect ? <CheckCircle size={16} /> : isSkipped ? <MinusCircle size={16} /> : <XCircle size={16} />}
+                                {isCorrect ? 'Jawaban Kamu Benar (+3)' : isSkipped ? 'Kamu Tidak Menjawab (0)' : 'Jawaban Kamu Salah (0)'}
+                            </div>
+
+                            <div className="flex gap-4 mb-6">
+                                <span className="flex-none w-8 h-8 bg-slate-800 text-white rounded-lg flex items-center justify-center font-bold">
+                                    {activeQuestion.nomor_soal}
+                                </span>
+                                <div className="space-y-4">
+                                    <p className="text-lg text-slate-800 font-medium whitespace-pre-line leading-relaxed">
+                                        {activeQuestion.pertanyaan}
+                                    </p>
+
+                                    {/* Difficulty Badge */}
+                                    <span className={`inline-block px-2 py-1 rounded text-xs font-bold uppercase ${activeQuestion.tingkat_kesulitan === 'sulit' ? 'bg-red-100 text-red-700' :
+                                        activeQuestion.tingkat_kesulitan === 'mudah' ? 'bg-green-100 text-green-700' :
+                                            'bg-blue-100 text-blue-700'
+                                        }`}>
+                                        {activeQuestion.tingkat_kesulitan || 'Sedang'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Options */}
+                            <div className="space-y-3 mb-8 pl-12">
+                                {activeQuestion.opsi.map((opt, i) => (
+                                    <div key={i} className={`p-4 rounded-xl border-2 flex items-center gap-4 transition-all ${i === activeQuestion.jawaban_benar ? 'border-green-500 bg-green-50/50' :
+                                        i === jawabanUser ? 'border-red-500 bg-red-50/50' :
+                                            'border-slate-100 bg-white text-slate-500'
+                                        }`}>
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm border ${i === activeQuestion.jawaban_benar ? 'bg-green-500 text-white border-green-500' :
+                                            i === jawabanUser ? 'bg-red-500 text-white border-red-500' :
+                                                'bg-white border-slate-300 text-slate-500'
+                                            }`}>
+                                            {String.fromCharCode(65 + i)}
+                                        </div>
+                                        <span className={`flex-1 font-medium ${i === activeQuestion.jawaban_benar ? 'text-green-900' :
+                                            i === jawabanUser ? 'text-red-900' : 'text-slate-600'
+                                            }`}>{opt}</span>
+                                        {i === activeQuestion.jawaban_benar && <CheckCircle className="text-green-600" size={20} />}
+                                        {i === jawabanUser && i !== activeQuestion.jawaban_benar && <XCircle className="text-red-600" size={20} />}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Discussion / Pembahasan */}
+                            <div className="bg-indigo-50 rounded-2xl p-6 border border-indigo-100">
+                                <h4 className="flex items-center gap-2 font-bold text-indigo-900 mb-3">
+                                    <BookOpen size={20} /> Pembahasan
+                                </h4>
+                                <p className="text-indigo-800/80 leading-relaxed whitespace-pre-line">
+                                    {activeQuestion.pembahasan || 'Pembahasan belum tersedia untuk soal ini.'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Bottom Navigation */}
+                    <div className="p-4 border-t border-slate-200 bg-white flex justify-between items-center">
+                        <button
+                            onClick={() => setActiveIndex(prev => Math.max(0, prev - 1))}
+                            disabled={activeIndex === 0}
+                            className="px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700"
+                        >
+                            <ArrowLeft size={20} /> Sebelumnya
+                        </button>
+
+                        <div className="flex md:hidden gap-1">
+                            {/* Mobile Mini Pagination or indicator could go here if needed */}
+                            <span className="text-slate-500 font-bold">{activeIndex + 1} / {questions.length}</span>
+                        </div>
+
+                        <button
+                            onClick={() => setActiveIndex(prev => Math.min(questions.length - 1, prev + 1))}
+                            disabled={activeIndex === questions.length - 1}
+                            className="px-6 py-3 rounded-xl font-bold flex items-center gap-2 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20"
+                        >
+                            Selanjutnya <ArrowRight size={20} />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
 };
 
 // ============ MAIN ROUTER ============
