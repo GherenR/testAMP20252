@@ -140,9 +140,9 @@ IMPORTANT: Return ONLY the JSON array, no other text. DO NOT use markdown code b
 
         console.log(`[generate-soal] Requesting ${jumlah} questions for ${subtes} using Gemini...`);
 
-        // Use v1beta with gemini-pro (v1 might require gemini-1.0-pro specific name)
+        // Use v1 (stable) - earlier 400 error proved this endpoint VALID (model exists), just had bad params
         const cleanKey = GEMINI_API_KEY.trim();
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${cleanKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${cleanKey}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
