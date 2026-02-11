@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import type { User } from '@supabase/supabase-js';
 
@@ -17,18 +17,23 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     const [isAdmin, setIsAdmin] = useState(false);
     const [adminRole, setAdminRole] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const hasCheckedRef = useRef(false);
 
     // Check admin status from users table (main admin table)
     const checkAdminStatus = async (userId: string): Promise<{ isAdmin: boolean; role: string | null }> => {
         try {
-            const { data, error } = await supabase
+            const timeoutPromise = new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('ADMIN_CHECK_TIMEOUT')), 8000)
+            );
+            const queryPromise = supabase
                 .from('users')
                 .select('role')
                 .eq('id', userId)
                 .single();
 
+            const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
+
             if (error || !data) {
+                console.warn('[AdminAuth] checkAdminStatus failed:', error);
                 return { isAdmin: false, role: null };
             }
 
@@ -37,86 +42,46 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
             const normalizedRole = rawRole?.toLowerCase().trim();
 
             const isSuperAdmin = normalizedRole === 'super_admin' || normalizedRole === 'super admin';
-            const isAdmin = normalizedRole === 'admin';
+            const isAdminRole = normalizedRole === 'admin';
 
             // Only admin and super_admin can access admin dashboard
-            const isAdminRole = isAdmin || isSuperAdmin;
+            const hasAccess = isAdminRole || isSuperAdmin;
 
             // Return 'super_admin' internally if it's any variation of super admin
-            const finalRole = isSuperAdmin ? 'super_admin' : (isAdmin ? 'admin' : rawRole);
+            const finalRole = isSuperAdmin ? 'super_admin' : (isAdminRole ? 'admin' : rawRole);
 
-            return { isAdmin: isAdminRole, role: finalRole };
-        } catch {
+            console.log('[AdminAuth] checkAdminStatus result:', { hasAccess, finalRole });
+            return { isAdmin: hasAccess, role: finalRole };
+        } catch (err: any) {
+            if (err?.message === 'ADMIN_CHECK_TIMEOUT') {
+                console.error('[AdminAuth] Admin status check timed out');
+            }
             return { isAdmin: false, role: null };
         }
     };
 
-    const checkAuth = useCallback(async () => {
-        // Only run on first check - onAuthStateChange handles subsequent updates
-        if (hasCheckedRef.current) return;
-
-        setIsLoading(true);
-
-        try {
-            // Add timeout to prevent indefinite hanging
-            const timeoutPromise = new Promise<'TIMEOUT'>((resolve) =>
-                setTimeout(() => resolve('TIMEOUT'), 10000)
-            );
-            const userPromise = supabase.auth.getUser().then(res => {
-                if (res.error || !res.data.user) return null;
-                return res.data.user;
-            });
-
-            const result = await Promise.race([userPromise, timeoutPromise]);
-
-            // On timeout, DON'T reset existing state - just stop loading
-            // The onAuthStateChange listener will handle the auth state properly
-            if (result === 'TIMEOUT') {
-                console.warn('Auth check timed out - keeping existing state');
-                setIsLoading(false);
-                hasCheckedRef.current = true;
-                return;
-            }
-
-            const authUser = result;
-            if (!authUser) {
-                setUser(null);
-                setIsAdmin(false);
-                setAdminRole(null);
-            } else {
-                setUser(authUser);
-                // Check admin status from database
-                const { isAdmin: adminStatus, role } = await checkAdminStatus(authUser.id);
-                setIsAdmin(adminStatus);
-                setAdminRole(role);
-            }
-        } catch (err) {
-            console.error('Auth check error:', err);
-            // On error, DON'T reset state either - just log
-        } finally {
-            setIsLoading(false);
-            hasCheckedRef.current = true;
-        }
-    }, []);
-
+    // Simplified: only use onAuthStateChange as the single source of truth
+    // No separate checkAuth - this eliminates the race condition entirely
     useEffect(() => {
-        checkAuth();
+        console.log('[AdminAuth] Provider mounted - waiting for auth events');
 
-        // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('[AdminAuth] Auth event:', event, '| Has session:', !!session?.user);
+
             if (session?.user) {
                 setUser(session.user);
-                // Check admin status on SIGNED_IN and INITIAL_SESSION
-                // INITIAL_SESSION fires when the page loads with an existing session
-                // SIGNED_IN fires after a fresh login
-                // Both need admin status checked before we set isLoading=false
+
+                // Check admin status for initial load and fresh login
                 if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                    console.log('[AdminAuth] Checking admin status for:', session.user.email);
                     const status = await checkAdminStatus(session.user.id);
                     setIsAdmin(status.isAdmin);
                     setAdminRole(status.role);
+                    console.log('[AdminAuth] Admin status set:', status);
                 }
-                // For TOKEN_REFRESHED, keep existing admin state
+                // For TOKEN_REFRESHED, keep existing admin state - don't re-query
             } else if (event === 'SIGNED_OUT') {
+                console.log('[AdminAuth] User signed out');
                 setUser(null);
                 setIsAdmin(false);
                 setAdminRole(null);
@@ -124,8 +89,25 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
             setIsLoading(false);
         });
 
-        return () => subscription.unsubscribe();
+        // Safety: if no auth event fires within 12 seconds, stop loading
+        const safetyTimer = setTimeout(() => {
+            setIsLoading(prev => {
+                if (prev) {
+                    console.warn('[AdminAuth] Safety timeout - no auth event received, stopping loading');
+                    return false;
+                }
+                return prev;
+            });
+        }, 12000);
+
+        return () => {
+            subscription.unsubscribe();
+            clearTimeout(safetyTimer);
+        };
     }, []);
+
+    // Expose checkAuth as a no-op for backward compatibility
+    const checkAuth = async () => { };
 
     return (
         <AdminAuthContext.Provider value={{ user, isAdmin, adminRole, isLoading, checkAuth }}>
