@@ -27,7 +27,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
         return this.props.children;
     }
 }
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Routes, Route } from 'react-router-dom';
 import {
     Target, BookOpen, TrendingUp, Award, Lock,
     ChevronRight, Sparkles, BarChart3, Brain,
@@ -360,7 +360,6 @@ export const SNBTAreaSlide: React.FC = () => {
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
-    const [currentView, setCurrentView] = useState<DashboardView>('home');
 
     const handleBackToHome = () => navigate('/');
 
@@ -463,44 +462,40 @@ export const SNBTAreaSlide: React.FC = () => {
 
     return (
         <ErrorBoundary>
+            <UserProfileModal
+                isOpen={showProfileModal}
+                onClose={() => setShowProfileModal(false)}
+            />
             <Suspense fallback={<LoadingFallback />}>
-                {currentView === 'home' && (
-                    <DashboardHome
-                        profile={displayProfile}
-                        onNavigate={setCurrentView}
-                        onLogout={handleLogout}
-                        onBackClick={handleBackToHome}
-                        onEditProfile={() => setShowProfileModal(true)}
-                    />
-                )}
-                <UserProfileModal
-                    isOpen={showProfileModal}
-                    onClose={() => setShowProfileModal(false)}
-                />
-                {currentView === 'peluang' && (
-                    <div className="relative">
-                        <button
-                            onClick={() => setCurrentView('home')}
-                            className="absolute top-4 left-4 z-10 flex items-center gap-2 px-4 py-2 bg-slate-800/80 backdrop-blur-sm text-white rounded-xl hover:bg-slate-700 transition-all"
-                        >
-                            <ChevronRight className="rotate-180" size={18} />
-                            Kembali
-                        </button>
-                        <PeluangSlide isLoggedIn={true} />
-                    </div>
-                )}
-                {currentView === 'tryout' && (
-                    <div className="relative">
-                        <button
-                            onClick={() => setCurrentView('home')}
-                            className="absolute top-4 left-4 z-10 flex items-center gap-2 px-4 py-2 bg-slate-800/80 backdrop-blur-sm text-white rounded-xl hover:bg-slate-700 transition-all"
-                        >
-                            <ChevronRight className="rotate-180" size={18} />
-                            Kembali
-                        </button>
-                        <TryoutSlide isLoggedIn={true} />
-                    </div>
-                )}
+                <Routes>
+                    <Route index element={
+                        <DashboardHome
+                            profile={displayProfile}
+                            onNavigate={(view) => navigate(view === 'home' ? '/snbt' : `/snbt/${view}`)}
+                            onLogout={handleLogout}
+                            onBackClick={handleBackToHome}
+                            onEditProfile={() => setShowProfileModal(true)}
+                        />
+                    } />
+                    <Route path="peluang" element={
+                        <div className="relative">
+                            <button
+                                onClick={() => navigate('/snbt')}
+                                className="absolute top-4 left-4 z-10 flex items-center gap-2 px-4 py-2 bg-slate-800/80 backdrop-blur-sm text-white rounded-xl hover:bg-slate-700 transition-all"
+                            >
+                                <ChevronRight className="rotate-180" size={18} />
+                                Kembali
+                            </button>
+                            <PeluangSlide isLoggedIn={true} />
+                        </div>
+                    } />
+                    <Route path="tryout/*" element={
+                        <div className="relative">
+                            {/* Note: TryoutSlide now handles its own back navigation internally or via routes */}
+                            <TryoutSlide isLoggedIn={true} />
+                        </div>
+                    } />
+                </Routes>
             </Suspense>
         </ErrorBoundary>
     );

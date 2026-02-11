@@ -11,6 +11,8 @@ interface Tryout {
     tanggal_mulai: string;
     tanggal_selesai: string | null;
     is_active: boolean;
+    password?: string | null;
+    access_mode?: 'scheduled' | 'manual_open' | 'manual_close';
 }
 
 interface GeneratedQuestion {
@@ -45,7 +47,9 @@ const TryoutManagement: React.FC = () => {
         tanggal_rilis: '',
         tanggal_mulai: '',
         tanggal_selesai: '',
-        is_active: true
+        is_active: true,
+        password: '',
+        access_mode: 'scheduled'
     });
 
     // AI Generation states
@@ -183,7 +187,9 @@ const TryoutManagement: React.FC = () => {
             tanggal_rilis: form.tanggal_rilis,
             tanggal_mulai: form.tanggal_mulai,
             tanggal_selesai: form.tanggal_selesai || null,
-            is_active: form.is_active
+            is_active: form.is_active,
+            password: form.password || null,
+            access_mode: form.access_mode
         };
 
         try {
@@ -227,7 +233,9 @@ const TryoutManagement: React.FC = () => {
             tanggal_rilis: tryout.tanggal_rilis?.slice(0, 16) || '',
             tanggal_mulai: tryout.tanggal_mulai?.slice(0, 16) || '',
             tanggal_selesai: tryout.tanggal_selesai?.slice(0, 16) || '',
-            is_active: tryout.is_active
+            is_active: tryout.is_active,
+            password: tryout.password || '',
+            access_mode: tryout.access_mode || 'scheduled'
         });
         setShowModal(true);
     };
@@ -250,7 +258,7 @@ const TryoutManagement: React.FC = () => {
     };
 
     const resetForm = () => {
-        setForm({ nama: '', deskripsi: '', tanggal_rilis: '', tanggal_mulai: '', tanggal_selesai: '', is_active: true });
+        setForm({ nama: '', deskripsi: '', tanggal_rilis: '', tanggal_mulai: '', tanggal_selesai: '', is_active: true, password: '', access_mode: 'scheduled' });
     };
 
     const formatDate = (date: string) => {
@@ -388,6 +396,30 @@ const TryoutManagement: React.FC = () => {
                                         onChange={e => setForm({ ...form, tanggal_selesai: e.target.value })}
                                         className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                     />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1 text-slate-700">Mode Akses</label>
+                                        <select
+                                            value={form.access_mode}
+                                            onChange={e => setForm({ ...form, access_mode: e.target.value as any })}
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-800 focus:ring-2 focus:ring-indigo-500"
+                                        >
+                                            <option value="scheduled">Sesuai Jadwal</option>
+                                            <option value="manual_open">Buka Sekarang (Manual)</option>
+                                            <option value="manual_close">Tutup Sekarang (Manual)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1 text-slate-700">Password (Opsional)</label>
+                                        <input
+                                            type="text"
+                                            value={form.password || ''}
+                                            onChange={e => setForm({ ...form, password: e.target.value })}
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-800 focus:ring-2 focus:ring-indigo-500"
+                                            placeholder="Kosongkan jika publik"
+                                        />
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <input

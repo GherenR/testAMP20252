@@ -410,7 +410,7 @@ const MainApp: React.FC = () => {
     { icon: <BrainCircuit size={18} />, label: 'Smart Match', id: 1 },
     { icon: <Database size={18} />, label: 'Direktori', id: 2 },
     { icon: <Info size={18} />, label: 'Tentang Kami', id: 3 },
-    { icon: <GraduationCap size={18} />, label: 'SNBT Area', id: -1, path: '/snbtarea' },
+    { icon: <GraduationCap size={18} />, label: 'SNBT Area', id: -1, path: '/snbt' },
   ];
 
   // ===== SLIDE CONTENT MAPPING =====
@@ -647,11 +647,15 @@ const App: React.FC = () => {
           <AdminPage />
         </AdminAuthProvider>
       } />
-      <Route path="/snbtarea" element={
+
+      {/* SNBT Area Routes - Now supports deep linking */}
+      <Route path="/snbt/*" element={
         <UserAuthProvider>
           <SNBTAreaSlide />
         </UserAuthProvider>
       } />
+
+      {/* Main Public App */}
       <Route path="/*" element={
         <UserAuthProvider>
           <MainApp />
