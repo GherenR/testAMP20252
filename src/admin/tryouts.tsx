@@ -22,6 +22,7 @@ interface GeneratedQuestion {
     opsi: string[];
     jawaban_benar: number;
     pembahasan: string;
+    difficulty?: 'mudah' | 'sedang' | 'sulit';
 }
 
 const SUBTES_LIST = [
@@ -139,7 +140,9 @@ const TryoutManagement: React.FC = () => {
                         pertanyaan: q.pertanyaan,
                         opsi: q.opsi,
                         jawaban_benar: q.jawaban_benar,
-                        pembahasan: q.pembahasan
+                        pembahasan: q.pembahasan,
+                        difficulty_level: q.difficulty,
+                        bobot_nilai: q.difficulty === 'sulit' ? 3 : (q.difficulty === 'mudah' ? 1 : 2)
                     });
                 });
             });

@@ -117,8 +117,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 Your task is to create questions that are:
 1. Similar in style and difficulty to Pahamify tryout questions
 2. Have exactly 5 answer options (A-E)
-3. Include correct answer index (0-4) and brief explanation
+3. Include correct answer index (0-4) and brief explanation (pembahasan)
 4. Written in Indonesian (except Literasi Inggris which is in English)
+5. Include "difficulty" field: "mudah", "sedang", or "sulit". Ensure a mix of difficulties.
 
 Output ONLY valid JSON array, no markdown, no explanation outside JSON.`;
 
@@ -132,7 +133,8 @@ Return as JSON array:
     "pertanyaan": "Question text here",
     "opsi": ["Option A", "Option B", "Option C", "Option D", "Option E"],
     "jawabanBenar": 0,
-    "pembahasan": "Brief explanation"
+    "pembahasan": "Brief explanation",
+    "difficulty": "sedang"
   }
 ]
 
@@ -203,7 +205,8 @@ IMPORTANT: Return ONLY the JSON array, no other text. DO NOT use markdown code b
             pertanyaan: q.pertanyaan || '',
             opsi: Array.isArray(q.opsi) ? q.opsi : [],
             jawaban_benar: typeof q.jawabanBenar === 'number' ? q.jawabanBenar : (typeof q.jawaban_benar === 'number' ? q.jawaban_benar : 0),
-            pembahasan: q.pembahasan || ''
+            pembahasan: q.pembahasan || '',
+            difficulty: q.difficulty || 'sedang'
         }));
 
         console.log(`[generate-soal] Successfully generated ${formattedQuestions.length} questions`);
