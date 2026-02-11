@@ -77,6 +77,7 @@ const TryoutManagement: React.FC = () => {
         bobot_nilai: 2
     });
     const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+    const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
 
     interface Question {
         id: string;
@@ -407,6 +408,7 @@ const TryoutManagement: React.FC = () => {
         setSelectedTryoutForManage(tryout);
         setManageExpandedSubtes(null);
         setIsAddingManual(false);
+        setSelectedQuestionIds([]);
         const { data } = await supabase.from('tryout_soal').select('*').eq('tryout_id', tryout.id).order('nomor_soal', { ascending: true });
 
         const grouped: Record<string, Question[]> = {};
@@ -444,10 +446,61 @@ const TryoutManagement: React.FC = () => {
                 ...prev,
                 [subtes]: prev[subtes].filter(q => q.id !== id)
             }));
+            setSelectedQuestionIds(prev => prev.filter(qid => qid !== id));
             if (selectedTryoutForManage) {
                 fetchSoalCount(selectedTryoutForManage.id).then(c => setSoalCounts(prev => ({ ...prev, [selectedTryoutForManage.id]: c })));
             }
         }
+    };
+
+    const deleteBulkQuestions = async () => {
+        if (selectedQuestionIds.length === 0) return;
+        if (!confirm(`Hapus ${selectedQuestionIds.length} soal terpilih? Tindakan ini tidak dapat dibatalkan.`)) return;
+
+        setSubmitting(true);
+        try {
+            const { error } = await supabase.from('tryout_soal').delete().in('id', selectedQuestionIds);
+
+            if (error) {
+                alert('Gagal menghapus bulk: ' + error.message);
+            } else {
+                setManagedQuestions(prev => {
+                    const next = { ...prev };
+                    Object.keys(next).forEach(subtes => {
+                        next[subtes] = next[subtes].filter(q => !selectedQuestionIds.includes(q.id));
+                    });
+                    return next;
+                });
+
+                if (selectedTryoutForManage) {
+                    fetchSoalCount(selectedTryoutForManage.id).then(c => setSoalCounts(prev => ({ ...prev, [selectedTryoutForManage.id]: c })));
+                }
+
+                alert(`Berhasil menghapus ${selectedQuestionIds.length} soal.`);
+                setSelectedQuestionIds([]);
+            }
+        } catch (err) {
+            console.error('Bulk delete error:', err);
+            alert('Terjadi kesalahan saat menghapus bulk.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const toggleQuestionSelection = (id: string) => {
+        setSelectedQuestionIds(prev =>
+            prev.includes(id) ? prev.filter(qid => qid !== id) : [...prev, id]
+        );
+    };
+
+    const toggleSubtesSelection = (subtes: string, selectAll: boolean) => {
+        const questions = managedQuestions[subtes] || [];
+        const qIds = questions.map(q => q.id);
+
+        setSelectedQuestionIds(prev => {
+            const otherIds = prev.filter(id => !qIds.includes(id));
+            return selectAll ? [...otherIds, ...qIds] : otherIds;
+        });
     };
 
     const saveManualQuestion = async () => {
@@ -899,7 +952,18 @@ const TryoutManagement: React.FC = () => {
                                     <h2 className="text-xl font-bold text-slate-800">Kelola & Review Soal: {selectedTryoutForManage.nama}</h2>
                                     <p className="text-slate-500 text-sm">{soalCounts[selectedTryoutForManage.id] || 0} soal tersimpan</p>
                                 </div>
-                                <button onClick={() => setShowManageModal(false)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600"><X size={20} /></button>
+                                <div className="flex items-center gap-2">
+                                    {selectedQuestionIds.length > 0 && (
+                                        <button
+                                            onClick={deleteBulkQuestions}
+                                            disabled={submitting}
+                                            className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg flex items-center gap-2 font-bold text-sm transition-all border border-red-200"
+                                        >
+                                            <Trash2 size={16} /> Hapus Terpilih ({selectedQuestionIds.length})
+                                        </button>
+                                    )}
+                                    <button onClick={() => setShowManageModal(false)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600"><X size={20} /></button>
+                                </div>
                             </div>
 
                             <div className="p-6 overflow-y-auto flex-1">
@@ -998,11 +1062,22 @@ const TryoutManagement: React.FC = () => {
                                             return (
                                                 <div key={subtes.kode} className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                                                     <div className="flex justify-between p-4 bg-slate-50 items-center border-b border-slate-100">
-                                                        <button onClick={() => setManageExpandedSubtes(isExpanded ? null : subtes.kode)} className="flex items-center gap-2 font-bold text-slate-800 hover:text-blue-600 transition-colors">
-                                                            {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                                                            {subtes.nama}
-                                                            <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-xs ml-2">{questions.length}</span>
-                                                        </button>
+                                                        <div className="flex items-center gap-3">
+                                                            {questions.length > 0 && (
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                                    title="Pilih Semua di Subtes Ini"
+                                                                    checked={questions.every(q => selectedQuestionIds.includes(q.id))}
+                                                                    onChange={(e) => toggleSubtesSelection(subtes.kode, e.target.checked)}
+                                                                />
+                                                            )}
+                                                            <button onClick={() => setManageExpandedSubtes(isExpanded ? null : subtes.kode)} className="flex items-center gap-2 font-bold text-slate-800 hover:text-blue-600 transition-colors">
+                                                                {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                                                {subtes.nama}
+                                                                <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-xs ml-2">{questions.length}</span>
+                                                            </button>
+                                                        </div>
                                                         <button
                                                             onClick={() => {
                                                                 setIsAddingManual(true);
@@ -1017,45 +1092,55 @@ const TryoutManagement: React.FC = () => {
                                                         <div className="p-4 space-y-4 bg-white">
                                                             {questions.map((q, idx) => (
                                                                 <div key={q.id} className="p-4 border border-slate-100 rounded-xl bg-slate-50/30 hover:border-slate-300 transition-all relative group">
-                                                                    <div className="flex-1">
-                                                                        <div className="flex justify-between items-start mb-2">
-                                                                            <p className="font-bold text-slate-800 flex items-center gap-2">
-                                                                                <span className="bg-slate-200 text-slate-600 w-6 h-6 flex items-center justify-center rounded-full text-xs">{q.nomor_soal}</span>
-                                                                                <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider ${q.difficulty_level === 'sulit' ? 'bg-red-100 text-red-600' : q.difficulty_level === 'mudah' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>{q.difficulty_level}</span>
-                                                                            </p>
-                                                                            <div className="flex gap-2">
-                                                                                <button
-                                                                                    onClick={() => startEditQuestion(q)}
-                                                                                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                                                                    title="Edit Soal"
-                                                                                >
-                                                                                    <Edit2 size={16} />
-                                                                                </button>
-                                                                                <button
-                                                                                    onClick={() => deleteQuestion(q.id, subtes.kode)}
-                                                                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
-                                                                                    title="Hapus Soal"
-                                                                                >
-                                                                                    <Trash2 size={16} />
-                                                                                </button>
-                                                                            </div>
+                                                                    <div className="flex-1 flex gap-4">
+                                                                        <div className="pt-1">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                                                checked={selectedQuestionIds.includes(q.id)}
+                                                                                onChange={() => toggleQuestionSelection(q.id)}
+                                                                            />
                                                                         </div>
-                                                                        <p className="text-slate-700 mb-3 whitespace-pre-line text-sm leading-relaxed">{q.pertanyaan}</p>
-                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
-                                                                            {q.opsi.map((o, i) => (
-                                                                                <div key={i} className={`text-xs px-3 py-2 rounded border transition-all ${i === q.jawaban_benar ? 'bg-green-50 border-green-200 text-green-800 font-bold' : 'bg-white border-slate-100 text-slate-500'}`}>
-                                                                                    <span className="font-mono mr-1">{String.fromCharCode(65 + i)}.</span> {o}
-                                                                                </div>
-                                                                            ))}
-                                                                        </div>
-                                                                        {q.pembahasan && (
-                                                                            <div className="bg-indigo-50/50 p-3 rounded-lg border border-indigo-100 text-[11px] text-indigo-700/80 leading-relaxed italic">
-                                                                                <p className="font-bold text-indigo-800 mb-1 flex items-center gap-1 uppercase tracking-wider not-italic">
-                                                                                    <BookOpen size={12} /> Pembahasan
+                                                                        <div className="flex-1">
+                                                                            <div className="flex justify-between items-start mb-2">
+                                                                                <p className="font-bold text-slate-800 flex items-center gap-2">
+                                                                                    <span className="bg-slate-200 text-slate-600 w-6 h-6 flex items-center justify-center rounded-full text-xs">{q.nomor_soal}</span>
+                                                                                    <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider ${q.difficulty_level === 'sulit' ? 'bg-red-100 text-red-600' : q.difficulty_level === 'mudah' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>{q.difficulty_level}</span>
                                                                                 </p>
-                                                                                {q.pembahasan}
+                                                                                <div className="flex gap-2">
+                                                                                    <button
+                                                                                        onClick={() => startEditQuestion(q)}
+                                                                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                                                        title="Edit Soal"
+                                                                                    >
+                                                                                        <Edit2 size={16} />
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() => deleteQuestion(q.id, subtes.kode)}
+                                                                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                                                                        title="Hapus Soal"
+                                                                                    >
+                                                                                        <Trash2 size={16} />
+                                                                                    </button>
+                                                                                </div>
                                                                             </div>
-                                                                        )}
+                                                                            <p className="text-slate-700 mb-3 whitespace-pre-line text-sm leading-relaxed">{q.pertanyaan}</p>
+                                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                                                                                {q.opsi.map((o, i) => (
+                                                                                    <div key={i} className={`text-xs px-3 py-2 rounded border transition-all ${i === q.jawaban_benar ? 'bg-green-50 border-green-200 text-green-800 font-bold' : 'bg-white border-slate-100 text-slate-500'}`}>
+                                                                                        <span className="font-mono mr-1">{String.fromCharCode(65 + i)}.</span> {o}
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                            {q.pembahasan && (
+                                                                                <div className="bg-indigo-50/50 p-3 rounded-lg border border-indigo-100 text-[11px] text-indigo-700/80 leading-relaxed italic">
+                                                                                    <p className="font-bold text-indigo-800 mb-1 flex items-center gap-1 uppercase tracking-wider not-italic">
+                                                                                        <BookOpen size={12} /> Pembahasan
+                                                                                    </p>
+                                                                                    {q.pembahasan}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             ))}
@@ -1070,7 +1155,8 @@ const TryoutManagement: React.FC = () => {
                                             );
                                         })}
                                     </div>
-                                )}
+                                )
+                                }
                             </div>
                         </div>
                     </div>
