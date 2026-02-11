@@ -7,6 +7,7 @@ import {
 import { supabase } from '../../supabaseClient';
 import { SUBTES_CONFIG } from '../../data/bankSoal';
 import { Routes, Route, useNavigate, useParams, useLocation, Outlet } from 'react-router-dom';
+import LatexRenderer from '../LatexRenderer';
 
 // ============ INTERFACES ============
 interface Tryout {
@@ -595,7 +596,9 @@ const TryoutPlay = () => {
 
                     {/* Soal */}
                     <div className="bg-white/5 p-6 rounded-2xl border border-white/10 mb-6 min-h-[200px]">
-                        <p className="text-white whitespace-pre-line text-lg">{soal.pertanyaan}</p>
+                        <LatexRenderer className="text-white whitespace-pre-line text-lg">
+                            {soal.pertanyaan}
+                        </LatexRenderer>
                     </div>
 
                     {/* Opsi */}
@@ -607,7 +610,7 @@ const TryoutPlay = () => {
                                 className={`w-full p-4 rounded-xl text-left border transition-all ${jawaban[soal.id] === idx ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800/50 border-slate-700 text-slate-300 hover:bg-slate-800'}`}
                             >
                                 <span className="font-bold mr-3">{String.fromCharCode(65 + idx)}.</span>
-                                {opt}
+                                <LatexRenderer className="inline">{opt}</LatexRenderer>
                             </button>
                         ))}
                     </div>
@@ -887,9 +890,9 @@ const ReviewModalContent = ({ subtes, onClose, soalList, attempt }: { subtes: st
                                     {activeQuestion.nomor_soal}
                                 </span>
                                 <div className="space-y-4">
-                                    <p className="text-lg text-slate-800 font-medium whitespace-pre-line leading-relaxed">
+                                    <LatexRenderer className="text-lg text-slate-800 font-medium whitespace-pre-line leading-relaxed">
                                         {activeQuestion.pertanyaan}
-                                    </p>
+                                    </LatexRenderer>
 
                                     {/* Difficulty Badge */}
                                     <span className={`inline-block px-2 py-1 rounded text-xs font-bold uppercase ${activeQuestion.tingkat_kesulitan === 'sulit' ? 'bg-red-100 text-red-700' :
@@ -914,9 +917,9 @@ const ReviewModalContent = ({ subtes, onClose, soalList, attempt }: { subtes: st
                                             }`}>
                                             {String.fromCharCode(65 + i)}
                                         </div>
-                                        <span className={`flex-1 font-medium ${i === activeQuestion.jawaban_benar ? 'text-green-900' :
+                                        <LatexRenderer className={`flex-1 font-medium ${i === activeQuestion.jawaban_benar ? 'text-green-900' :
                                             i === jawabanUser ? 'text-red-900' : 'text-slate-600'
-                                            }`}>{opt}</span>
+                                            }`}>{opt}</LatexRenderer>
                                         {i === activeQuestion.jawaban_benar && <CheckCircle className="text-green-600" size={20} />}
                                         {i === jawabanUser && i !== activeQuestion.jawaban_benar && <XCircle className="text-red-600" size={20} />}
                                     </div>
@@ -928,9 +931,9 @@ const ReviewModalContent = ({ subtes, onClose, soalList, attempt }: { subtes: st
                                 <h4 className="flex items-center gap-2 font-bold text-indigo-900 mb-3">
                                     <BookOpen size={20} /> Pembahasan
                                 </h4>
-                                <p className="text-indigo-800/80 leading-relaxed whitespace-pre-line">
+                                <LatexRenderer className="text-indigo-800/80 leading-relaxed whitespace-pre-line">
                                     {activeQuestion.pembahasan || 'Pembahasan belum tersedia untuk soal ini.'}
-                                </p>
+                                </LatexRenderer>
                             </div>
                         </div>
                     </div>

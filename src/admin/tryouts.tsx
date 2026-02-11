@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Calendar, Clock, Eye, Save, X, Sparkles, Loader2, FileText, ChevronDown, ChevronUp, Lock, PlayCircle, Upload, BookOpen } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import DashboardLayout from '../components/admin/DashboardLayout';
+import LatexRenderer from '../components/LatexRenderer';
 
 interface Tryout {
     id: string;
@@ -877,23 +878,25 @@ const TryoutManagement: React.FC = () => {
                                                     <div className="p-4 space-y-3 border-t border-slate-200 bg-white max-h-96 overflow-y-auto">
                                                         {generated.map((q, idx) => (
                                                             <div key={idx} className="p-3 bg-slate-50 rounded-lg text-sm">
-                                                                <p className="font-medium text-slate-800 mb-2">
-                                                                    {idx + 1}. {q.pertanyaan}
-                                                                </p>
+                                                                <LatexRenderer className="font-medium text-slate-800 mb-2">
+                                                                    {`${idx + 1}. ${q.pertanyaan}`}
+                                                                </LatexRenderer>
                                                                 <div className="space-y-1 ml-4">
                                                                     {q.opsi.map((opt, oi) => (
-                                                                        <p
-                                                                            key={oi}
-                                                                            className={`${oi === q.jawaban_benar ? 'text-green-600 font-semibold' : 'text-slate-600'}`}
-                                                                        >
-                                                                            {String.fromCharCode(65 + oi)}. {opt}
-                                                                            {oi === q.jawaban_benar && ' ✓'}
-                                                                        </p>
+                                                                        <div key={oi} className="flex items-center gap-1">
+                                                                            <LatexRenderer
+                                                                                className={`${oi === q.jawaban_benar ? 'text-green-600 font-semibold' : 'text-slate-600'}`}
+                                                                            >
+                                                                                {`${String.fromCharCode(65 + oi)}. ${opt}`}
+                                                                            </LatexRenderer>
+                                                                            {oi === q.jawaban_benar && <span className="text-green-600 font-semibold"> ✓</span>}
+                                                                        </div>
                                                                     ))}
                                                                 </div>
-                                                                <p className="text-xs text-slate-500 mt-2 italic">
-                                                                    Pembahasan: {q.pembahasan}
-                                                                </p>
+                                                                <div className="text-xs text-slate-500 mt-2 italic flex gap-1">
+                                                                    <span>Pembahasan:</span>
+                                                                    <LatexRenderer>{q.pembahasan}</LatexRenderer>
+                                                                </div>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -1124,11 +1127,12 @@ const TryoutManagement: React.FC = () => {
                                                                                     </button>
                                                                                 </div>
                                                                             </div>
-                                                                            <p className="text-slate-700 mb-3 whitespace-pre-line text-sm leading-relaxed">{q.pertanyaan}</p>
+                                                                            <LatexRenderer className="text-slate-700 mb-3 whitespace-pre-line text-sm leading-relaxed">{q.pertanyaan}</LatexRenderer>
                                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
                                                                                 {q.opsi.map((o, i) => (
-                                                                                    <div key={i} className={`text-xs px-3 py-2 rounded border transition-all ${i === q.jawaban_benar ? 'bg-green-50 border-green-200 text-green-800 font-bold' : 'bg-white border-slate-100 text-slate-500'}`}>
-                                                                                        <span className="font-mono mr-1">{String.fromCharCode(65 + i)}.</span> {o}
+                                                                                    <div key={i} className={`flex items-center gap-2 text-xs px-3 py-2 rounded border transition-all ${i === q.jawaban_benar ? 'bg-green-50 border-green-200 text-green-800 font-bold' : 'bg-white border-slate-100 text-slate-500'}`}>
+                                                                                        <span className="font-mono">{String.fromCharCode(65 + i)}.</span>
+                                                                                        <LatexRenderer>{o}</LatexRenderer>
                                                                                     </div>
                                                                                 ))}
                                                                             </div>
@@ -1137,7 +1141,7 @@ const TryoutManagement: React.FC = () => {
                                                                                     <p className="font-bold text-indigo-800 mb-1 flex items-center gap-1 uppercase tracking-wider not-italic">
                                                                                         <BookOpen size={12} /> Pembahasan
                                                                                     </p>
-                                                                                    {q.pembahasan}
+                                                                                    <LatexRenderer>{q.pembahasan}</LatexRenderer>
                                                                                 </div>
                                                                             )}
                                                                         </div>
