@@ -44,12 +44,15 @@ const SUBTES_LIST = [
  */
 const normalizeSubtesCode = (input: string): string => {
     const clean = input.toLowerCase().trim().replace(/_/g, '-');
+    console.log('Normalizing subtest:', input, '->', clean);
 
     // Exact mapping for known variations
     const mapping: Record<string, string> = {
         'literasi-bahasa-indonesia': 'literasi-indonesia',
         'bahasa-indonesia': 'literasi-indonesia',
         'literasi-indo': 'literasi-indonesia',
+        'indonesia': 'literasi-indonesia',
+        'indnesia': 'literasi-indonesia',
         'indo': 'literasi-indonesia',
 
         'literasi-bahasa-inggris': 'literasi-inggris',
@@ -64,7 +67,10 @@ const normalizeSubtesCode = (input: string): string => {
         'pbm': 'pemahaman-bacaan-menulis',
         'ppu': 'pengetahuan-pemahaman-umum',
         'pk': 'pengetahuan-kuantitatif',
-        'pu': 'penalaran-umum'
+        'pu': 'penalaran-umum',
+        'pm': 'penalaran-matematika',
+        'lbi': 'literasi-indonesia',
+        'lbe': 'literasi-inggris'
     };
 
     if (mapping[clean]) return mapping[clean];
@@ -309,14 +315,15 @@ const TryoutManagement: React.FC = () => {
                 let validCount = 0;
                 let errorMessages: string[] = [];
 
-                if (Array.isArray(data) && data.length > 0 && data[0].daftar_soal) {
+                if (Array.isArray(data) && data.length > 0 && (data[0].daftar_soal || data[0].questions)) {
                     // NEW GROUPED FORMAT
                     data.forEach((group: any) => {
-                        const id_wacana = group.id_wacana || (group.teks_bacaan ? `wacana_imp_${Date.now()}_${Math.random()}` : null);
-                        const teks_bacaan = group.teks_bacaan || null;
+                        const teks_bacaan = group.teks_bacaan || group.teks_wacana || group.passage || group.bacaan || null;
+                        const id_wacana = group.id_wacana || (teks_bacaan ? `wacana_imp_${Date.now()}_${Math.random().toString(36).substring(7)}` : null);
 
-                        if (Array.isArray(group.daftar_soal)) {
-                            group.daftar_soal.forEach((item: any, idx: number) => {
+                        const soalList = group.daftar_soal || group.questions || [];
+                        if (Array.isArray(soalList)) {
+                            soalList.forEach((item: any, idx: number) => {
                                 const qNum = item.nomor_soal || (idx + 1);
                                 if (!item.pertanyaan) {
                                     errorMessages.push(`Group ${id_wacana} - Soal #${qNum}: Pertanyaan missing.`);
@@ -374,8 +381,8 @@ const TryoutManagement: React.FC = () => {
                             jawaban_benar: typeof item.jawaban_benar === 'number' ? item.jawaban_benar : (item.jawabanBenar ?? 0),
                             pembahasan: item.pembahasan || '',
                             difficulty: item.difficulty || item.difficulty_level || 'sedang',
-                            id_wacana: null,
-                            teks_bacaan: null
+                            id_wacana: item.id_wacana || null,
+                            teks_bacaan: item.teks_bacaan || null
                         });
                         validCount++;
                     });
@@ -539,7 +546,9 @@ const TryoutManagement: React.FC = () => {
             pembahasan: q.pembahasan,
             difficulty_level: q.difficulty_level,
             bobot_nilai: q.bobot_nilai,
-            subtes: q.subtes
+            subtes: q.subtes,
+            id_wacana: q.id_wacana,
+            teks_bacaan: q.teks_bacaan
         });
         setIsAddingManual(true);
     };
@@ -625,7 +634,9 @@ const TryoutManagement: React.FC = () => {
             jawaban_benar: manualForm.jawaban_benar,
             pembahasan: manualForm.pembahasan,
             difficulty_level: manualForm.difficulty_level,
-            bobot_nilai: manualForm.difficulty_level === 'sulit' ? 3 : (manualForm.difficulty_level === 'mudah' ? 1 : 2)
+            bobot_nilai: manualForm.difficulty_level === 'sulit' ? 3 : (manualForm.difficulty_level === 'mudah' ? 1 : 2),
+            id_wacana: manualForm.id_wacana || null,
+            teks_bacaan: manualForm.teks_bacaan || null
         };
 
         if (!editingQuestion) {

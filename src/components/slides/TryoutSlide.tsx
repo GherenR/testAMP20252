@@ -399,6 +399,7 @@ const TryoutPlay = () => {
                     grouped[s.subtes].push(s);
                 });
                 setSoalBySubtes(grouped);
+                console.log('Processed SOS grouped by subtes:', Object.keys(grouped));
                 setSubtesList(Object.keys(grouped));
             }
 
