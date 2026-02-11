@@ -121,7 +121,14 @@ Your task is to create questions that are:
 4. Written in Indonesian (except Literasi Inggris which is in English)
 5. Include "difficulty" field: "mudah", "sedang", or "sulit". Ensure a mix of difficulties.
 
-Output ONLY valid JSON array, no markdown, no explanation outside JSON.`;
+CRITICAL FORMATTING RULES:
+- Output ONLY valid JSON array.
+- DO NOT use markdown code blocks (no \`\`\`json).
+- DO NOT add introduction or conclusion text.
+- FOR MATH EXPRESSIONS: Use UNICODE characters for exponents and symbols.
+  - GOOD: "x² + 5y³ = 10", "√144", "30°", "πr²"
+  - BAD: "x^2 + 5y^3", "sqrt(144)", "30 degrees"
+  - Visually render the math as best as possible using text.`;
 
         const userPrompt = `${SUBTES_PROMPTS[subtes]}
 
@@ -130,20 +137,17 @@ Generate ${jumlah} different questions for ${SUBTES_NAMES[subtes]} subtest.
 Return as JSON array:
 [
   {
-    "pertanyaan": "Question text here",
+    "pertanyaan": "Question text here (use x² for math)",
     "opsi": ["Option A", "Option B", "Option C", "Option D", "Option E"],
     "jawabanBenar": 0,
     "pembahasan": "Brief explanation",
     "difficulty": "sedang"
   }
-]
-
-IMPORTANT: Return ONLY the JSON array, no other text. DO NOT use markdown code blocks.`;
+]`;
 
         console.log(`[generate-soal] Requesting ${jumlah} questions for ${subtes} using Gemini...`);
 
-        // Use gemini-2.5-flash (current stable model as of 2025)
-        // Supports: 1M token context, structured outputs, function calling, thinking
+        // Use gemini-2.5-flash
         const cleanKey = GEMINI_API_KEY.trim();
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cleanKey}`, {
             method: 'POST',
@@ -158,8 +162,8 @@ IMPORTANT: Return ONLY the JSON array, no other text. DO NOT use markdown code b
                 }],
                 generationConfig: {
                     temperature: 0.8,
-                    maxOutputTokens: 2000,
-                    responseMimeType: "application/json" // ✅ Native JSON mode supported in 2.5
+                    maxOutputTokens: 2500, // Increased slightly
+                    responseMimeType: "application/json"
                 }
             })
         });
@@ -174,26 +178,34 @@ IMPORTANT: Return ONLY the JSON array, no other text. DO NOT use markdown code b
         }
 
         const data = await response.json();
-        const content = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+        // Candidate text
+        let content = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
 
-        // Parse JSON from response
+        // Parse JSON
         let questions;
         try {
-            // Try to extract JSON from response (in case there's extra text)
-            // Remove markdown code blocks if present
-            const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
+            // Robust cleanup
+            content = content.replace(/```json\n?|```/g, '').trim();
 
-            const jsonMatch = cleanContent.match(/\[[\s\S]*\]/);
-            questions = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(cleanContent);
+            // Extract array bounds
+            const firstBracket = content.indexOf('[');
+            const lastBracket = content.lastIndexOf(']');
+
+            if (firstBracket !== -1 && lastBracket !== -1) {
+                content = content.substring(firstBracket, lastBracket + 1);
+            }
+
+            questions = JSON.parse(content);
         } catch (parseError) {
             console.error('[generate-soal] JSON parse error. Content received:', content);
             return res.status(500).json({
                 error: 'Failed to parse generated questions',
-                receivedContent: content.substring(0, 200) + '...'
+                details: 'AI response was not valid JSON',
+                receivedContent: content.substring(0, 500)
             });
         }
 
-        // Validate and format questions
+        // Validate structure
         if (!Array.isArray(questions)) {
             console.error('[generate-soal] Expected array but got:', typeof questions);
             return res.status(500).json({ error: 'AI response was not a valid array of questions' });
