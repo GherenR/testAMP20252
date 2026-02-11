@@ -126,21 +126,27 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
                 // ALWAYS verify on SIGNED_IN, even if we have cached data
                 // This prevents stale sessionStorage from blocking re-authentication after session expiration
                 if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-                    setIsLoading(true); // Force loading state while checking
+                    // Only show loading if we don't have a confirmed session
+                    // This prevents the "flash" of loading screen when refreshing
+                    if (!confirmedRef.current && !stored.isAdmin) {
+                        setIsLoading(true);
+                    }
+
                     const status = await checkAdminStatus(session.user.id);
                     if (status.isAdmin) {
                         confirmedRef.current = true;
                         storeAdmin(true, status.role);
                         setIsAdmin(true);
                         setAdminRole(status.role);
-                    } else if (status.role === null && stored.isAdmin) {
-                        // Query failed but we have stored admin - keep it
-                        confirmedRef.current = true;
-                        console.warn('[AdminAuth] Check failed, keeping stored admin');
+                    } else if (status.role === null && stored.isAdmin && confirmedRef.current) {
+                        // Query failed but we have successfully confirmed session before - keep it
+                        console.warn('[AdminAuth] Check failed, keeping confirmed admin');
                     } else {
+                        // Check failed and we are not sure -> logout
                         setIsAdmin(false);
                         setAdminRole(null);
                         storeAdmin(false, null);
+                        confirmedRef.current = false;
                     }
                 }
             }
