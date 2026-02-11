@@ -52,23 +52,33 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const checkAuth = useCallback(async () => {
-        // Only show loading on first check
-        if (!hasCheckedRef.current) {
-            setIsLoading(true);
-        }
+        // Only run on first check - onAuthStateChange handles subsequent updates
+        if (hasCheckedRef.current) return;
+
+        setIsLoading(true);
 
         try {
             // Add timeout to prevent indefinite hanging
-            const timeoutPromise = new Promise<null>((resolve) =>
-                setTimeout(() => resolve(null), 10000)
+            const timeoutPromise = new Promise<'TIMEOUT'>((resolve) =>
+                setTimeout(() => resolve('TIMEOUT'), 10000)
             );
             const userPromise = supabase.auth.getUser().then(res => {
                 if (res.error || !res.data.user) return null;
                 return res.data.user;
             });
 
-            const authUser = await Promise.race([userPromise, timeoutPromise]);
+            const result = await Promise.race([userPromise, timeoutPromise]);
 
+            // On timeout, DON'T reset existing state - just stop loading
+            // The onAuthStateChange listener will handle the auth state properly
+            if (result === 'TIMEOUT') {
+                console.warn('Auth check timed out - keeping existing state');
+                setIsLoading(false);
+                hasCheckedRef.current = true;
+                return;
+            }
+
+            const authUser = result;
             if (!authUser) {
                 setUser(null);
                 setIsAdmin(false);
@@ -82,9 +92,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
             }
         } catch (err) {
             console.error('Auth check error:', err);
-            setUser(null);
-            setIsAdmin(false);
-            setAdminRole(null);
+            // On error, DON'T reset state either - just log
         } finally {
             setIsLoading(false);
             hasCheckedRef.current = true;
