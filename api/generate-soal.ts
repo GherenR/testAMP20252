@@ -161,9 +161,29 @@ Return as JSON array:
                     }]
                 }],
                 generationConfig: {
-                    temperature: 0.8,
-                    maxOutputTokens: 2500, // Increased slightly
-                    responseMimeType: "application/json"
+                    temperature: 0.7, // Lower temperature to be more deterministic
+                    maxOutputTokens: 3000,
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                pertanyaan: { type: "STRING" },
+                                opsi: {
+                                    type: "ARRAY",
+                                    items: { type: "STRING" }
+                                },
+                                jawabanBenar: { type: "NUMBER" },
+                                pembahasan: { type: "STRING" },
+                                difficulty: {
+                                    type: "STRING",
+                                    enum: ["mudah", "sedang", "sulit"]
+                                }
+                            },
+                            required: ["pertanyaan", "opsi", "jawabanBenar", "pembahasan", "difficulty"]
+                        }
+                    }
                 }
             })
         });
