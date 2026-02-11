@@ -101,8 +101,9 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
                     return;
                 }
 
-                // Real signout (session actually gone)
-                console.log('[AdminAuth] Real SIGNED_OUT - session gone');
+                // Real signout (session actually gone - expired or network issue)
+                console.log('[AdminAuth] Real SIGNED_OUT - session expired');
+                intentionalLogoutRef.current = false; // Reset logout flag
                 confirmedRef.current = false;
                 storeAdmin(false, null);
                 setUser(null);
@@ -115,12 +116,15 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
             if (session?.user) {
                 setUser(session.user);
 
-                if (confirmedRef.current) {
-                    // Already confirmed - skip re-check for TOKEN_REFRESHED, etc.
+                // Handle token refresh separately - don't re-verify admin
+                if (event === 'TOKEN_REFRESHED') {
+                    console.log('[AdminAuth] Token refreshed successfully');
                     setIsLoading(false);
                     return;
                 }
 
+                // ALWAYS verify on SIGNED_IN, even if we have cached data
+                // This prevents stale sessionStorage from blocking re-authentication after session expiration
                 if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
                     setIsLoading(true); // Force loading state while checking
                     const status = await checkAdminStatus(session.user.id);
