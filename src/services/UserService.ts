@@ -49,7 +49,7 @@ export const UserService = {
 
     // Update user in users table (trigger will sync role to user_profiles)
     async updateUser(id: string, updates: Partial<User>) {
-        const { error } = await supabase
+        const { error, count } = await supabase
             .from('users')
             .update({
                 name: updates.full_name || updates.name,
@@ -64,17 +64,31 @@ export const UserService = {
                 target_university_2: updates.target_university_2,
                 target_major_2: updates.target_major_2,
             })
-            .eq('id', id);
-        if (error) throw error;
+            .eq('id', id)
+            .select();
+        if (error) {
+            console.error('[UserService] updateUser error:', error);
+            throw error;
+        }
+        console.log('[UserService] updateUser result - rows affected:', count);
     },
 
     // Update user role in users table
     async updateUserRole(id: string, role: string) {
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from('users')
             .update({ role })
-            .eq('id', id);
-        if (error) throw error;
+            .eq('id', id)
+            .select();
+        if (error) {
+            console.error('[UserService] updateUserRole error:', error);
+            throw error;
+        }
+        if (!data || data.length === 0) {
+            console.error('[UserService] updateUserRole: 0 rows affected - likely RLS policy blocking update');
+            throw new Error('Update gagal: tidak ada baris yang berubah. Kemungkinan RLS policy memblokir update ini.');
+        }
+        console.log('[UserService] updateUserRole success:', data);
     },
 
     // Delete user from users table
@@ -83,6 +97,9 @@ export const UserService = {
             .from('users')
             .delete()
             .eq('id', id);
-        if (error) throw error;
+        if (error) {
+            console.error('[UserService] deleteUser error:', error);
+            throw error;
+        }
     },
 };
