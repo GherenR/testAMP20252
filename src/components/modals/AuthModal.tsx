@@ -4,6 +4,7 @@ import {
     Phone, Instagram, GraduationCap, School, ChevronRight, ChevronLeft, Target
 } from 'lucide-react';
 import { useUserAuth, SignUpData } from '../../contexts/UserAuthContext';
+import type { AuthError } from '@supabase/supabase-js';
 
 interface AuthModalProps {
     isOpen: boolean;
@@ -76,7 +77,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         setIsLoading(true);
 
         try {
-            const { error } = await signIn(email, password);
+            // Add timeout to prevent infinite loading
+            const signInPromise = signIn(email, password);
+            const timeoutPromise = new Promise<{ error: Error | null }>((resolve) =>
+                setTimeout(() => resolve({
+                    error: {
+                        message: 'Login timeout. Server lambat merespons. Coba lagi.',
+                        name: 'TimeoutError',
+                        status: 408
+                    } as Error
+                }), 15000)
+            );
+
+            const { error } = await Promise.race([signInPromise, timeoutPromise]);
+
             if (error) {
                 if (error.message.includes('Invalid login')) {
                     setError('Email atau password salah');
@@ -86,7 +100,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     setError(error.message);
                 }
             } else {
-                onClose();
+                // Add small delay to allow auth state to update before closing modal
+                setTimeout(() => onClose(), 500);
             }
         } catch {
             setError('Terjadi kesalahan. Coba lagi nanti.');
