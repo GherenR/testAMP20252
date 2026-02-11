@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Lock, Mail, Sparkles } from 'lucide-react';
+import { Lock, Mail, Sparkles, Home } from 'lucide-react';
 import { logAdminLogin } from '../utils/activityLogger';
 import { warmupDatabase } from '../mentorService';
 
@@ -196,6 +196,15 @@ export default function AdminLogin() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#fdfdfd] via-[#f5eee6] to-[#e7d7c1] text-[#503124] p-4 relative overflow-hidden">
+            {/* Back to Home Button */}
+            <button
+                onClick={() => navigate('/')}
+                className="fixed top-4 left-4 z-50 flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm text-[#503124] rounded-xl hover:bg-white transition-all shadow-sm border border-[#a67c52]/20"
+            >
+                <Home size={18} />
+                <span className="hidden sm:inline text-sm font-medium">Beranda</span>
+            </button>
+
             {/* Animated Background */}
             <AnimatedGridBackground />
 

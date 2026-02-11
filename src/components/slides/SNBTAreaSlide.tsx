@@ -356,7 +356,7 @@ const DashboardHome: React.FC<{
 // Main Component
 export const SNBTAreaSlide: React.FC = () => {
     const navigate = useNavigate();
-    const { isAuthenticated, profile, signOut, isLoading } = useUserAuth();
+    const { isAuthenticated, profile, signOut, isLoading, refreshProfile } = useUserAuth();
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
@@ -364,19 +364,20 @@ export const SNBTAreaSlide: React.FC = () => {
 
     const handleBackToHome = () => navigate('/');
 
-    // Tambahkan delay sebelum error profile null
+    // Only show profile error after a generous timeout AND when truly no profile at all
     const [profileError, setProfileError] = useState(false);
     React.useEffect(() => {
         let timer: NodeJS.Timeout | undefined;
         if (isAuthenticated && !profile && !isLoading) {
-            timer = setTimeout(() => setProfileError(true), 2000);
+            // Give 5 seconds for profile to load — much longer than before
+            timer = setTimeout(() => setProfileError(true), 5000);
         } else {
             setProfileError(false);
         }
         return () => timer && clearTimeout(timer);
     }, [isAuthenticated, profile, isLoading]);
 
-    // Handler logout agar redirect ke halaman utama setelah signOut
+    // Handler logout
     const [logoutLoading, setLogoutLoading] = useState(false);
     const [logoutError, setLogoutError] = useState<string | null>(null);
     const handleLogout = async () => {
@@ -393,102 +394,114 @@ export const SNBTAreaSlide: React.FC = () => {
         }
     };
 
-    return (
-        <ErrorBoundary>
-            {/* Show loading state */}
-            {isLoading ? <LoadingFallback /> : null}
+    // LOADING STATE
+    if (isLoading) {
+        return <ErrorBoundary><LoadingFallback /></ErrorBoundary>;
+    }
 
-            {/* Not authenticated - show teaser */}
-            {!isLoading && !isAuthenticated ? (
-                <>
-                    <TeaserPage
-                        onLoginClick={() => {
-                            setAuthMode('signup');
-                            setShowAuthModal(true);
-                        }}
-                        onBackClick={handleBackToHome}
-                    />
-                    <AuthModal
-                        isOpen={showAuthModal}
-                        onClose={() => setShowAuthModal(false)}
-                        initialMode={authMode}
-                    />
-                </>
-            ) : null}
+    // NOT AUTHENTICATED — show teaser
+    if (!isAuthenticated) {
+        return (
+            <ErrorBoundary>
+                <TeaserPage
+                    onLoginClick={() => {
+                        setAuthMode('signup');
+                        setShowAuthModal(true);
+                    }}
+                    onBackClick={handleBackToHome}
+                />
+                <AuthModal
+                    isOpen={showAuthModal}
+                    onClose={() => setShowAuthModal(false)}
+                    initialMode={authMode}
+                />
+            </ErrorBoundary>
+        );
+    }
 
-            {/* Jika sudah login tapi profile null, tampilkan pesan error dan tombol logout (setelah delay) */}
-            {profileError ? (
+    // AUTHENTICATED — profile truly missing after timeout
+    if (profileError && !profile) {
+        return (
+            <ErrorBoundary>
                 <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white text-center p-8">
                     <h1 className="text-2xl font-bold mb-2">Data Profil Tidak Ditemukan</h1>
                     <p className="mb-4">
-                        Akun kamu sudah login, tapi data profil tidak ditemukan atau terjadi timeout.<br />
-                        Coba klik tombol di bawah untuk memuat ulang data.<br />
-                        Jika masalah berlanjut, silakan logout lalu login ulang, atau hubungi admin.
+                        Akun kamu sudah login, tapi data profil tidak ditemukan.<br />
+                        Coba klik tombol di bawah untuk memuat ulang data.
                     </p>
-                    <button
-                        onClick={() => window.location.reload()}
-                        className="px-6 py-3 bg-indigo-600 rounded-xl font-bold text-white hover:bg-indigo-700 transition-colors mt-2"
-                        disabled={logoutLoading}
-                    >Coba Lagi</button>
-                    <button
-                        onClick={handleLogout}
-                        className={`px-6 py-3 bg-slate-700 rounded-xl font-bold text-white hover:bg-slate-800 transition-colors mt-2 flex items-center justify-center gap-2 ${logoutLoading ? 'opacity-60 cursor-not-allowed' : ''}`}
-                        disabled={logoutLoading}
-                    >
-                        {logoutLoading ? (
-                            <svg className="animate-spin mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                            </svg>
-                        ) : null}
-                        Logout
-                    </button>
+                    <div className="flex gap-3 mt-2">
+                        <button
+                            onClick={async () => {
+                                setProfileError(false);
+                                await refreshProfile();
+                            }}
+                            className="px-6 py-3 bg-indigo-600 rounded-xl font-bold text-white hover:bg-indigo-700 transition-colors"
+                        >Coba Lagi</button>
+                        <button
+                            onClick={handleLogout}
+                            className={`px-6 py-3 bg-slate-700 rounded-xl font-bold text-white hover:bg-slate-800 transition-colors flex items-center gap-2 ${logoutLoading ? 'opacity-60' : ''}`}
+                            disabled={logoutLoading}
+                        >
+                            {logoutLoading && (
+                                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                </svg>
+                            )}
+                            Logout
+                        </button>
+                    </div>
                     {logoutError && <div className="text-red-400 text-sm mt-2">{logoutError}</div>}
                 </div>
-            ) : null}
+            </ErrorBoundary>
+        );
+    }
 
-            {/* Authenticated - show dashboard or feature */}
-            {isAuthenticated && profile && !isLoading ? (
-                <Suspense fallback={<LoadingFallback />}>
-                    {currentView === 'home' && (
-                        <DashboardHome
-                            profile={profile}
-                            onNavigate={setCurrentView}
-                            onLogout={signOut}
-                            onBackClick={handleBackToHome}
-                            onEditProfile={() => setShowProfileModal(true)}
-                        />
-                    )}
-                    <UserProfileModal
-                        isOpen={showProfileModal}
-                        onClose={() => setShowProfileModal(false)}
+    // AUTHENTICATED — show dashboard (even if profile is still loading)
+    // Use a fallback profile so dashboard never shows blank
+    const displayProfile = profile || { fullName: 'Pejuang' };
+
+    return (
+        <ErrorBoundary>
+            <Suspense fallback={<LoadingFallback />}>
+                {currentView === 'home' && (
+                    <DashboardHome
+                        profile={displayProfile}
+                        onNavigate={setCurrentView}
+                        onLogout={handleLogout}
+                        onBackClick={handleBackToHome}
+                        onEditProfile={() => setShowProfileModal(true)}
                     />
-                    {currentView === 'peluang' && (
-                        <div className="relative">
-                            <button
-                                onClick={() => setCurrentView('home')}
-                                className="absolute top-4 left-4 z-10 flex items-center gap-2 px-4 py-2 bg-slate-800/80 backdrop-blur-sm text-white rounded-xl hover:bg-slate-700 transition-all"
-                            >
-                                <ChevronRight className="rotate-180" size={18} />
-                                Kembali
-                            </button>
-                            <PeluangSlide isLoggedIn={true} />
-                        </div>
-                    )}
-                    {currentView === 'tryout' && (
-                        <div className="relative">
-                            <button
-                                onClick={() => setCurrentView('home')}
-                                className="absolute top-4 left-4 z-10 flex items-center gap-2 px-4 py-2 bg-slate-800/80 backdrop-blur-sm text-white rounded-xl hover:bg-slate-700 transition-all"
-                            >
-                                <ChevronRight className="rotate-180" size={18} />
-                                Kembali
-                            </button>
-                            <TryoutSlide isLoggedIn={true} />
-                        </div>
-                    )}
-                </Suspense>
-            ) : null}
+                )}
+                <UserProfileModal
+                    isOpen={showProfileModal}
+                    onClose={() => setShowProfileModal(false)}
+                />
+                {currentView === 'peluang' && (
+                    <div className="relative">
+                        <button
+                            onClick={() => setCurrentView('home')}
+                            className="absolute top-4 left-4 z-10 flex items-center gap-2 px-4 py-2 bg-slate-800/80 backdrop-blur-sm text-white rounded-xl hover:bg-slate-700 transition-all"
+                        >
+                            <ChevronRight className="rotate-180" size={18} />
+                            Kembali
+                        </button>
+                        <PeluangSlide isLoggedIn={true} />
+                    </div>
+                )}
+                {currentView === 'tryout' && (
+                    <div className="relative">
+                        <button
+                            onClick={() => setCurrentView('home')}
+                            className="absolute top-4 left-4 z-10 flex items-center gap-2 px-4 py-2 bg-slate-800/80 backdrop-blur-sm text-white rounded-xl hover:bg-slate-700 transition-all"
+                        >
+                            <ChevronRight className="rotate-180" size={18} />
+                            Kembali
+                        </button>
+                        <TryoutSlide isLoggedIn={true} />
+                    </div>
+                )}
+            </Suspense>
         </ErrorBoundary>
     );
 };

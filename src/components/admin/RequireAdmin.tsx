@@ -6,28 +6,44 @@ import { ShieldX } from 'lucide-react';
 export default function RequireAdmin({ children }: { children: React.ReactNode }) {
     const { isAdmin, isLoading, user } = useAdminAuth();
     const navigate = useNavigate();
-    // CRITICAL: once children have been rendered, NEVER unmount them
     const everAuthorizedRef = useRef(false);
 
     // Track if we've ever been authorized
-    if (isAdmin) {
+    if (isAdmin && user) {
         everAuthorizedRef.current = true;
     }
 
     useEffect(() => {
-        // Only redirect if we've NEVER been authorized and loading is done
+        // If we were authorized before but now user is gone AND loading is done
+        // → this is an intentional logout, redirect to login
+        if (everAuthorizedRef.current && !user && !isLoading) {
+            everAuthorizedRef.current = false;
+            navigate('/admin/login', { replace: true });
+            return;
+        }
+
+        // Never been authorized and no user → redirect to login
         if (!isLoading && !user && !everAuthorizedRef.current) {
             navigate('/admin/login', { replace: true });
         }
-    }, [isLoading, user, navigate]);
+    }, [isLoading, user, isAdmin, navigate]);
 
-    // RULE 1: If ever authorized, ALWAYS render children - no exceptions
-    // This prevents data loss from auth state flickering on tab switches
-    if (everAuthorizedRef.current) {
+    // RULE 1: User is gone after being authorized → logout in progress, show nothing
+    if (everAuthorizedRef.current && !user && !isLoading) {
+        return null;
+    }
+
+    // RULE 2: If authorized (even during transient auth flickers), ALWAYS render children
+    if (everAuthorizedRef.current && user) {
         return <>{children}</>;
     }
 
-    // RULE 2: Still loading initial auth state
+    // RULE 3: Currently authorized
+    if (isAdmin && user) {
+        return <>{children}</>;
+    }
+
+    // RULE 4: Still loading initial auth state
     if (isLoading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
@@ -40,7 +56,7 @@ export default function RequireAdmin({ children }: { children: React.ReactNode }
         );
     }
 
-    // RULE 3: First-time access - user exists but not admin
+    // RULE 5: First-time access - user exists but not admin
     if (user && !isAdmin) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">

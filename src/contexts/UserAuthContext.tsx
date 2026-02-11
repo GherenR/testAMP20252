@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import type { User, AuthError } from '@supabase/supabase-js';
 
@@ -6,20 +6,15 @@ export interface UserProfile {
     id: string;
     email: string;
     fullName: string;
-    // School info
     kelas?: string;
     angkatan?: number;
     school?: string;
-    // Contact info
     phone?: string;
     instagram?: string;
-    // Target PTN 1
     targetUniversity1?: string;
     targetMajor1?: string;
-    // Target PTN 2
     targetUniversity2?: string;
     targetMajor2?: string;
-    // Legacy fields
     targetUniversity?: string;
     targetMajor?: string;
     createdAt: string;
@@ -54,25 +49,42 @@ interface UserAuthContextType {
 
 const UserAuthContext = createContext<UserAuthContextType | null>(null);
 
+// sessionStorage helpers for persistence across refreshes
+function getStoredProfile(): UserProfile | null {
+    try {
+        const raw = sessionStorage.getItem('user_profile');
+        return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+}
+function storeProfile(profile: UserProfile | null) {
+    try {
+        if (profile) {
+            sessionStorage.setItem('user_profile', JSON.stringify(profile));
+        } else {
+            sessionStorage.removeItem('user_profile');
+        }
+    } catch { /* ignore */ }
+}
+
 export function UserAuthProvider({ children }: { children: React.ReactNode }) {
+    const storedProfile = getStoredProfile();
     const [user, setUser] = useState<User | null>(null);
-    const [profile, setProfile] = useState<UserProfile | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [profile, setProfile] = useState<UserProfile | null>(storedProfile);
+    const [isLoading, setIsLoading] = useState(storedProfile ? false : true);
     const [sessionExpired, setSessionExpired] = useState(false);
+    const intentionalLogoutRef = useRef(false);
+    const profileLoadedRef = useRef(!!storedProfile);
 
     // Fetch user profile from database
     const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
-        console.log("Fetching profile for userId:", userId);
-        // Fetch profile langsung dari tabel users
+        console.log('[UserAuth] Fetching profile for:', userId);
         try {
-            const { data, error } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', userId)
-                .single();
+            const { data, error } = await Promise.race([
+                supabase.from('users').select('*').eq('id', userId).single(),
+                new Promise<never>((_, rej) => setTimeout(() => rej(new Error('TIMEOUT')), 10000))
+            ]);
             if (error || !data) {
-                if (error) console.warn('Error fetching user:', error.message, '| userId:', userId);
-                if (!data) console.warn('No user data found for userId:', userId);
+                console.warn('[UserAuth] Profile fetch failed:', error?.message);
                 return null;
             }
             return {
@@ -93,125 +105,162 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
                 createdAt: data.created_at
             } as UserProfile;
         } catch (err) {
-            console.warn('Profile fetch failed:', err, '| userId:', userId);
+            console.warn('[UserAuth] Profile fetch error:', err);
             return null;
         }
     }, []);
 
-    // Initialize auth state
     useEffect(() => {
         let isMounted = true;
 
-        const initAuth = async () => {
-            setIsLoading(true);
-            try {
-                // Add timeout to prevent infinite loading (8 seconds)
-                const timeoutPromise = new Promise<null>((resolve) =>
-                    setTimeout(() => {
-                        console.warn('Auth check timed out - continuing as guest');
-                        resolve(null);
-                    }, 8000)
-                );
-
-                // Use getSession() for faster initial load (no network round-trip to verify JWT)
-                const authPromise = supabase.auth.getSession().then(res => res.data.session?.user ?? null);
-                const authUser = await Promise.race([authPromise, timeoutPromise]);
-
-                if (!isMounted) return;
-
-                if (authUser) {
-                    setUser(authUser);
-                    // Fetch profile directly - don't rely solely on onAuthStateChange
-                    const userProfile = await fetchProfile(authUser.id);
-                    if (isMounted) {
-                        setProfile(userProfile);
-                    }
+        // Instantly restore session from Supabase local storage
+        supabase.auth.getSession().then(async ({ data: { session } }) => {
+            if (!isMounted) return;
+            if (session?.user) {
+                setUser(session.user);
+                // If we already have a stored profile, skip fetch (instant restore)
+                if (profileLoadedRef.current) {
+                    setIsLoading(false);
+                    return;
                 }
-            } catch (err) {
-                if (!isMounted) return;
-                // Network or other error - just continue without auth
-                console.warn('Auth unavailable:', err instanceof Error ? err.message : 'Unknown error');
-            } finally {
+                // Otherwise fetch profile
+                const p = await fetchProfile(session.user.id);
+                if (isMounted && p) {
+                    setProfile(p);
+                    storeProfile(p);
+                    profileLoadedRef.current = true;
+                }
+                if (isMounted) setIsLoading(false);
+            } else {
                 if (isMounted) setIsLoading(false);
             }
-        };
-
-        initAuth();
+        });
 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!isMounted) return;
+            console.log('[UserAuth]', event, !!session?.user, 'intentional:', intentionalLogoutRef.current);
 
-            if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
-                setUser(session.user);
-                setSessionExpired(false);
-
-                // Check for pending profile data from signup
-                const pendingProfile = localStorage.getItem('pendingUserProfile');
-                if (pendingProfile) {
-                    try {
-                        const profileData: SignUpData = JSON.parse(pendingProfile);
-                        console.log('Inserting pending profile for user:', session.user.id);
-
-                        // Insert profile data into users table
-                        await supabase.from('users').upsert({
-                            id: session.user.id,
-                            email: profileData.email,
-                            name: profileData.fullName,
-                            full_name: profileData.fullName,
-                            role: 'user',
-                            kelas: profileData.kelas || null,
-                            angkatan: profileData.angkatan || null,
-                            phone: profileData.phone || null,
-                            instagram: profileData.instagram || null,
-                            target_university_1: profileData.targetUniversity1 || null,
-                            target_major_1: profileData.targetMajor1 || null,
-                            target_university_2: profileData.targetUniversity2 || null,
-                            target_major_2: profileData.targetMajor2 || null,
-                            created_at: new Date().toISOString()
-                        }, { onConflict: 'id' });
-
-                        // Clear pending profile
-                        localStorage.removeItem('pendingUserProfile');
-                        console.log('Pending profile inserted successfully');
-                    } catch (error) {
-                        console.error('Failed to insert pending profile:', error);
-                    }
-                }
-
-                // Fetch profile with retry logic
-                let userProfile = await fetchProfile(session.user.id);
-                if (!userProfile && pendingProfile) {
-                    // Retry after a short delay if profile insertion might be in progress
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    userProfile = await fetchProfile(session.user.id);
-                }
-
-                console.log("Setting profile and loading state:", { userProfile, hasProfile: !!userProfile });
-
-                if (isMounted) {
-                    setProfile(userProfile);
+            if (event === 'SIGNED_OUT') {
+                // Was this an intentional logout?
+                if (intentionalLogoutRef.current) {
+                    console.log('[UserAuth] Intentional SIGNED_OUT');
+                    intentionalLogoutRef.current = false;
+                    setUser(null);
+                    setProfile(null);
+                    storeProfile(null);
+                    profileLoadedRef.current = false;
+                    setSessionExpired(false);
                     setIsLoading(false);
+                    return;
                 }
-            } else if (event === 'SIGNED_OUT') {
-                // Only set sessionExpired if previously authenticated
+
+                // FALSE ALARM CHECK: verify session is actually gone
+                const { data: check } = await supabase.auth.getSession();
+                if (check.session?.user) {
+                    // Session still alive — false alarm from failed token refresh
+                    console.warn('[UserAuth] SIGNED_OUT was false alarm — session still active');
+                    setUser(check.session.user);
+                    // Keep profile as-is
+                    setIsLoading(false);
+                    return;
+                }
+
+                // Real signout (session truly gone)
+                console.log('[UserAuth] Real SIGNED_OUT — session gone');
                 if (user) setSessionExpired(true);
                 setUser(null);
                 setProfile(null);
+                storeProfile(null);
+                profileLoadedRef.current = false;
+                setIsLoading(false);
+                return;
+            }
+
+            if (session?.user) {
+                setUser(session.user);
+                setSessionExpired(false);
+
+                if (event === 'TOKEN_REFRESHED') {
+                    // Token refreshed — keep existing profile, don't refetch
+                    console.log('[UserAuth] TOKEN_REFRESHED — keeping profile');
+                    setIsLoading(false);
+                    return;
+                }
+
+                if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                    // Check for pending profile data from signup
+                    const pendingProfile = localStorage.getItem('pendingUserProfile');
+                    if (pendingProfile) {
+                        try {
+                            const profileData: SignUpData = JSON.parse(pendingProfile);
+                            console.log('[UserAuth] Inserting pending profile for:', session.user.id);
+                            await supabase.from('users').upsert({
+                                id: session.user.id,
+                                email: profileData.email,
+                                name: profileData.fullName,
+                                full_name: profileData.fullName,
+                                role: 'user',
+                                kelas: profileData.kelas || null,
+                                angkatan: profileData.angkatan || null,
+                                phone: profileData.phone || null,
+                                instagram: profileData.instagram || null,
+                                target_university_1: profileData.targetUniversity1 || null,
+                                target_major_1: profileData.targetMajor1 || null,
+                                target_university_2: profileData.targetUniversity2 || null,
+                                target_major_2: profileData.targetMajor2 || null,
+                                created_at: new Date().toISOString()
+                            }, { onConflict: 'id' });
+                            localStorage.removeItem('pendingUserProfile');
+                            console.log('[UserAuth] Pending profile inserted');
+                        } catch (error) {
+                            console.error('[UserAuth] Failed to insert pending profile:', error);
+                        }
+                    }
+
+                    // Skip profile fetch if we already have one cached
+                    if (profileLoadedRef.current && profile) {
+                        console.log('[UserAuth] Already have profile — skipping fetch');
+                        setIsLoading(false);
+                        return;
+                    }
+
+                    // Fetch profile with retry
+                    let userProfile = await fetchProfile(session.user.id);
+                    if (!userProfile && pendingProfile) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        userProfile = await fetchProfile(session.user.id);
+                    }
+
+                    if (isMounted) {
+                        if (userProfile) {
+                            setProfile(userProfile);
+                            storeProfile(userProfile);
+                            profileLoadedRef.current = true;
+                        }
+                        // Don't set profile to null if fetch fails — keep stored one
+                        setIsLoading(false);
+                    }
+                }
             }
         });
+
+        // Safety timeout
+        const timer = setTimeout(() => {
+            if (isMounted) setIsLoading(prev => prev ? false : prev);
+        }, 12000);
 
         return () => {
             isMounted = false;
             subscription.unsubscribe();
+            clearTimeout(timer);
         };
     }, []);
 
-    // Sign up with extended profile data
+    // Sign up
     const signUp = async (signUpData: SignUpData) => {
         const { email, password, fullName, kelas, angkatan, phone, instagram, targetUniversity1, targetMajor1, targetUniversity2, targetMajor2 } = signUpData;
 
-        // Get the current site URL for email redirect
         const redirectUrl = typeof window !== 'undefined'
             ? `${window.location.origin}/snbtarea`
             : undefined;
@@ -220,14 +269,11 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
             email,
             password,
             options: {
-                data: {
-                    full_name: fullName
-                },
+                data: { full_name: fullName },
                 emailRedirectTo: redirectUrl
             }
         });
 
-        // Check if user already exists (Supabase returns user with empty identities)
         if (!error && data.user && data.user.identities && data.user.identities.length === 0) {
             return {
                 error: {
@@ -239,7 +285,6 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (!error && data.user && data.user.identities && data.user.identities.length > 0) {
-            // Insert langsung ke tabel users (semua data profile di sini)
             await supabase.from('users').upsert({
                 id: data.user.id,
                 email: email,
@@ -263,20 +308,20 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
 
     // Sign in
     const signIn = async (email: string, password: string) => {
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password
-        });
-
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         return { error };
     };
 
     // Sign out
     const signOut = async () => {
+        // Mark as intentional so SIGNED_OUT handler doesn't false-alarm-check
+        intentionalLogoutRef.current = true;
+        storeProfile(null);
+        profileLoadedRef.current = false;
         try {
             await supabase.auth.signOut();
         } catch (err) {
-            console.warn('Logout error:', err);
+            console.warn('[UserAuth] Logout error:', err);
         }
         setUser(null);
         setProfile(null);
@@ -285,7 +330,6 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
     // Update profile
     const updateProfile = async (data: Partial<UserProfile>) => {
         if (!user) return { error: new Error('Not authenticated') };
-
         try {
             const updateData: Record<string, unknown> = {};
             if (data.fullName !== undefined) updateData.full_name = data.fullName;
@@ -298,32 +342,31 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
             if (data.targetMajor1 !== undefined) updateData.target_major_1 = data.targetMajor1;
             if (data.targetUniversity2 !== undefined) updateData.target_university_2 = data.targetUniversity2;
             if (data.targetMajor2 !== undefined) updateData.target_major_2 = data.targetMajor2;
-            // Legacy fields
             if (data.targetUniversity !== undefined) updateData.target_university = data.targetUniversity;
             if (data.targetMajor !== undefined) updateData.target_major = data.targetMajor;
 
-            const { error } = await supabase
-                .from('users')
-                .update(updateData)
-                .eq('id', user.id);
-
+            const { error } = await supabase.from('users').update(updateData).eq('id', user.id);
             if (error) throw error;
 
-            // Refresh profile
             const newProfile = await fetchProfile(user.id);
-            setProfile(newProfile);
-
+            if (newProfile) {
+                setProfile(newProfile);
+                storeProfile(newProfile);
+            }
             return { error: null };
         } catch (err) {
             return { error: err as Error };
         }
     };
 
-    // Refresh profile manually
+    // Refresh profile
     const refreshProfile = async () => {
         if (user) {
             const newProfile = await fetchProfile(user.id);
-            setProfile(newProfile);
+            if (newProfile) {
+                setProfile(newProfile);
+                storeProfile(newProfile);
+            }
         }
     };
 
