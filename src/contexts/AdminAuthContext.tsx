@@ -119,6 +119,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
                 }
 
                 if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                    setIsLoading(true); // Force loading state while checking
                     const status = await checkAdminStatus(session.user.id);
                     if (status.isAdmin) {
                         confirmedRef.current = true;
