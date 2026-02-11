@@ -8,6 +8,7 @@ interface AdminAuthContextType {
     adminRole: string | null;
     isLoading: boolean;
     checkAuth: () => Promise<void>;
+    signOut: () => Promise<void>;
 }
 
 const AdminAuthContext = createContext<AdminAuthContextType | null>(null);
@@ -40,6 +41,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     const [adminRole, setAdminRole] = useState<string | null>(stored.role);
     const [isLoading, setIsLoading] = useState(!stored.isAdmin);
     const confirmedRef = useRef(stored.isAdmin);
+    const intentionalLogoutRef = useRef(false);
 
     const checkAdminStatus = async (userId: string): Promise<{ isAdmin: boolean; role: string | null }> => {
         try {
@@ -76,14 +78,15 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
             console.log('[AdminAuth]', event, !!session?.user, 'confirmed:', confirmedRef.current);
 
             if (event === 'SIGNED_OUT') {
-                // If sessionStorage was already cleared, this is an intentional logout
-                const storedAdmin = getStoredAdmin();
-                if (!storedAdmin.isAdmin && !confirmedRef.current) {
-                    // Intentional logout (sessionStorage already cleared by handleLogout)
+                // Check if this was an intentional logout first
+                if (intentionalLogoutRef.current) {
                     console.log('[AdminAuth] Intentional SIGNED_OUT');
+                    intentionalLogoutRef.current = false;
+                    confirmedRef.current = false;
                     setUser(null);
                     setIsAdmin(false);
                     setAdminRole(null);
+                    storeAdmin(false, null);
                     setIsLoading(false);
                     return;
                 }
@@ -154,8 +157,21 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
     const checkAuth = async () => { };
 
+    const signOut = async () => {
+        // Mark as intentional so SIGNED_OUT handler doesn't false-alarm-check
+        intentionalLogoutRef.current = true;
+        confirmedRef.current = false;
+        storeAdmin(false, null);
+        try {
+            await supabase.auth.signOut();
+        } catch (err) {
+            console.warn('[AdminAuth] Logout error:', err);
+        }
+        // State cleanup happens in SIGNED_OUT handler
+    };
+
     return (
-        <AdminAuthContext.Provider value={{ user, isAdmin, adminRole, isLoading, checkAuth }}>
+        <AdminAuthContext.Provider value={{ user, isAdmin, adminRole, isLoading, checkAuth, signOut }}>
             {children}
         </AdminAuthContext.Provider>
     );

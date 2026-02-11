@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../supabaseClient';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Home, BarChart3, Database, Settings, LogOut, Menu, X, ExternalLink, Upload, Users, Download, History, Copy, Mail, Settings2, BookOpen } from 'lucide-react';
+import { useAdminAuth } from '../../contexts/AdminAuthContext';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
+    const { signOut } = useAdminAuth();
 
     // Set document title for admin dashboard
     useEffect(() => {
@@ -14,9 +15,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }, []); // This line is retained to ensure the title is set correctly
 
     const handleLogout = async () => {
-        // Clear admin state FIRST so SIGNED_OUT verification knows it's intentional
-        sessionStorage.removeItem('admin_confirmed');
-        await supabase.auth.signOut();
+        await signOut();
         navigate('/admin/login');
     };
 
