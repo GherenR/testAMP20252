@@ -25,6 +25,16 @@ export const SopModal: React.FC<SopModalProps> = ({
   const [studentBatch, setStudentBatch] = useState(2026);
   const [showForm, setShowForm] = useState(false);
 
+  // Reset form state when modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      setShowForm(false);
+      setStudentName('');
+      setStudentClass('');
+      setStudentBatch(2026);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleProceed = () => {
@@ -159,43 +169,43 @@ export const SopModal: React.FC<SopModalProps> = ({
                 <span className="font-bold">Preview pesan:</span> Selamat Siang Kak {selectedMentor?.name || 'Mentor'}, saya {studentName || '[Nama Anda]'} dari kelas {studentClass || '[Kelas]'} angkatan {studentBatch}. Ingin berkonsultasi mengenai perkuliahan...
               </p>
             </div>
-
-            {/* Buttons */}
-            <div className="flex flex-col gap-2 sm:gap-3">
-              {!showForm ? (
-                <>
-                  <button
-                    onClick={() => setShowForm(true)}
-                    className="flex-1 bg-slate-950 text-white py-4 sm:py-6 rounded-xl sm:rounded-[2.5rem] font-bold text-sm sm:text-lg hover:bg-indigo-600 transition-all flex items-center justify-center gap-2 sm:gap-4 shadow-xl active:scale-95 min-h-[44px]"
-                  >
-                    Lanjut ke WhatsApp <ArrowRight size={18} className="sm:hidden" /><ArrowRight size={24} className="hidden sm:block" />
-                  </button>
-                  <button
-                    onClick={onClose}
-                    className="px-4 sm:px-6 py-4 sm:py-6 rounded-xl sm:rounded-[2.5rem] font-bold text-sm sm:text-lg hover:bg-slate-100 transition-all active:scale-95 text-slate-950 min-h-[44px]"
-                  >
-                    Batal
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={handleProceed}
-                    className="flex-1 bg-slate-950 text-white py-4 sm:py-6 rounded-xl sm:rounded-[2.5rem] font-bold text-sm sm:text-lg hover:bg-indigo-600 transition-all flex items-center justify-center gap-2 sm:gap-4 shadow-xl active:scale-95 min-h-[44px]"
-                  >
-                    Hubungi di WhatsApp <ArrowRight size={18} className="sm:hidden" /><ArrowRight size={24} className="hidden sm:block" />
-                  </button>
-                  <button
-                    onClick={() => setShowForm(false)}
-                    className="px-4 sm:px-6 py-4 sm:py-6 rounded-xl sm:rounded-[2.5rem] font-bold text-sm sm:text-lg hover:bg-slate-100 transition-all active:scale-95 text-slate-950 min-h-[44px]"
-                  >
-                    Kembali
-                  </button>
-                </>
-              )}
-            </div>
           </div>
         )}
+
+        {/* Buttons */}
+        <div className="flex flex-col gap-2 sm:gap-3">
+          {!showForm ? (
+            <>
+              <button
+                onClick={() => setShowForm(true)}
+                className="flex-1 bg-slate-950 text-white py-4 sm:py-6 rounded-xl sm:rounded-[2.5rem] font-bold text-sm sm:text-lg hover:bg-indigo-600 transition-all flex items-center justify-center gap-2 sm:gap-4 shadow-xl active:scale-95 min-h-[44px]"
+              >
+                Lanjut ke WhatsApp <ArrowRight size={18} className="sm:hidden" /><ArrowRight size={24} className="hidden sm:block" />
+              </button>
+              <button
+                onClick={onClose}
+                className="px-4 sm:px-6 py-4 sm:py-6 rounded-xl sm:rounded-[2.5rem] font-bold text-sm sm:text-lg hover:bg-slate-100 transition-all active:scale-95 text-slate-950 min-h-[44px]"
+              >
+                Batal
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={handleProceed}
+                className="flex-1 bg-slate-950 text-white py-4 sm:py-6 rounded-xl sm:rounded-[2.5rem] font-bold text-sm sm:text-lg hover:bg-indigo-600 transition-all flex items-center justify-center gap-2 sm:gap-4 shadow-xl active:scale-95 min-h-[44px]"
+              >
+                Hubungi di WhatsApp <ArrowRight size={18} className="sm:hidden" /><ArrowRight size={24} className="hidden sm:block" />
+              </button>
+              <button
+                onClick={() => setShowForm(false)}
+                className="px-4 sm:px-6 py-4 sm:py-6 rounded-xl sm:rounded-[2.5rem] font-bold text-sm sm:text-lg hover:bg-slate-100 transition-all active:scale-95 text-slate-950 min-h-[44px]"
+              >
+                Kembali
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
