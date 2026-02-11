@@ -102,12 +102,36 @@ export default function AdminLogin() {
     const location = useLocation();
     const redirect = new URLSearchParams(location.search).get('redirect') || '/admin';
 
+    // Check existing session on mount
+    useEffect(() => {
+        const checkExistingSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                // Check if user is admin
+                const { data } = await supabase
+                    .from('users')
+                    .select('role')
+                    .eq('id', session.user.id)
+                    .single();
+
+                const role = data?.role?.toLowerCase().trim();
+                if (role === 'admin' || role === 'super_admin' || role === 'super_admin') {
+                    navigate(redirect);
+                }
+            }
+        };
+        checkExistingSession();
+    }, [navigate, redirect]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError('');
 
         try {
+            // Step 0: Ensure clean state
+            await supabase.auth.signOut();
+
             // Step 1: Sign in with timeout
             const signInPromise = supabase.auth.signInWithPassword({ email, password });
             const timeoutPromise = new Promise<never>((_, reject) =>
