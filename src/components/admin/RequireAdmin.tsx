@@ -14,17 +14,23 @@ export default function RequireAdmin({ children }: { children: React.ReactNode }
     }
 
     useEffect(() => {
-        // If we were authorized before but now user is gone AND loading is done
-        // → this is an intentional logout, redirect to login
-        if (everAuthorizedRef.current && !user && !isLoading) {
-            everAuthorizedRef.current = false;
-            navigate('/admin/login', { replace: true });
-            return;
-        }
+        // Only redirect if we are SURE there is no session
+        // If isLoading is true, we wait.
+        // If isLoading is false but isAdmin is true, we might be waiting for the user object to hydrate.
+        if (isLoading) return;
 
-        // Never been authorized and no user → redirect to login
-        if (!isLoading && !user && !everAuthorizedRef.current) {
-            navigate('/admin/login', { replace: true });
+        if (!user) {
+            // Case 1: We were authorized (everAuthorizedRef) but user is gone
+            if (everAuthorizedRef.current) {
+                everAuthorizedRef.current = false;
+                navigate('/admin/login', { replace: true });
+                return;
+            }
+
+            // Case 2: No user, not admin, not loading -> definitely needs login
+            if (!isAdmin) {
+                navigate('/admin/login', { replace: true });
+            }
         }
     }, [isLoading, user, isAdmin, navigate]);
 

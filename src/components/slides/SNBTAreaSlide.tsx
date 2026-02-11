@@ -250,17 +250,17 @@ const DashboardHome: React.FC<{
 
             // 1. Completed Tryouts & High Score
             const { data: attempts } = await supabase.from('tryout_attempts')
-                .select('skor_total, skor_akhir, completed_at, waktu_selesai, skor_per_subtes')
+                .select('skor_akhir, completed_at, skor_per_subtes')
                 .eq('user_id', user.id);
 
             if (attempts) {
                 // Filter for completed attempts (support both new and legacy schema)
-                const completedAttempts = attempts.filter(a => a.completed_at || a.waktu_selesai);
+                const completedAttempts = attempts.filter(a => a.completed_at);
                 const completed = completedAttempts.length;
 
-                // Calculate max score (robust fallback: IRT -> Total -> Derived from JSON)
+                // Calculate max score (robust fallback: skor_akhir -> Derived from skor_per_subtes)
                 const maxScore = completedAttempts.reduce((max: number, curr: any) => {
-                    let score = curr.skor_akhir || curr.skor_total || 0;
+                    let score = curr.skor_akhir || 0;
 
                     // Fallback: Calculate from skor_per_subtes if top-level is 0/null
                     if (!score && curr.skor_per_subtes) {

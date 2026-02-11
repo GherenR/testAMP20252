@@ -388,8 +388,10 @@ const TryoutPlay = () => {
             // Load Soal
             const { data: sData } = await supabase.from('tryout_soal').select('*').eq('tryout_id', id);
             if (sData) {
+                // Sort by nomor_soal first
+                const sortedSoal = [...sData].sort((a, b) => a.nomor_soal - b.nomor_soal);
                 const grouped: Record<string, TryoutSoal[]> = {};
-                sData.forEach(s => {
+                sortedSoal.forEach(s => {
                     if (!grouped[s.subtes]) grouped[s.subtes] = [];
                     grouped[s.subtes].push(s);
                 });
@@ -584,7 +586,7 @@ const TryoutPlay = () => {
                     <div className="flex justify-between items-center mb-6 bg-white/5 p-4 rounded-xl border border-white/10">
                         <div>
                             <h2 className="text-white font-bold">{config?.nama}</h2>
-                            <p className="text-slate-400 text-xs">Soal {currentIndex + 1} / {soalList.length}</p>
+                            <p className="text-slate-400 text-xs">Soal {soal.nomor_soal} / {soalList.length}</p>
                         </div>
                         <div className={`font-mono text-xl font-bold ${timeLeft < 60 ? 'text-red-400 animate-pulse' : 'text-indigo-400'}`}>
                             {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
@@ -945,7 +947,7 @@ const ReviewModalContent = ({ subtes, onClose, soalList, attempt }: { subtes: st
 
                         <div className="flex md:hidden gap-1">
                             {/* Mobile Mini Pagination or indicator could go here if needed */}
-                            <span className="text-slate-500 font-bold">{activeIndex + 1} / {questions.length}</span>
+                            <span className="text-slate-500 font-bold">{activeQuestion.nomor_soal} / {questions.length}</span>
                         </div>
 
                         <button

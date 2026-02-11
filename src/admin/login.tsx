@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Lock, Mail, Sparkles, Home } from 'lucide-react';
 import { logAdminLogin } from '../utils/activityLogger';
 import { warmupDatabase } from '../mentorService';
+import { useAdminAuth } from '../contexts/AdminAuthContext';
 
 // Animated grid background component
 function AnimatedGridBackground() {
@@ -100,6 +101,7 @@ export default function AdminLogin() {
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
+    const { refreshSession } = useAdminAuth();
     const redirect = new URLSearchParams(location.search).get('redirect') || '/admin';
 
     // Check existing session on mount
@@ -129,9 +131,6 @@ export default function AdminLogin() {
         setError('');
 
         try {
-            // Step 0: Ensure clean state
-            await supabase.auth.signOut();
-
             // Step 1: Sign in with timeout
             const signInPromise = supabase.auth.signInWithPassword({ email, password });
             const timeoutPromise = new Promise<never>((_, reject) =>
@@ -205,6 +204,13 @@ export default function AdminLogin() {
             }
 
             // Step 3: Success - user is admin
+            // Populate sessionStorage immediately so context picks it up
+            const ADMIN_KEY = 'admin_confirmed';
+            sessionStorage.setItem(ADMIN_KEY, JSON.stringify({ isAdmin: true, role: normalizedRole }));
+
+            // Force context to update its internal state
+            refreshSession();
+
             // Warm up database connection before navigating to data-heavy pages
             warmupDatabase(); // fire-and-forget, don't await
             setLoading(false);

@@ -9,6 +9,7 @@ interface AdminAuthContextType {
     isLoading: boolean;
     checkAuth: () => Promise<void>;
     signOut: () => Promise<void>;
+    refreshSession: () => void;
 }
 
 const AdminAuthContext = createContext<AdminAuthContextType | null>(null);
@@ -124,10 +125,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
                 }
 
                 // ALWAYS verify on SIGNED_IN, even if we have cached data
-                // This prevents stale sessionStorage from blocking re-authentication after session expiration
                 if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-                    // Only show loading if we don't have a confirmed session
-                    // This prevents the "flash" of loading screen when refreshing
                     if (!confirmedRef.current && !stored.isAdmin) {
                         setIsLoading(true);
                     }
@@ -168,7 +166,6 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     const checkAuth = async () => { };
 
     const signOut = async () => {
-        // Mark as intentional so SIGNED_OUT handler doesn't false-alarm-check
         intentionalLogoutRef.current = true;
         confirmedRef.current = false;
         storeAdmin(false, null);
@@ -177,11 +174,19 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         } catch (err) {
             console.warn('[AdminAuth] Logout error:', err);
         }
-        // State cleanup happens in SIGNED_OUT handler
+    };
+
+    const refreshSession = () => {
+        const stored = getStoredAdmin();
+        if (stored.isAdmin) {
+            setIsAdmin(true);
+            setAdminRole(stored.role);
+            confirmedRef.current = true;
+        }
     };
 
     return (
-        <AdminAuthContext.Provider value={{ user, isAdmin, adminRole, isLoading, checkAuth, signOut }}>
+        <AdminAuthContext.Provider value={{ user, isAdmin, adminRole, isLoading, checkAuth, signOut, refreshSession }}>
             {children}
         </AdminAuthContext.Provider>
     );
