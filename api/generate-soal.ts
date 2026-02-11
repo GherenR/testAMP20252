@@ -85,19 +85,38 @@ const SUBTES_NAMES: Record<string, string> = {
     'penalaran-matematika': 'Penalaran Matematika'
 };
 
+// Helper to clean and extract JSON
+function cleanAndExtractJSON(text: string): any {
+    // 1. Remove Markdown code blocks
+    let clean = text.replace(/```json\n?|```/g, '').trim();
+
+    // 2. Find array bounds
+    const firstBracket = clean.indexOf('[');
+    const lastBracket = clean.lastIndexOf(']');
+
+    if (firstBracket !== -1 && lastBracket !== -1) {
+        clean = clean.substring(firstBracket, lastBracket + 1);
+    }
+
+    // 3. Try standard parse
+    try {
+        return JSON.parse(clean);
+    } catch (e) {
+        // 4. Fallback: Try to fix common issues (trailing commas, etc)
+        // Simple fix: remove trailing commas before closing brackets/braces
+        clean = clean.replace(/,\s*([\]}])/g, '$1');
+        return JSON.parse(clean);
+    }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     // CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
-
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
-    }
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     const { subtes, jumlah = 5 } = req.body;
 
@@ -106,153 +125,114 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
     if (!GEMINI_API_KEY) {
-        console.error('SERVER ERROR: Gemini API key is missing in environment variables');
-        return res.status(500).json({ error: 'Gemini API key not configured on server (GEMINI_API_KEY)' });
+        console.error('SERVER ERROR: Gemini API key is missing');
+        return res.status(500).json({ error: 'Gemini API key not configured' });
     }
 
-    try {
-        const systemPrompt = `You are an expert SNBT (Seleksi Nasional Berdasarkan Tes) question creator for Indonesian university admission tests. 
-Your task is to create questions that are:
-1. Similar in style and difficulty to Pahamify tryout questions
-2. Have exactly 5 answer options (A-E)
-3. Include correct answer index (0-4) and brief explanation (pembahasan)
-4. Written in Indonesian (except Literasi Inggris which is in English)
-5. Include "difficulty" field: "mudah", "sedang", or "sulit". Ensure a mix of difficulties.
+    const cleanKey = GEMINI_API_KEY.trim();
 
-CRITICAL FORMATTING RULES:
-- Output ONLY valid JSON array.
-- DO NOT use markdown code blocks (no \`\`\`json).
-- DO NOT add introduction or conclusion text.
-- FOR MATH EXPRESSIONS: Use UNICODE characters for exponents and symbols.
-  - GOOD: "x² + 5y³ = 10", "√144", "30°", "πr²"
-  - BAD: "x^2 + 5y^3", "sqrt(144)", "30 degrees"
-  - Visually render the math as best as possible using text.`;
+    // Calculate Difficulty Distribution
+    let difficultyInstruction = "4. Difficulty: Create a mix of behaviors (Mudah, Sedang, Sulit).";
 
-        const userPrompt = `${SUBTES_PROMPTS[subtes]}
+    if (jumlah >= 5) {
+        const units = Math.floor(jumlah / 5);
+        const mudah = units;
+        const sulit = units;
+        const sedang = jumlah - mudah - sulit;
 
-Generate ${jumlah} different questions for ${SUBTES_NAMES[subtes]} subtest.
+        difficultyInstruction = `4. Difficulty Distribution (STRICT):
+   - Mudah: ${mudah} questions
+   - Sedang: ${sedang} questions
+   - Sulit: ${sulit} questions`;
+    }
 
-Return as JSON array:
-[
-  {
-    "pertanyaan": "Question text here (use x² for math)",
-    "opsi": ["Option A", "Option B", "Option C", "Option D", "Option E"],
-    "jawabanBenar": 0,
-    "pembahasan": "Brief explanation",
-    "difficulty": "sedang"
-  }
-]`;
+    const systemPrompt = `You are an expert SNBT question creator. Create ${jumlah} questions for ${SUBTES_NAMES[subtes]}.
+Rules:
+1. Output ONLY a valid JSON Array.
+2. No markdown, no "Here is the JSON".
+3. Use Unicode for Math (x², π, √, etc).
+${difficultyInstruction}
+5. 5 Options (A-E).`;
 
-        console.log(`[generate-soal] Requesting ${jumlah} questions for ${subtes} using Gemini...`);
+    const userPrompt = `${SUBTES_PROMPTS[subtes]}
+    
+    STRICT JSON OUTPUT:
+    [
+      {
+        "pertanyaan": "Question...",
+        "opsi": ["A", "B", "C", "D", "E"],
+        "jawabanBenar": 0,
+        "pembahasan": "Exp...",
+        "difficulty": "sedang"
+      }
+    ]`;
 
-        // Use gemini-2.5-flash
-        const cleanKey = GEMINI_API_KEY.trim();
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cleanKey}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{
-                        text: `${systemPrompt}\n\n${userPrompt}`
-                    }]
-                }],
-                generationConfig: {
-                    temperature: 0.7, // Lower temperature to be more deterministic
-                    maxOutputTokens: 3000,
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: "ARRAY",
-                        items: {
-                            type: "OBJECT",
-                            properties: {
-                                pertanyaan: { type: "STRING" },
-                                opsi: {
-                                    type: "ARRAY",
-                                    items: { type: "STRING" }
-                                },
-                                jawabanBenar: { type: "NUMBER" },
-                                pembahasan: { type: "STRING" },
-                                difficulty: {
-                                    type: "STRING",
-                                    enum: ["mudah", "sedang", "sulit"]
-                                }
-                            },
-                            required: ["pertanyaan", "opsi", "jawabanBenar", "pembahasan", "difficulty"]
-                        }
-                    }
-                }
-            })
-        });
+    // MAX RETRIES
+    let attempts = 0;
+    const MAX_RETRIES = 2;
+    let lastError = null;
+    let lastContent = "";
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('[generate-soal] Gemini API error:', response.status, errorText);
-            return res.status(500).json({
-                error: `Gemini API Error: ${response.status}`,
-                details: errorText
-            });
-        }
+    while (attempts < MAX_RETRIES) {
+        attempts++;
+        console.log(`[generate-soal] Attempt ${attempts} for ${subtes}...`);
 
-        const data = await response.json();
-        // Candidate text
-        let content = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
-
-        // Parse JSON
-        let questions;
         try {
-            // Robust cleanup
-            content = content.replace(/```json\n?|```/g, '').trim();
+            // Use gemini-1.5-flash for stability
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cleanKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
+                    generationConfig: {
+                        temperature: 0.7,
+                        maxOutputTokens: 3000,
+                        responseMimeType: "application/json"
+                    }
+                })
+            });
 
-            // Extract array bounds
-            const firstBracket = content.indexOf('[');
-            const lastBracket = content.lastIndexOf(']');
-
-            if (firstBracket !== -1 && lastBracket !== -1) {
-                content = content.substring(firstBracket, lastBracket + 1);
+            if (!response.ok) {
+                throw new Error(`Gemini API Error: ${response.status} ${await response.text()}`);
             }
 
-            questions = JSON.parse(content);
-        } catch (parseError) {
-            console.error('[generate-soal] JSON parse error. Content received:', content);
-            return res.status(500).json({
-                error: 'Failed to parse generated questions',
-                details: 'AI response was not valid JSON',
-                receivedContent: content.substring(0, 500)
-            });
+            const data = await response.json();
+            lastContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+
+            // Parse
+            const questions = cleanAndExtractJSON(lastContent);
+
+            if (!Array.isArray(questions)) {
+                throw new Error('Parsed result is not an array');
+            }
+
+            // Map and Validate
+            const formattedQuestions = questions.map((q: any, idx: number) => ({
+                subtes,
+                nomor_soal: idx + 1,
+                pertanyaan: q.pertanyaan || 'Pertanyaan kosong',
+                opsi: Array.isArray(q.opsi) ? q.opsi : [],
+                jawaban_benar: typeof q.jawabanBenar === 'number' ? q.jawabanBenar : (typeof q.jawaban_benar === 'number' ? q.jawaban_benar : 0),
+                pembahasan: q.pembahasan || '',
+                difficulty: q.difficulty || 'sedang'
+            }));
+
+            console.log(`[generate-soal] Success on attempt ${attempts}`);
+            return res.status(200).json({ success: true, questions: formattedQuestions });
+
+        } catch (error: any) {
+            console.error(`[generate-soal] Attempt ${attempts} failed:`, error.message);
+            lastError = error;
+            // Loop to retry
         }
-
-        // Validate structure
-        if (!Array.isArray(questions)) {
-            console.error('[generate-soal] Expected array but got:', typeof questions);
-            return res.status(500).json({ error: 'AI response was not a valid array of questions' });
-        }
-
-        const formattedQuestions = questions.map((q: any, idx: number) => ({
-            subtes,
-            nomor_soal: idx + 1,
-            pertanyaan: q.pertanyaan || '',
-            opsi: Array.isArray(q.opsi) ? q.opsi : [],
-            jawaban_benar: typeof q.jawabanBenar === 'number' ? q.jawabanBenar : (typeof q.jawaban_benar === 'number' ? q.jawaban_benar : 0),
-            pembahasan: q.pembahasan || '',
-            difficulty: q.difficulty || 'sedang'
-        }));
-
-        console.log(`[generate-soal] Successfully generated ${formattedQuestions.length} questions`);
-
-        return res.status(200).json({
-            success: true,
-            questions: formattedQuestions
-        });
-
-    } catch (error: any) {
-        console.error('[generate-soal] Internal server error:', error);
-        return res.status(500).json({
-            error: 'Internal server error',
-            message: error.message
-        });
     }
+
+    // If failed after retries
+    console.error('[generate-soal] All attempts failed. Last content:', lastContent.substring(0, 200));
+    return res.status(500).json({
+        error: 'Failed to generate valid questions after retries',
+        details: lastError?.message,
+        receivedContent: lastContent.substring(0, 500)
+    });
 }

@@ -36,6 +36,7 @@ import {
 import { useUserAuth } from '../../contexts/UserAuthContext';
 import { AuthModal } from '../modals/AuthModal';
 import { UserProfileModal } from '../modals/UserProfileModal';
+import { supabase } from '../../supabaseClient';
 
 // Lazy load heavy components
 const PeluangSlide = lazy(() => import('./PeluangSlide'));
@@ -239,119 +240,150 @@ const DashboardHome: React.FC<{
     onLogout: () => void;
     onBackClick: () => void;
     onEditProfile: () => void;
-}> = ({ profile, onNavigate, onLogout, onBackClick, onEditProfile }) => (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 py-8 px-4 overflow-y-auto">
-        {/* Back Button */}
-        <button
-            onClick={onBackClick}
-            className="fixed top-4 left-4 z-50 flex items-center gap-2 px-4 py-2 bg-slate-800/80 backdrop-blur-sm text-white rounded-xl hover:bg-slate-700 transition-all"
-        >
-            <Home size={18} />
-            <span className="hidden sm:inline">Beranda</span>
-        </button>
+}> = ({ profile, onNavigate, onLogout, onBackClick, onEditProfile }) => {
+    const [stats, setStats] = useState({ completed: 0, highScore: 0, savedProdi: 0 });
 
-        <div className="max-w-4xl mx-auto pt-8">
-            {/* Header */}
-            <div className="flex items-start justify-between mb-8">
-                <div>
-                    <p className="text-indigo-400 text-sm font-bold uppercase tracking-wider mb-1">
-                        SNBT & SNBP Area
-                    </p>
-                    <h1 className="text-3xl font-black text-white">
-                        Halo, {profile?.fullName?.split(' ')[0] || 'Pejuang'}! 👋
-                    </h1>
-                    <p className="text-slate-400 mt-1">Mau latihan apa hari ini?</p>
+    React.useEffect(() => {
+        const fetchStats = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            // 1. Completed Tryouts & High Score
+            const { data: attempts } = await supabase.from('tryout_attempts')
+                .select('skor_total, completed_at')
+                .eq('user_id', user.id)
+                .not('completed_at', 'is', null);
+
+            if (attempts) {
+                const completed = attempts.length;
+                const maxScore = attempts.reduce((max: number, curr: any) => Math.max(max, curr.skor_total || 0), 0);
+                setStats(prev => ({ ...prev, completed, highScore: maxScore }));
+            }
+
+            // 2. Saved Prodi
+            const { count } = await supabase.from('user_ptn_selections')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id);
+
+            if (count !== null) setStats(prev => ({ ...prev, savedProdi: count }));
+        };
+        fetchStats();
+    }, []);
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 py-8 px-4 overflow-y-auto">
+            {/* Back Button */}
+            <button
+                onClick={onBackClick}
+                className="fixed top-4 left-4 z-50 flex items-center gap-2 px-4 py-2 bg-slate-800/80 backdrop-blur-sm text-white rounded-xl hover:bg-slate-700 transition-all"
+            >
+                <Home size={18} />
+                <span className="hidden sm:inline">Beranda</span>
+            </button>
+
+            <div className="max-w-4xl mx-auto pt-8">
+                {/* Header */}
+                <div className="flex items-start justify-between mb-8">
+                    <div>
+                        <p className="text-indigo-400 text-sm font-bold uppercase tracking-wider mb-1">
+                            SNBT & SNBP Area
+                        </p>
+                        <h1 className="text-3xl font-black text-white">
+                            Halo, {profile?.fullName?.split(' ')[0] || 'Pejuang'}! 👋
+                        </h1>
+                        <p className="text-slate-400 mt-1">Mau latihan apa hari ini?</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={onEditProfile}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 rounded-xl hover:bg-indigo-500/30 transition-all text-sm"
+                        >
+                            <Settings size={16} />
+                            <span className="hidden sm:inline">Profil</span>
+                        </button>
+                        <button
+                            onClick={onLogout}
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-800/50 text-slate-400 rounded-xl hover:bg-slate-700 hover:text-white transition-all text-sm"
+                        >
+                            <LogOut size={16} />
+                            <span className="hidden sm:inline">Keluar</span>
+                        </button>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2">
+
+                {/* Quick Stats */}
+                <div className="grid grid-cols-3 gap-4 mb-8">
+                    <div className="bg-emerald-500/20 border border-emerald-500/30 rounded-2xl p-4 text-center">
+                        <p className="text-3xl font-black text-emerald-400">{stats.completed}</p>
+                        <p className="text-xs text-emerald-300/70">Tryout Selesai</p>
+                    </div>
+                    <div className="bg-amber-500/20 border border-amber-500/30 rounded-2xl p-4 text-center">
+                        <p className="text-3xl font-black text-amber-400">{stats.highScore.toFixed(0)}</p>
+                        <p className="text-xs text-amber-300/70">Skor Tertinggi</p>
+                    </div>
+                    <div className="bg-violet-500/20 border border-violet-500/30 rounded-2xl p-4 text-center">
+                        <p className="text-3xl font-black text-violet-400">{stats.savedProdi}</p>
+                        <p className="text-xs text-violet-300/70">Prodi Disimpan</p>
+                    </div>
+                </div>
+
+                {/* Menu Cards */}
+                <div className="grid sm:grid-cols-2 gap-4">
+                    {/* Cek Peluang Card */}
                     <button
-                        onClick={onEditProfile}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 rounded-xl hover:bg-indigo-500/30 transition-all text-sm"
+                        onClick={() => onNavigate('peluang')}
+                        className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-3xl p-6 text-left hover:shadow-xl hover:shadow-emerald-500/20 hover:-translate-y-1 transition-all group"
                     >
-                        <Settings size={16} />
-                        <span className="hidden sm:inline">Profil</span>
+                        <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            <Target className="text-white" size={28} />
+                        </div>
+                        <h3 className="text-xl font-black text-white mb-2">Cek Peluang Lolos</h3>
+                        <p className="text-emerald-100 text-sm mb-4">
+                            Hitung estimasi peluang masuk PTN berdasarkan nilai kamu
+                        </p>
+                        <div className="flex items-center gap-2 text-white font-bold">
+                            <span>Mulai Hitung</span>
+                            <ChevronRight className="group-hover:translate-x-1 transition-transform" size={18} />
+                        </div>
                     </button>
+
+                    {/* Tryout Card */}
                     <button
-                        onClick={onLogout}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-800/50 text-slate-400 rounded-xl hover:bg-slate-700 hover:text-white transition-all text-sm"
+                        onClick={() => onNavigate('tryout')}
+                        className="bg-gradient-to-br from-violet-600 to-purple-700 rounded-3xl p-6 text-left hover:shadow-xl hover:shadow-violet-500/20 hover:-translate-y-1 transition-all group"
                     >
-                        <LogOut size={16} />
-                        <span className="hidden sm:inline">Keluar</span>
+                        <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            <BookOpen className="text-white" size={28} />
+                        </div>
+                        <h3 className="text-xl font-black text-white mb-2">Mini Tryout TPS</h3>
+                        <p className="text-violet-100 text-sm mb-4">
+                            Latihan soal dengan timer dan pembahasan lengkap
+                        </p>
+                        <div className="flex items-center gap-2 text-white font-bold">
+                            <span>Mulai Tryout</span>
+                            <ChevronRight className="group-hover:translate-x-1 transition-transform" size={18} />
+                        </div>
                     </button>
                 </div>
-            </div>
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-3 gap-4 mb-8">
-                <div className="bg-emerald-500/20 border border-emerald-500/30 rounded-2xl p-4 text-center">
-                    <p className="text-3xl font-black text-emerald-400">0</p>
-                    <p className="text-xs text-emerald-300/70">Tryout Selesai</p>
-                </div>
-                <div className="bg-amber-500/20 border border-amber-500/30 rounded-2xl p-4 text-center">
-                    <p className="text-3xl font-black text-amber-400">-</p>
-                    <p className="text-xs text-amber-300/70">Skor Tertinggi</p>
-                </div>
-                <div className="bg-violet-500/20 border border-violet-500/30 rounded-2xl p-4 text-center">
-                    <p className="text-3xl font-black text-violet-400">0</p>
-                    <p className="text-xs text-violet-300/70">Prodi Disimpan</p>
-                </div>
-            </div>
-
-            {/* Menu Cards */}
-            <div className="grid sm:grid-cols-2 gap-4">
-                {/* Cek Peluang Card */}
-                <button
-                    onClick={() => onNavigate('peluang')}
-                    className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-3xl p-6 text-left hover:shadow-xl hover:shadow-emerald-500/20 hover:-translate-y-1 transition-all group"
-                >
-                    <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                        <Target className="text-white" size={28} />
+                {/* Tips Section */}
+                <div className="mt-8 bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                            <Sparkles className="text-amber-400" size={20} />
+                        </div>
+                        <h3 className="text-lg font-black text-white">Tips Hari Ini</h3>
                     </div>
-                    <h3 className="text-xl font-black text-white mb-2">Cek Peluang Lolos</h3>
-                    <p className="text-emerald-100 text-sm mb-4">
-                        Hitung estimasi peluang masuk PTN berdasarkan nilai kamu
+                    <p className="text-slate-300 leading-relaxed">
+                        Konsistensi lebih penting dari intensitas. Lebih baik latihan 30 menit setiap hari
+                        daripada 5 jam sekali seminggu. Otak butuh waktu untuk memproses dan mengingat.
+                        Yuk mulai dengan tryout singkat hari ini! 💪
                     </p>
-                    <div className="flex items-center gap-2 text-white font-bold">
-                        <span>Mulai Hitung</span>
-                        <ChevronRight className="group-hover:translate-x-1 transition-transform" size={18} />
-                    </div>
-                </button>
-
-                {/* Tryout Card */}
-                <button
-                    onClick={() => onNavigate('tryout')}
-                    className="bg-gradient-to-br from-violet-600 to-purple-700 rounded-3xl p-6 text-left hover:shadow-xl hover:shadow-violet-500/20 hover:-translate-y-1 transition-all group"
-                >
-                    <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                        <BookOpen className="text-white" size={28} />
-                    </div>
-                    <h3 className="text-xl font-black text-white mb-2">Mini Tryout TPS</h3>
-                    <p className="text-violet-100 text-sm mb-4">
-                        Latihan soal dengan timer dan pembahasan lengkap
-                    </p>
-                    <div className="flex items-center gap-2 text-white font-bold">
-                        <span>Mulai Tryout</span>
-                        <ChevronRight className="group-hover:translate-x-1 transition-transform" size={18} />
-                    </div>
-                </button>
-            </div>
-
-            {/* Tips Section */}
-            <div className="mt-8 bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                        <Sparkles className="text-amber-400" size={20} />
-                    </div>
-                    <h3 className="text-lg font-black text-white">Tips Hari Ini</h3>
                 </div>
-                <p className="text-slate-300 leading-relaxed">
-                    Konsistensi lebih penting dari intensitas. Lebih baik latihan 30 menit setiap hari
-                    daripada 5 jam sekali seminggu. Otak butuh waktu untuk memproses dan mengingat.
-                    Yuk mulai dengan tryout singkat hari ini! 💪
-                </p>
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 // Main Component
 export const SNBTAreaSlide: React.FC = () => {

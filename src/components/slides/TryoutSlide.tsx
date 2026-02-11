@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Play, Clock, Calendar, Lock, ChevronRight, Trophy, BookOpen,
     ArrowLeft, CheckCircle, Timer, AlertTriangle, Unlock,
-    Target, Award, XCircle, Save, RotateCcw
+    Target, Award, XCircle, Save, RotateCcw, X
 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { SUBTES_CONFIG } from '../../data/bankSoal';
@@ -305,11 +305,21 @@ const TryoutDetail = () => {
                 {errorMsg && <div className="mb-4 p-3 bg-red-500/20 text-red-400 rounded-xl text-sm font-bold flex items-center gap-2 justify-center"><AlertTriangle size={16} /> {errorMsg}</div>}
 
                 <button
-                    onClick={handleStart}
-                    className="w-full py-4 bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all flex items-center justify-center gap-2"
+                    onClick={() => {
+                        if (attempt?.completed_at) {
+                            navigate(`/snbt/tryout/${tryout.id}/result`);
+                        } else {
+                            handleStart();
+                        }
+                    }}
+                    className={`w-full py-4 bg-gradient-to-r ${attempt?.completed_at ? 'from-emerald-500 to-green-600' : 'from-indigo-500 to-violet-600'} text-white font-bold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2`}
                 >
                     {attempt ? (
-                        <>Lanjutkan Pengerjaan <ChevronRight size={20} /></>
+                        attempt.completed_at ? (
+                            <><Trophy size={18} /> Lihat Hasil (Selesai)</>
+                        ) : (
+                            <>Lanjutkan Pengerjaan <ChevronRight size={20} /></>
+                        )
                     ) : (
                         <>{isLocked ? <Lock size={18} /> : <Play size={18} />} Mulai Tryout</>
                     )}
@@ -542,7 +552,21 @@ const TryoutPlay = () => {
     };
 
     const finishTryout = async () => {
-        // Use absolute path to ensure ID is preserved and not interpreted as "result"
+        if (!attempt) return;
+
+        // 1. Mark as finished in DB
+        const { error } = await supabase.from('tryout_attempts').update({
+            completed_at: new Date().toISOString(),
+            last_updated_at: new Date().toISOString()
+        }).eq('id', attempt.id);
+
+        if (error) {
+            console.error("Failed to finish tryout", error);
+            alert("Gagal menyimpan status selesai");
+            return;
+        }
+
+        // 2. Navigate
         navigate(`/snbt/tryout/${id}/result`);
     }
 
@@ -676,6 +700,7 @@ const TryoutResult = () => {
     const [attempt, setAttempt] = useState<TryoutAttempt | null>(null);
     const [soalList, setSoalList] = useState<TryoutSoal[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedSubtestForReview, setSelectedSubtestForReview] = useState<string | null>(null);
 
     useEffect(() => {
         const fetch = async () => {
@@ -723,77 +748,106 @@ const TryoutResult = () => {
                 {Object.entries(attempt.skor_per_subtes || {}).map(([subtes, res]) => {
                     const config = SUBTES_CONFIG.find(c => c.kode === subtes);
                     return (
-                        <div key={subtes} className="flex justify-between items-center p-5 bg-slate-800/50 rounded-xl border border-slate-700">
-                            <div className="flex items-center gap-4">
-                                <span className="text-2xl">{config?.emoji}</span>
-                                <div>
-                                    <span className="font-bold text-slate-200 block">{config?.nama || subtes}</span>
-                                    <span className="text-xs text-slate-500">Benar: {res.benar} / {res.total}</span>
+                        <div key={subtes} className="flex flex-col p-5 bg-slate-800/50 rounded-xl border border-slate-700 hover:border-indigo-500/50 transition-all">
+                            <div className="flex justify-between items-center mb-4">
+                                <div className="flex items-center gap-4">
+                                    <span className="text-2xl">{config?.emoji}</span>
+                                    <div>
+                                        <span className="font-bold text-slate-200 block">{config?.nama || subtes}</span>
+                                        <span className="text-xs text-slate-500">Benar: {res.benar} / {res.total}</span>
+                                    </div>
                                 </div>
+                                <span className="font-bold text-emerald-400 text-xl">{res.skorNormalized}</span>
                             </div>
-                            <span className="font-bold text-emerald-400 text-xl">{res.skorNormalized}</span>
+
+                            <button
+                                onClick={() => setSelectedSubtestForReview(subtes)}
+                                className="w-full py-2 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-lg text-sm font-bold transition-all border border-indigo-500/30 flex items-center justify-center gap-2"
+                            >
+                                <BookOpen size={16} /> Lihat Pembahasan
+                            </button>
                         </div>
                     );
                 })}
             </div>
 
-            {/* Detailed Review */}
-            <div className="bg-white rounded-3xl p-8 shadow-xl">
-                <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                    <BookOpen className="text-indigo-600" />
-                    Pembahasan Detail
-                </h2>
-
-                <div className="space-y-8">
-                    {soalList.map((soal, idx) => {
-                        const jawabanUser = attempt.jawaban?.[soal.id];
-                        const isCorrect = jawabanUser === soal.jawaban_benar;
-                        const isSkipped = jawabanUser === undefined;
-
-                        return (
-                            <div key={soal.id} className={`p-6 rounded-2xl border-2 ${isCorrect ? 'border-green-100 bg-green-50/50' : 'border-red-100 bg-red-50/50'}`}>
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${isCorrect ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
-                                            {soal.nomor_soal}
-                                        </span>
-                                        <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${soal.tingkat_kesulitan === 'sulit' ? 'bg-red-100 text-red-700' :
-                                                soal.tingkat_kesulitan === 'mudah' ? 'bg-green-100 text-green-700' :
-                                                    'bg-blue-100 text-blue-700'
-                                            }`}>
-                                            {soal.tingkat_kesulitan || 'Sedang'}
-                                        </span>
-                                    </div>
-                                    <span className={`text-sm font-bold ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
-                                        {isCorrect ? 'Benar (+3)' : isSkipped ? 'Kosong (0)' : 'Salah (0)'}
-                                    </span>
-                                </div>
-
-                                <p className="text-slate-800 font-medium mb-4 whitespace-pre-line">{soal.pertanyaan}</p>
-
-                                <div className="space-y-2 mb-4">
-                                    {soal.opsi.map((opt, i) => (
-                                        <div key={i} className={`p-3 rounded-lg text-sm flex items-center gap-3 ${i === soal.jawaban_benar ? 'bg-green-200 text-green-900 font-bold' :
-                                                i === jawabanUser ? 'bg-red-200 text-red-900' :
-                                                    'bg-white border border-slate-200 text-slate-500'
-                                            }`}>
-                                            <span className="w-6">{String.fromCharCode(65 + i)}.</span>
-                                            <span>{opt}</span>
-                                            {i === soal.jawaban_benar && <CheckCircle size={16} className="ml-auto text-green-700" />}
-                                            {i === jawabanUser && i !== soal.jawaban_benar && <XCircle size={16} className="ml-auto text-red-700" />}
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="bg-white p-4 rounded-xl border border-slate-200">
-                                    <p className="text-xs text-slate-500 font-bold uppercase mb-2">Pembahasan</p>
-                                    <p className="text-slate-700 text-sm whitespace-pre-line">{soal.pembahasan || 'Tidak ada pembahasan.'}</p>
-                                </div>
+            {/* Review Modal */}
+            {selectedSubtestForReview && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 overflow-y-auto">
+                    <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative flex flex-col">
+                        <div className="sticky top-0 bg-white p-6 border-b border-slate-200 z-10 flex justify-between items-center">
+                            <div>
+                                <h2 className="text-2xl font-bold text-slate-900">Pembahasan Soal</h2>
+                                <p className="text-slate-500">
+                                    {SUBTES_CONFIG.find(c => c.kode === selectedSubtestForReview)?.nama}
+                                </p>
                             </div>
-                        );
-                    })}
+                            <button
+                                onClick={() => setSelectedSubtestForReview(null)}
+                                className="p-2 hover:bg-slate-100 rounded-lg text-slate-600"
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className="p-8 space-y-8 overflow-y-auto">
+                            {soalList.filter(s => s.subtes === selectedSubtestForReview).map((soal, idx) => {
+                                const jawabanUser = attempt.jawaban?.[soal.id];
+                                const isCorrect = jawabanUser === soal.jawaban_benar;
+                                const isSkipped = jawabanUser === undefined;
+
+                                return (
+                                    <div key={soal.id} className={`p-6 rounded-2xl border-2 ${isCorrect ? 'border-green-100 bg-green-50/50' : 'border-red-100 bg-red-50/50'}`}>
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="flex items-center gap-3">
+                                                <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${isCorrect ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+                                                    {soal.nomor_soal}
+                                                </span>
+                                                <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${soal.tingkat_kesulitan === 'sulit' ? 'bg-red-100 text-red-700' :
+                                                    soal.tingkat_kesulitan === 'mudah' ? 'bg-green-100 text-green-700' :
+                                                        'bg-blue-100 text-blue-700'
+                                                    }`}>
+                                                    {soal.tingkat_kesulitan || 'Sedang'}
+                                                </span>
+                                            </div>
+                                            <span className={`text-sm font-bold ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                                                {isCorrect ? 'Benar (+3)' : isSkipped ? 'Kosong (0)' : 'Salah (0)'}
+                                            </span>
+                                        </div>
+
+                                        <p className="text-slate-800 font-medium mb-4 whitespace-pre-line">{soal.pertanyaan}</p>
+
+                                        <div className="space-y-2 mb-4">
+                                            {soal.opsi.map((opt, i) => (
+                                                <div key={i} className={`p-3 rounded-lg text-sm flex items-center gap-3 ${i === soal.jawaban_benar ? 'bg-green-200 text-green-900 font-bold' :
+                                                    i === jawabanUser ? 'bg-red-200 text-red-900' :
+                                                        'bg-white border border-slate-200 text-slate-500'
+                                                    }`}>
+                                                    <span className="w-6">{String.fromCharCode(65 + i)}.</span>
+                                                    <span>{opt}</span>
+                                                    {i === soal.jawaban_benar && <CheckCircle size={16} className="ml-auto text-green-700" />}
+                                                    {i === jawabanUser && i !== soal.jawaban_benar && <XCircle size={16} className="ml-auto text-red-700" />}
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="bg-white p-4 rounded-xl border border-slate-200">
+                                            <p className="text-xs text-slate-500 font-bold uppercase mb-2">Pembahasan</p>
+                                            <p className="text-slate-700 text-sm whitespace-pre-line">{soal.pembahasan || 'Tidak ada pembahasan.'}</p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+
+                            {soalList.filter(s => s.subtes === selectedSubtestForReview).length === 0 && (
+                                <div className="text-center text-slate-500 py-12">
+                                    Tidak ada soal untuk subtes ini.
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
-            </div>
+            )}
 
             <button onClick={() => navigate('/snbt/tryout')} className="mt-12 px-8 py-3 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-700">
                 Kembali ke Menu Utama

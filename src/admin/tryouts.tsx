@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Calendar, Clock, Eye, Save, X, Sparkles, Loader2, FileText, ChevronDown, ChevronUp, Lock, PlayCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Calendar, Clock, Eye, Save, X, Sparkles, Loader2, FileText, ChevronDown, ChevronUp, Lock, PlayCircle, Upload } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import DashboardLayout from '../components/admin/DashboardLayout';
 
@@ -61,6 +61,34 @@ const TryoutManagement: React.FC = () => {
     const [generatedQuestions, setGeneratedQuestions] = useState<Record<string, GeneratedQuestion[]>>({});
     const [expandedSubtes, setExpandedSubtes] = useState<string | null>(null);
     const [soalCounts, setSoalCounts] = useState<Record<string, number>>({});
+
+    // Manage Questions State
+    const [showManageModal, setShowManageModal] = useState(false);
+    const [selectedTryoutForManage, setSelectedTryoutForManage] = useState<Tryout | null>(null);
+    const [managedQuestions, setManagedQuestions] = useState<Record<string, Question[]>>({});
+    const [manageExpandedSubtes, setManageExpandedSubtes] = useState<string | null>(null);
+    const [isAddingManual, setIsAddingManual] = useState(false);
+    const [manualForm, setManualForm] = useState<Partial<Question>>({
+        pertanyaan: '',
+        opsi: ['', '', '', '', ''],
+        jawaban_benar: 0,
+        pembahasan: '',
+        difficulty_level: 'sedang',
+        bobot_nilai: 2
+    });
+
+    interface Question {
+        id: string;
+        tryout_id: string;
+        subtes: string;
+        nomor_soal: number;
+        pertanyaan: string;
+        opsi: string[];
+        jawaban_benar: number;
+        pembahasan: string;
+        difficulty_level: 'mudah' | 'sedang' | 'sulit';
+        bobot_nilai: number;
+    }
 
     useEffect(() => {
         fetchTryouts();
@@ -167,6 +195,74 @@ const TryoutManagement: React.FC = () => {
         }
     };
 
+    // Bulk Import Logic
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const content = e.target?.result as string;
+                const data = JSON.parse(content);
+
+                if (!Array.isArray(data)) {
+                    alert('Format file invalid: Harus berupa JSON Array [].');
+                    return;
+                }
+
+                // Validate and Group
+                const newQuestions: Record<string, GeneratedQuestion[]> = {};
+                let validCount = 0;
+
+                data.forEach((item: any) => {
+                    // Basic validation
+                    if (!item.subtes || !item.pertanyaan || !Array.isArray(item.opsi)) return;
+
+                    if (!newQuestions[item.subtes]) {
+                        newQuestions[item.subtes] = [];
+                    }
+
+                    newQuestions[item.subtes].push({
+                        subtes: item.subtes,
+                        nomor_soal: 0, // Will be indexed on save
+                        pertanyaan: item.pertanyaan,
+                        opsi: item.opsi,
+                        jawaban_benar: typeof item.jawaban_benar === 'number' ? item.jawaban_benar : item.jawabanBenar || 0,
+                        pembahasan: item.pembahasan || '',
+                        difficulty: item.difficulty || 'sedang'
+                    });
+                    validCount++;
+                });
+
+                if (validCount === 0) {
+                    alert('Tidak ada soal valid yang ditemukan. Pastikan key JSON sesuai (subtes, pertanyaan, opsi, jawaban_benar).');
+                    return;
+                }
+
+                setGeneratedQuestions(prev => {
+                    const next = { ...prev };
+                    Object.entries(newQuestions).forEach(([subtes, qs]) => {
+                        next[subtes] = [...(next[subtes] || []), ...qs];
+                    });
+                    return next;
+                });
+
+                alert(`Berhasil mengimpor ${validCount} soal!`);
+
+                // Clear input
+                if (fileInputRef.current) fileInputRef.current.value = '';
+
+            } catch (err) {
+                console.error('Import error:', err);
+                alert('Gagal parsing JSON. Pastikan file valid.');
+            }
+        };
+        reader.readAsText(file);
+    };
+
     // Open generate modal
     const openGenerateModal = async (tryout: Tryout) => {
         setSelectedTryoutForGen(tryout);
@@ -260,6 +356,74 @@ const TryoutManagement: React.FC = () => {
         }
     };
 
+    // Manage Functions
+    const openManageModal = async (tryout: Tryout) => {
+        setSelectedTryoutForManage(tryout);
+        setManageExpandedSubtes(null);
+        setIsAddingManual(false);
+        const { data } = await supabase.from('tryout_soal').select('*').eq('tryout_id', tryout.id).order('nomor_soal', { ascending: true });
+
+        const grouped: Record<string, Question[]> = {};
+        if (data) {
+            data.forEach((q: any) => {
+                if (!grouped[q.subtes]) grouped[q.subtes] = [];
+                grouped[q.subtes].push(q);
+            });
+        }
+        setManagedQuestions(grouped);
+        setShowManageModal(true);
+    };
+
+    const deleteQuestion = async (id: string, subtes: string) => {
+        if (!confirm('Hapus soal ini?')) return;
+        const { error } = await supabase.from('tryout_soal').delete().eq('id', id);
+        if (error) {
+            alert('Gagal menghapus: ' + error.message);
+        } else {
+            setManagedQuestions(prev => ({
+                ...prev,
+                [subtes]: prev[subtes].filter(q => q.id !== id)
+            }));
+            if (selectedTryoutForManage) {
+                fetchSoalCount(selectedTryoutForManage.id).then(c => setSoalCounts(prev => ({ ...prev, [selectedTryoutForManage.id]: c })));
+            }
+        }
+    };
+
+    const saveManualQuestion = async () => {
+        if (!selectedTryoutForManage || !manualForm.subtes) {
+            alert('Subtes harus dipilih');
+            return;
+        }
+        const payload = {
+            tryout_id: selectedTryoutForManage.id,
+            subtes: manualForm.subtes,
+            nomor_soal: (managedQuestions[manualForm.subtes]?.length || 0) + 1,
+            pertanyaan: manualForm.pertanyaan,
+            opsi: manualForm.opsi,
+            jawaban_benar: manualForm.jawaban_benar,
+            pembahasan: manualForm.pembahasan,
+            difficulty_level: manualForm.difficulty_level,
+            bobot_nilai: manualForm.difficulty_level === 'sulit' ? 3 : (manualForm.difficulty_level === 'mudah' ? 1 : 2)
+        };
+
+        const { data, error } = await supabase.from('tryout_soal').insert(payload).select().single();
+        if (error) {
+            console.error(error);
+            alert('Gagal menyimpan soal');
+        } else {
+            setManagedQuestions(prev => ({
+                ...prev,
+                [manualForm.subtes!]: [...(prev[manualForm.subtes!] || []), data]
+            }));
+            setIsAddingManual(false);
+            setManualForm({ ...manualForm, pertanyaan: '', opsi: ['', '', '', '', ''], pembahasan: '' });
+            if (selectedTryoutForManage) {
+                fetchSoalCount(selectedTryoutForManage.id).then(c => setSoalCounts(prev => ({ ...prev, [selectedTryoutForManage.id]: c })));
+            }
+        }
+    };
+
     const resetForm = () => {
         setForm({ nama: '', deskripsi: '', tanggal_rilis: '', tanggal_mulai: '', tanggal_selesai: '', is_active: true, password: '', access_mode: 'scheduled' });
     };
@@ -338,6 +502,13 @@ const TryoutManagement: React.FC = () => {
                                             title="Generate Soal AI"
                                         >
                                             <Sparkles size={18} />
+                                        </button>
+                                        <button
+                                            onClick={() => openManageModal(t)}
+                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                                            title="Kelola Soal"
+                                        >
+                                            <FileText size={18} />
                                         </button>
                                         <button onClick={() => handleEdit(t)} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
                                             <Edit2 size={18} />
@@ -490,9 +661,25 @@ const TryoutManagement: React.FC = () => {
                                             {selectedTryoutForGen.nama} • {soalCounts[selectedTryoutForGen.id] || 0} soal tersimpan
                                         </p>
                                     </div>
-                                    <button onClick={() => setShowGenerateModal(false)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600">
-                                        <X size={20} />
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            onChange={handleFileUpload}
+                                            accept=".json"
+                                            className="hidden"
+                                        />
+                                        <button
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg flex items-center gap-2 text-sm font-bold"
+                                            title="Upload file JSON dari tool AI lain"
+                                        >
+                                            <Upload size={16} /> Import JSON
+                                        </button>
+                                        <button onClick={() => setShowGenerateModal(false)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600">
+                                            <X size={20} />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -613,6 +800,167 @@ const TryoutManagement: React.FC = () => {
                                                 )}
                                             </button>
                                         </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {/* Manage Questions Modal */}
+                {showManageModal && selectedTryoutForManage && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+                        <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[95vh] overflow-y-auto flex flex-col relative">
+                            {/* Header */}
+                            <div className="p-6 border-b border-slate-200 flex justify-between items-center sticky top-0 bg-white z-10">
+                                <div>
+                                    <h2 className="text-xl font-bold text-slate-800">Kelola Soal: {selectedTryoutForManage.nama}</h2>
+                                    <p className="text-slate-500 text-sm">{soalCounts[selectedTryoutForManage.id] || 0} soal tersimpan</p>
+                                </div>
+                                <button onClick={() => setShowManageModal(false)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600"><X size={20} /></button>
+                            </div>
+
+                            <div className="p-6 overflow-y-auto flex-1">
+                                {isAddingManual ? (
+                                    /* Manual Form */
+                                    <div className="space-y-4">
+                                        <button onClick={() => setIsAddingManual(false)} className="text-slate-500 hover:text-slate-800 flex items-center gap-2 mb-4 font-bold text-sm"><ChevronDown className="rotate-90" size={16} /> Kembali ke Daftar</button>
+                                        {/* Use Chevron for back as ArrowLeft might not be imported or conflict */}
+
+                                        <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                                            <h3 className="font-bold text-lg mb-4 text-slate-800">Tambah Soal Manual: {SUBTES_LIST.find(s => s.kode === manualForm.subtes)?.nama}</h3>
+
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="block text-sm font-bold text-slate-700 mb-1">Pertanyaan</label>
+                                                    <textarea
+                                                        className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[100px]"
+                                                        placeholder="Tulis pertanyaan di sini..."
+                                                        value={manualForm.pertanyaan}
+                                                        onChange={e => setManualForm({ ...manualForm, pertanyaan: e.target.value })}
+                                                    />
+                                                </div>
+
+                                                <div className="grid gap-3">
+                                                    <label className="block text-sm font-bold text-slate-700">Opsi Jawaban</label>
+                                                    {manualForm.opsi?.map((opt, i) => (
+                                                        <div key={i} className="flex gap-2 items-center">
+                                                            <span className="font-mono font-bold text-slate-500 w-6 flex-shrink-0">{String.fromCharCode(65 + i)}.</span>
+                                                            <input
+                                                                type="text"
+                                                                className="flex-1 p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                                placeholder={`Opsi ${String.fromCharCode(65 + i)}`}
+                                                                value={opt}
+                                                                onChange={e => {
+                                                                    const newOpsi = [...(manualForm.opsi || [])];
+                                                                    newOpsi[i] = e.target.value;
+                                                                    setManualForm({ ...manualForm, opsi: newOpsi });
+                                                                }}
+                                                            />
+                                                            <input
+                                                                type="radio"
+                                                                name="correct_answer"
+                                                                checked={manualForm.jawaban_benar === i}
+                                                                onChange={() => setManualForm({ ...manualForm, jawaban_benar: i })}
+                                                                className="w-5 h-5 text-green-600"
+                                                                title="Tandai sebagai jawaban benar"
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                    <p className="text-xs text-slate-500">*pilih radio button di kanan untuk menandai jawaban benar</p>
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-sm font-bold text-slate-700 mb-1">Pembahasan</label>
+                                                    <textarea
+                                                        className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[80px]"
+                                                        placeholder="Tulis pembahasan jawaban di sini..."
+                                                        value={manualForm.pembahasan}
+                                                        onChange={e => setManualForm({ ...manualForm, pembahasan: e.target.value })}
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-sm font-bold text-slate-700 mb-1">Tingkat Kesulitan</label>
+                                                    <select
+                                                        className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                        value={manualForm.difficulty_level}
+                                                        onChange={e => setManualForm({ ...manualForm, difficulty_level: e.target.value as any })}
+                                                    >
+                                                        <option value="mudah">Mudah</option>
+                                                        <option value="sedang">Sedang</option>
+                                                        <option value="sulit">Sulit</option>
+                                                    </select>
+                                                </div>
+
+                                                <div className="flex justify-end gap-3 mt-6">
+                                                    <button
+                                                        onClick={() => setIsAddingManual(false)}
+                                                        className="px-6 py-2 rounded-lg border border-slate-300 text-slate-600 font-bold hover:bg-slate-50"
+                                                    >Batal</button>
+                                                    <button
+                                                        onClick={saveManualQuestion}
+                                                        className="px-6 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700"
+                                                    >Simpan Soal</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    /* Question List */
+                                    <div className="space-y-4">
+                                        {SUBTES_LIST.map(subtes => {
+                                            const questions = managedQuestions[subtes.kode] || [];
+                                            const isExpanded = manageExpandedSubtes === subtes.kode;
+                                            return (
+                                                <div key={subtes.kode} className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                                                    <div className="flex justify-between p-4 bg-slate-50 items-center border-b border-slate-100">
+                                                        <button onClick={() => setManageExpandedSubtes(isExpanded ? null : subtes.kode)} className="flex items-center gap-2 font-bold text-slate-800 hover:text-blue-600 transition-colors">
+                                                            {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                                            {subtes.nama}
+                                                            <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-xs ml-2">{questions.length}</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                setIsAddingManual(true);
+                                                                setManualForm(prev => ({ ...prev, subtes: subtes.kode }));
+                                                            }}
+                                                            className="px-3 py-1.5 bg-white border border-blue-200 text-blue-600 rounded-lg text-sm font-bold hover:bg-blue-50 flex items-center gap-2"
+                                                        >
+                                                            <Plus size={16} /> Tambah Manual
+                                                        </button>
+                                                    </div>
+                                                    {isExpanded && (
+                                                        <div className="p-4 space-y-4 bg-white">
+                                                            {questions.map((q, idx) => (
+                                                                <div key={q.id} className="p-4 border border-slate-100 rounded-xl bg-slate-50/30 hover:border-slate-300 transition-all relative group">
+                                                                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                        <button onClick={() => deleteQuestion(q.id, subtes.kode)} className="p-2 bg-white text-red-600 border border-slate-200 rounded-lg shadow-sm hover:bg-red-50 hover:border-red-200"><Trash2 size={16} /></button>
+                                                                    </div>
+                                                                    <div className="pr-12">
+                                                                        <p className="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                                                                            <span className="bg-slate-200 text-slate-600 w-6 h-6 flex items-center justify-center rounded-full text-xs">{q.nomor_soal}</span>
+                                                                            <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider ${q.difficulty_level === 'sulit' ? 'bg-red-100 text-red-600' : q.difficulty_level === 'mudah' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>{q.difficulty_level}</span>
+                                                                        </p>
+                                                                        <p className="text-slate-700 mb-3 whitespace-pre-line text-sm">{q.pertanyaan}</p>
+                                                                        <div className="grid grid-cols-1 gap-2 mb-3">
+                                                                            {q.opsi.map((o, i) => (
+                                                                                <div key={i} className={`text-xs px-3 py-2 rounded border ${i === q.jawaban_benar ? 'bg-green-50 border-green-200 text-green-800 font-bold' : 'bg-white border-slate-100 text-slate-500'}`}>
+                                                                                    {String.fromCharCode(65 + i)}. {o}
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                        <div className="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-slate-600">
+                                                                            <strong className="text-slate-800">Pembahasan:</strong> {q.pembahasan}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                            {questions.length === 0 && <div className="text-center text-slate-400 py-8 italic bg-slate-50 rounded-lg border border-dashed border-slate-200">Belum ada soal untuk subtes ini.</div>}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>
