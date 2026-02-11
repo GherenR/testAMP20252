@@ -505,10 +505,10 @@ const TryoutManagement: React.FC = () => {
                                         </button>
                                         <button
                                             onClick={() => openManageModal(t)}
-                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                                            title="Kelola Soal"
+                                            className="px-3 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg flex items-center gap-2 font-bold text-sm transition-colors"
+                                            title="Kelola Soal & Pembahasan"
                                         >
-                                            <FileText size={18} />
+                                            <FileText size={16} /> Atur Soal
                                         </button>
                                         <button onClick={() => handleEdit(t)} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
                                             <Edit2 size={18} />
@@ -813,7 +813,7 @@ const TryoutManagement: React.FC = () => {
                             {/* Header */}
                             <div className="p-6 border-b border-slate-200 flex justify-between items-center sticky top-0 bg-white z-10">
                                 <div>
-                                    <h2 className="text-xl font-bold text-slate-800">Kelola Soal: {selectedTryoutForManage.nama}</h2>
+                                    <h2 className="text-xl font-bold text-slate-800">Kelola & Review Soal: {selectedTryoutForManage.nama}</h2>
                                     <p className="text-slate-500 text-sm">{soalCounts[selectedTryoutForManage.id] || 0} soal tersimpan</p>
                                 </div>
                                 <button onClick={() => setShowManageModal(false)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600"><X size={20} /></button>
