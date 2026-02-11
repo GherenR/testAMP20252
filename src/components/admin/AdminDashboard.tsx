@@ -32,106 +32,116 @@ export default function AdminDashboard() {
 
     useEffect(() => {
         loadData();
-        // Fetch all admin helpers from Supabase
         const fetchHelpers = async () => {
-            // Activity Log
-            const { data: logData } = await supabase
-                .from('admin_activity_log')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(10);
-            setActivityLog(
-                (logData || []).map(l => ({
-                    id: l.id,
-                    action: l.action,
-                    created_at: l.created_at,
-                    user_email: l.user_email,
-                    detail: l.detail,
-                }))
-            );
-
-            // Notifications
-            const { data: notifData } = await supabase
-                .from('admin_notifications')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(10);
-            setNotifications(
-                (notifData || []).map(n => ({
-                    id: n.id,
-                    message: n.message,
-                    created_at: n.created_at,
-                    type: n.type,
-                }))
-            );
-
-            // Pending Approvals
-            const { data: approvalData } = await supabase
-                .from('admin_pending_approvals')
-                .select('*')
-                .order('submitted_at', { ascending: false })
-                .limit(10);
-            setPendingApprovals(
-                (approvalData || []).map(p => ({
-                    id: p.id,
-                    user_id: p.user_id,
-                    created_at: p.submitted_at,
-                    type: p.type,
-                    name: p.name,
-                }))
-            );
-
-            // Error Logs
-            const { data: errorData } = await supabase
-                .from('admin_error_logs')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(10);
-            setErrorLogs(
-                (errorData || []).map(e => ({
-                    id: e.id,
-                    error: e.error,
-                    created_at: e.created_at,
-                    type: e.type,
-                    message: e.message,
-                }))
-            );
-
-            // Admin Notes (single row)
-            const { data: notesData } = await supabase
-                .from('admin_notes')
-                .select('*')
-                .order('updated_at', { ascending: false })
-                .limit(1);
-            setAdminNotes(notesData && notesData[0]?.note ? notesData[0].note : '');
-
-            // System Health: check DB and API
-            let dbOk = true;
-            let apiOk = true;
             try {
-                // DB: try a simple select
-                await supabase.from('admin_activity_log').select('id').limit(1);
-            } catch {
-                dbOk = false;
+                // Activity Log
+                const { data: logData } = await supabase
+                    .from('admin_activity_log')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                if (logData && logData.length > 0) {
+                    setActivityLog(
+                        logData.map(l => ({
+                            id: l.id,
+                            action: l.action,
+                            created_at: l.created_at,
+                            user_email: l.user_email,
+                            detail: l.detail,
+                        }))
+                    );
+                }
+
+                // Notifications
+                const { data: notifData } = await supabase
+                    .from('admin_notifications')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                if (notifData && notifData.length > 0) {
+                    setNotifications(
+                        notifData.map(n => ({
+                            id: n.id,
+                            message: n.message,
+                            created_at: n.created_at,
+                            type: n.type,
+                        }))
+                    );
+                }
+
+                // Pending Approvals
+                const { data: approvalData } = await supabase
+                    .from('admin_pending_approvals')
+                    .select('*')
+                    .order('submitted_at', { ascending: false })
+                    .limit(10);
+                if (approvalData && approvalData.length > 0) {
+                    setPendingApprovals(
+                        approvalData.map(p => ({
+                            id: p.id,
+                            user_id: p.user_id,
+                            created_at: p.submitted_at,
+                            type: p.type,
+                            name: p.name,
+                        }))
+                    );
+                }
+
+                // Error Logs
+                const { data: errorData } = await supabase
+                    .from('admin_error_logs')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                if (errorData && errorData.length > 0) {
+                    setErrorLogs(
+                        errorData.map(e => ({
+                            id: e.id,
+                            error: e.error,
+                            created_at: e.created_at,
+                            type: e.type,
+                            message: e.message,
+                        }))
+                    );
+                }
+
+                // Admin Notes (single row)
+                const { data: notesData } = await supabase
+                    .from('admin_notes')
+                    .select('*')
+                    .order('updated_at', { ascending: false })
+                    .limit(1);
+                if (notesData && notesData[0]?.note) {
+                    setAdminNotes(notesData[0].note);
+                }
+
+                // System Health
+                let dbOk = true;
+                let apiOk = true;
+                try {
+                    await supabase.from('admin_activity_log').select('id').limit(1);
+                } catch {
+                    dbOk = false;
+                }
+                try {
+                    await secureFetch('/api/analytics/stats/platform?days=1');
+                } catch {
+                    apiOk = false;
+                }
+                setSystemHealth({ db: dbOk, api: apiOk });
+            } catch (err) {
+                console.error('[AdminDashboard] fetchHelpers error:', err);
+                // Don't wipe existing data on error
             }
-            try {
-                // API: try fetch analytics platform endpoint
-                await secureFetch('/api/analytics/stats/platform?days=1');
-            } catch {
-                apiOk = false;
-            }
-            setSystemHealth({ db: dbOk, api: apiOk });
         };
         fetchHelpers();
     }, []);
 
     const loadData = async () => {
         try {
-            // Get user
             const { data: { user: authUser } } = await supabase.auth.getUser();
-            setUser(authUser);
+            if (authUser) setUser(authUser);
 
-            // Get stats from last 30 days
             const startDate = new Date();
             startDate.setDate(startDate.getDate() - 30);
             const startDateStr = startDate.toISOString();
@@ -142,16 +152,19 @@ export default function AdminDashboard() {
                 supabase.from('mentor_interactions').select('*', { count: 'exact' }).gte('interacted_at', startDateStr),
             ]);
 
-            const uniqueVisitors = new Set(pvResult.data?.map(pv => pv.user_id) || []).size;
-
-            setStats({
-                totalVisitors: uniqueVisitors,
-                totalPageViews: pvResult.count || 0,
-                totalFeatureClicks: fcResult.count || 0,
-                totalMentorInteractions: miResult.count || 0,
-            });
+            // Only update stats if we got actual results (not RLS blocked)
+            if (pvResult.data || fcResult.data || miResult.data) {
+                const uniqueVisitors = new Set(pvResult.data?.map(pv => pv.user_id) || []).size;
+                setStats({
+                    totalVisitors: uniqueVisitors,
+                    totalPageViews: pvResult.count || 0,
+                    totalFeatureClicks: fcResult.count || 0,
+                    totalMentorInteractions: miResult.count || 0,
+                });
+            }
         } catch (error) {
-            console.error('Error loading dashboard data:', error);
+            console.error('[AdminDashboard] loadData error:', error);
+            // Don't wipe existing stats on error
         } finally {
             setLoading(false);
         }

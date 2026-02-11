@@ -47,10 +47,12 @@ export default function UserManagementPage() {
     async function fetchUsers() {
         setLoading(true);
         try {
-            // Ambil 100 user pertama, bisa diubah jika ingin paginasi
             const data = await UserService.getAllUsers({ limit: 100, offset: 0 });
-            setUsers(data);
-            setFilteredUsers(data);
+            // Only update if we got actual data - don't wipe on failed refetch
+            if (data && data.length > 0) {
+                setUsers(data);
+                setFilteredUsers(data);
+            }
         } catch {
             setMessage('Gagal memuat data user');
         } finally {

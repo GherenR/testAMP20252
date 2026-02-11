@@ -6,21 +6,28 @@ import { ShieldX } from 'lucide-react';
 export default function RequireAdmin({ children }: { children: React.ReactNode }) {
     const { isAdmin, isLoading, user } = useAdminAuth();
     const navigate = useNavigate();
-    // Track if we ever showed children successfully - prevents flash of unauthorized
-    const hasRenderedRef = useRef(false);
+    // CRITICAL: once children have been rendered, NEVER unmount them
+    const everAuthorizedRef = useRef(false);
 
-    if (isAdmin && !isLoading) {
-        hasRenderedRef.current = true;
+    // Track if we've ever been authorized
+    if (isAdmin) {
+        everAuthorizedRef.current = true;
     }
 
     useEffect(() => {
-        if (!isLoading && !user && !hasRenderedRef.current) {
-            // No user and never rendered - redirect to login
+        // Only redirect if we've NEVER been authorized and loading is done
+        if (!isLoading && !user && !everAuthorizedRef.current) {
             navigate('/admin/login', { replace: true });
         }
     }, [isLoading, user, navigate]);
 
-    // Still loading - show spinner
+    // RULE 1: If ever authorized, ALWAYS render children - no exceptions
+    // This prevents data loss from auth state flickering on tab switches
+    if (everAuthorizedRef.current) {
+        return <>{children}</>;
+    }
+
+    // RULE 2: Still loading initial auth state
     if (isLoading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
@@ -33,19 +40,7 @@ export default function RequireAdmin({ children }: { children: React.ReactNode }
         );
     }
 
-    // User exists and is admin - render children
-    if (isAdmin) {
-        return <>{children}</>;
-    }
-
-    // If we previously rendered successfully, keep showing children
-    // This prevents data loss on transient auth state changes (tab switch, token refresh)
-    if (hasRenderedRef.current) {
-        return <>{children}</>;
-    }
-
-    // Only show unauthorized if we definitely have a user but they're not admin
-    // AND we never successfully rendered before
+    // RULE 3: First-time access - user exists but not admin
     if (user && !isAdmin) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
@@ -64,6 +59,5 @@ export default function RequireAdmin({ children }: { children: React.ReactNode }
         );
     }
 
-    // Fallback: show nothing while state settles
     return null;
 }

@@ -14,6 +14,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }, []); // This line is retained to ensure the title is set correctly
 
     const handleLogout = async () => {
+        // Clear admin state FIRST so SIGNED_OUT verification knows it's intentional
+        sessionStorage.removeItem('admin_confirmed');
         await supabase.auth.signOut();
         navigate('/admin/login');
     };

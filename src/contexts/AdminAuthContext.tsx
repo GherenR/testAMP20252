@@ -76,18 +76,30 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
             console.log('[AdminAuth]', event, !!session?.user, 'confirmed:', confirmedRef.current);
 
             if (event === 'SIGNED_OUT') {
-                // VERIFY: is this a real signout or a false alarm from failed token refresh?
-                const { data: check } = await supabase.auth.getSession();
-                if (check.session?.user) {
-                    // FALSE ALARM - session still exists! Token refresh probably failed but session is valid
-                    console.warn('[AdminAuth] SIGNED_OUT was false alarm - session still active');
-                    setUser(check.session.user);
-                    // Keep admin state as-is
+                // If sessionStorage was already cleared, this is an intentional logout
+                const storedAdmin = getStoredAdmin();
+                if (!storedAdmin.isAdmin && !confirmedRef.current) {
+                    // Intentional logout (sessionStorage already cleared by handleLogout)
+                    console.log('[AdminAuth] Intentional SIGNED_OUT');
+                    setUser(null);
+                    setIsAdmin(false);
+                    setAdminRole(null);
                     setIsLoading(false);
                     return;
                 }
-                // Real signout
-                console.log('[AdminAuth] Real SIGNED_OUT');
+
+                // Unexpected SIGNED_OUT - verify if session still exists (false alarm check)
+                const { data: check } = await supabase.auth.getSession();
+                if (check.session?.user) {
+                    // FALSE ALARM - session still exists
+                    console.warn('[AdminAuth] SIGNED_OUT was false alarm - session still active');
+                    setUser(check.session.user);
+                    setIsLoading(false);
+                    return;
+                }
+
+                // Real signout (session actually gone)
+                console.log('[AdminAuth] Real SIGNED_OUT - session gone');
                 confirmedRef.current = false;
                 storeAdmin(false, null);
                 setUser(null);
