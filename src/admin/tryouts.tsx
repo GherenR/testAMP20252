@@ -100,7 +100,9 @@ const TryoutManagement: React.FC = () => {
 
             if (!response.ok) {
                 const err = await response.json();
-                alert(`Error: ${err.error}`);
+                const msg = err.details || err.message || err.error || 'Unknown error';
+                console.error('Generate soal failed:', err);
+                alert(`Gagal generate soal: ${msg}`);
                 return;
             }
 

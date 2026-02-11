@@ -108,7 +108,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
     if (!OPENAI_API_KEY) {
-        return res.status(500).json({ error: 'OpenAI API key not configured' });
+        console.error('SERVER ERROR: OpenAI API key is missing in environment variables');
+        return res.status(500).json({ error: 'OpenAI API key not configured on server' });
     }
 
     try {
@@ -137,6 +138,8 @@ Return as JSON array:
 
 IMPORTANT: Return ONLY the JSON array, no other text.`;
 
+        console.log(`[generate-soal] Requesting ${jumlah} questions for ${subtes}...`);
+
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -155,9 +158,12 @@ IMPORTANT: Return ONLY the JSON array, no other text.`;
         });
 
         if (!response.ok) {
-            const errorData = await response.text();
-            console.error('OpenAI API error:', errorData);
-            return res.status(500).json({ error: 'Failed to generate questions' });
+            const errorText = await response.text();
+            console.error('[generate-soal] OpenAI API error:', response.status, errorText);
+            return res.status(500).json({
+                error: `OpenAI API Error: ${response.status}`,
+                details: errorText
+            });
         }
 
         const data = await response.json();
@@ -167,30 +173,46 @@ IMPORTANT: Return ONLY the JSON array, no other text.`;
         let questions;
         try {
             // Try to extract JSON from response (in case there's extra text)
-            const jsonMatch = content.match(/\[[\s\S]*\]/);
-            questions = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
+            // Remove markdown code blocks if present
+            const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
+
+            const jsonMatch = cleanContent.match(/\[[\s\S]*\]/);
+            questions = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(cleanContent);
         } catch (parseError) {
-            console.error('JSON parse error:', content);
-            return res.status(500).json({ error: 'Failed to parse generated questions' });
+            console.error('[generate-soal] JSON parse error. Content received:', content);
+            return res.status(500).json({
+                error: 'Failed to parse generated questions',
+                receivedContent: content.substring(0, 200) + '...'
+            });
         }
 
         // Validate and format questions
+        if (!Array.isArray(questions)) {
+            console.error('[generate-soal] Expected array but got:', typeof questions);
+            return res.status(500).json({ error: 'AI response was not a valid array of questions' });
+        }
+
         const formattedQuestions = questions.map((q: any, idx: number) => ({
             subtes,
             nomor_soal: idx + 1,
             pertanyaan: q.pertanyaan || '',
             opsi: Array.isArray(q.opsi) ? q.opsi : [],
-            jawaban_benar: typeof q.jawabanBenar === 'number' ? q.jawabanBenar : 0,
+            jawaban_benar: typeof q.jawabanBenar === 'number' ? q.jawabanBenar : (typeof q.jawaban_benar === 'number' ? q.jawaban_benar : 0),
             pembahasan: q.pembahasan || ''
         }));
+
+        console.log(`[generate-soal] Successfully generated ${formattedQuestions.length} questions`);
 
         return res.status(200).json({
             success: true,
             questions: formattedQuestions
         });
 
-    } catch (error) {
-        console.error('Generation error:', error);
-        return res.status(500).json({ error: 'Internal server error' });
+    } catch (error: any) {
+        console.error('[generate-soal] Internal server error:', error);
+        return res.status(500).json({
+            error: 'Internal server error',
+            message: error.message
+        });
     }
 }
