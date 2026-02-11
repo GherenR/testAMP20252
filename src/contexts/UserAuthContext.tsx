@@ -144,7 +144,48 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
             if (event === 'SIGNED_IN' && session?.user) {
                 setUser(session.user);
                 setSessionExpired(false);
-                const userProfile = await fetchProfile(session.user.id);
+
+                // Check for pending profile data from signup
+                const pendingProfile = localStorage.getItem('pendingUserProfile');
+                if (pendingProfile) {
+                    try {
+                        const profileData: SignUpData = JSON.parse(pendingProfile);
+                        console.log('Inserting pending profile for user:', session.user.id);
+
+                        // Insert profile data into users table
+                        await supabase.from('users').upsert({
+                            id: session.user.id,
+                            email: profileData.email,
+                            name: profileData.fullName,
+                            full_name: profileData.fullName,
+                            role: 'user',
+                            kelas: profileData.kelas || null,
+                            angkatan: profileData.angkatan || null,
+                            phone: profileData.phone || null,
+                            instagram: profileData.instagram || null,
+                            target_university_1: profileData.targetUniversity1 || null,
+                            target_major_1: profileData.targetMajor1 || null,
+                            target_university_2: profileData.targetUniversity2 || null,
+                            target_major_2: profileData.targetMajor2 || null,
+                            created_at: new Date().toISOString()
+                        }, { onConflict: 'id' });
+
+                        // Clear pending profile
+                        localStorage.removeItem('pendingUserProfile');
+                        console.log('Pending profile inserted successfully');
+                    } catch (error) {
+                        console.error('Failed to insert pending profile:', error);
+                    }
+                }
+
+                // Fetch profile with retry logic
+                let userProfile = await fetchProfile(session.user.id);
+                if (!userProfile && pendingProfile) {
+                    // Retry after a short delay if profile insertion might be in progress
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    userProfile = await fetchProfile(session.user.id);
+                }
+
                 if (isMounted) setProfile(userProfile);
             } else if (event === 'SIGNED_OUT') {
                 // Only set sessionExpired if previously authenticated

@@ -163,6 +163,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     setError(error.message);
                 }
             } else {
+                // Store profile data for insertion after email confirmation and sign-in
+                localStorage.setItem('pendingUserProfile', JSON.stringify(signUpData));
                 setSuccess('Akun berhasil dibuat! Cek email untuk verifikasi. Email verifikasi kemungkinan besar masuk ke folder Spam atau Promotion.');
                 setTimeout(() => {
                     resetForm();
