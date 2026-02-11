@@ -206,8 +206,32 @@ const TryoutManagement: React.FC = () => {
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
-                const content = e.target?.result as string;
-                const data = JSON.parse(content);
+                let content = e.target?.result as string;
+
+                // --- Robust Pre-parsing Sanitization ---
+                // 1. Remove AI-generated citation markers [cite: ...] or [cite_start]
+                // We target patterns like [cite: 8, 12] or [cite_start] or [cite_end]
+                content = content.replace(/\[cite[_\s:][^\]]*\]/g, "");
+
+                // 2. Fix common "lazy" AI JSON issues (like trailing commas before ] or })
+                content = content.replace(/,\s*([\]}])/g, "$1");
+
+                let data: any;
+                try {
+                    data = JSON.parse(content);
+                } catch (parseErr: any) {
+                    console.error('JSON Parse Error:', parseErr);
+                    // Try to find where the error is
+                    const pos = parseErr.message.match(/at position (\d+)/);
+                    if (pos) {
+                        const errorPos = parseInt(pos[1]);
+                        const context = content.substring(Math.max(0, errorPos - 50), Math.min(content.length, errorPos + 50));
+                        alert(`Gagal parsing JSON: ${parseErr.message}\n\nKonteks error:\n...${context}...`);
+                    } else {
+                        alert(`Gagal parsing JSON: ${parseErr.message}. Pastikan format file benar.`);
+                    }
+                    return;
+                }
 
                 if (!Array.isArray(data)) {
                     alert('Format file invalid: Harus berupa JSON Array [].');
@@ -217,29 +241,45 @@ const TryoutManagement: React.FC = () => {
                 // Validate and Group
                 const newQuestions: Record<string, GeneratedQuestion[]> = {};
                 let validCount = 0;
+                let errorMessages: string[] = [];
 
-                data.forEach((item: any) => {
+                data.forEach((item: any, idx: number) => {
+                    const qNum = item.nomor_soal || (idx + 1);
+
                     // Basic validation
-                    if (!item.subtes || !item.pertanyaan || !Array.isArray(item.opsi)) return;
-
-                    if (!newQuestions[item.subtes]) {
-                        newQuestions[item.subtes] = [];
+                    if (!item.subtes) {
+                        errorMessages.push(`Soal #${qNum}: Subtes missing.`);
+                        return;
+                    }
+                    if (!item.pertanyaan) {
+                        errorMessages.push(`Soal #${qNum}: Pertanyaan missing.`);
+                        return;
+                    }
+                    if (!Array.isArray(item.opsi) || item.opsi.length < 2) {
+                        errorMessages.push(`Soal #${qNum}: Opsi harus berupa array minimal 2 pilihan.`);
+                        return;
                     }
 
-                    newQuestions[item.subtes].push({
-                        subtes: item.subtes,
+                    const subKey = String(item.subtes).toLowerCase().trim();
+
+                    if (!newQuestions[subKey]) {
+                        newQuestions[subKey] = [];
+                    }
+
+                    newQuestions[subKey].push({
+                        subtes: subKey,
                         nomor_soal: 0, // Will be indexed on save
                         pertanyaan: item.pertanyaan,
                         opsi: item.opsi,
-                        jawaban_benar: typeof item.jawaban_benar === 'number' ? item.jawaban_benar : item.jawabanBenar || 0,
+                        jawaban_benar: typeof item.jawaban_benar === 'number' ? item.jawaban_benar : (item.jawabanBenar ?? 0),
                         pembahasan: item.pembahasan || '',
-                        difficulty: item.difficulty || 'sedang'
+                        difficulty: item.difficulty || item.difficulty_level || 'sedang'
                     });
                     validCount++;
                 });
 
                 if (validCount === 0) {
-                    alert('Tidak ada soal valid yang ditemukan. Pastikan key JSON sesuai (subtes, pertanyaan, opsi, jawaban_benar).');
+                    alert('Tidak ada soal valid yang ditemukan.\n\nErrors:\n' + errorMessages.slice(0, 5).join('\n'));
                     return;
                 }
 
@@ -251,14 +291,19 @@ const TryoutManagement: React.FC = () => {
                     return next;
                 });
 
-                alert(`Berhasil mengimpor ${validCount} soal!`);
+                if (errorMessages.length > 0) {
+                    alert(`Berhasil mengimpor ${validCount} soal.\nAda ${errorMessages.length} soal yang di-skip karena error (lihat console untuk detail).`);
+                    console.warn('Import Errors:', errorMessages);
+                } else {
+                    alert(`Berhasil mengimpor ${validCount} soal!`);
+                }
 
                 // Clear input
                 if (fileInputRef.current) fileInputRef.current.value = '';
 
             } catch (err) {
-                console.error('Import error:', err);
-                alert('Gagal parsing JSON. Pastikan file valid.');
+                console.error('Import process error:', err);
+                alert('Terjadi kesalahan saat memproses file.');
             }
         };
         reader.readAsText(file);
