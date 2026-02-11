@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Calendar, Clock, Eye, Save, X, Sparkles, Loader2, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Edit2, Trash2, Calendar, Clock, Eye, Save, X, Sparkles, Loader2, FileText, ChevronDown, ChevronUp, Lock, PlayCircle } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import DashboardLayout from '../components/admin/DashboardLayout';
 
@@ -297,6 +297,21 @@ const TryoutManagement: React.FC = () => {
                                             <span className={`px-2 py-0.5 text-xs rounded-full ${t.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
                                                 {t.is_active ? 'Aktif' : 'Draft'}
                                             </span>
+                                            {t.access_mode === 'manual_open' && (
+                                                <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700 flex items-center gap-1">
+                                                    <PlayCircle size={12} /> Buka Manual
+                                                </span>
+                                            )}
+                                            {t.access_mode === 'manual_close' && (
+                                                <span className="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-700 flex items-center gap-1">
+                                                    <X size={12} /> Tutup Manual
+                                                </span>
+                                            )}
+                                            {t.password && (
+                                                <span className="px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700 flex items-center gap-1">
+                                                    <Lock size={12} /> Password
+                                                </span>
+                                            )}
                                         </div>
                                         {t.deskripsi && <p className="text-slate-500 text-sm mt-1">{t.deskripsi}</p>}
                                         <div className="flex gap-4 mt-3 text-sm text-slate-600">
