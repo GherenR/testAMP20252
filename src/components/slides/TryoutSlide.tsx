@@ -208,7 +208,8 @@ const TryoutDetail = () => {
             setAttempt(newAttempt);
         }
 
-        navigate('play');
+        // Use absolute path for safety
+        navigate(`/snbt/tryout/${tryout.id}/play`);
     };
 
     if (loading || !tryout) return <div className="p-8 text-center text-slate-400">Memuat...</div>;
@@ -218,7 +219,7 @@ const TryoutDetail = () => {
 
     return (
         <div className="max-w-2xl mx-auto py-12 px-4">
-            <button onClick={() => navigate('..')} className="text-slate-400 hover:text-white mb-6 flex items-center gap-2"><ArrowLeft size={18} /> Kembali</button>
+            <button onClick={() => navigate('/snbt/tryout')} className="text-slate-400 hover:text-white mb-6 flex items-center gap-2"><ArrowLeft size={18} /> Kembali</button>
 
             <div className="bg-white/5 border border-white/10 rounded-3xl p-8 text-center">
                 <div className="w-20 h-20 bg-indigo-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
@@ -404,7 +405,8 @@ const TryoutPlay = () => {
     };
 
     const finishTryout = async () => {
-        navigate(`../result`);
+        // Use absolute path to ensure ID is preserved and not interpreted as "result"
+        navigate(`/snbt/tryout/${id}/result`);
     }
 
     if (!attempt || Object.keys(soalBySubtes).length === 0) return <div className="p-8 text-center text-slate-400">Memuat data tryout...</div>;
@@ -580,7 +582,7 @@ const TryoutResult = () => {
                 })}
             </div>
 
-            <button onClick={() => navigate('../../tryout')} className="mt-8 px-8 py-3 bg-slate-700 text-white rounded-xl font-bold hover:bg-slate-600">Kembali ke Menu</button>
+            <button onClick={() => navigate('/snbt/tryout')} className="mt-8 px-8 py-3 bg-slate-700 text-white rounded-xl font-bold hover:bg-slate-600">Kembali ke Menu</button>
         </div>
     );
 };
