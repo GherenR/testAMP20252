@@ -106,46 +106,89 @@ export default function AdminLogin() {
         setLoading(true);
         setError('');
 
-        // Step 1: Sign in
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+        try {
+            // Step 1: Sign in with timeout
+            const signInPromise = supabase.auth.signInWithPassword({ email, password });
+            const timeoutPromise = new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('TIMEOUT')), 8000)
+            );
 
-        if (authError) {
+            let authData;
+            try {
+                const result = await Promise.race([signInPromise, timeoutPromise]);
+                if (result.error) {
+                    setLoading(false);
+                    setError('Email atau password salah');
+                    return;
+                }
+                authData = result.data;
+            } catch (err: any) {
+                setLoading(false);
+                if (err?.message === 'TIMEOUT') {
+                    setError('Login timeout. Coba lagi.');
+                } else {
+                    setError('Email atau password salah');
+                }
+                return;
+            }
+
+            // Step 2: Check if user has admin role in users table (with timeout)
+            const roleCheckPromise = supabase
+                .from('users')
+                .select('role')
+                .eq('id', authData.user?.id)
+                .single();
+            const roleTimeoutPromise = new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('TIMEOUT')), 8000)
+            );
+
+            let userData;
+            let userError;
+            try {
+                const roleResult = await Promise.race([roleCheckPromise, roleTimeoutPromise]);
+                userData = roleResult.data;
+                userError = roleResult.error;
+            } catch (err: any) {
+                await supabase.auth.signOut();
+                setLoading(false);
+                if (err?.message === 'TIMEOUT') {
+                    setError('Timeout saat verifikasi role. Coba lagi.');
+                } else {
+                    setError('Gagal verifikasi role.');
+                }
+                return;
+            }
+
+            if (userError || !userData) {
+                await supabase.auth.signOut();
+                setLoading(false);
+                setError('Akses ditolak. Gagal verifikasi role.');
+                return;
+            }
+
+            const rawRole = userData.role;
+            const normalizedRole = rawRole?.toLowerCase().trim();
+            const isSuperAdmin = normalizedRole === 'super_admin' || normalizedRole === 'super admin';
+            const isAdmin = normalizedRole === 'admin';
+
+            if (!isAdmin && !isSuperAdmin) {
+                // Not an admin - sign out immediately
+                await supabase.auth.signOut();
+                setLoading(false);
+                setError('Akses ditolak. Akun kamu tidak memiliki hak akses admin.');
+                return;
+            }
+
+            // Step 3: Success - user is admin
             setLoading(false);
-            setError('Email atau password salah');
-            return;
-        }
-
-        // Step 2: Check if user has admin role in users table
-        const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('role')
-            .eq('id', authData.user?.id)
-            .single();
-
-        if (userError || !userData) {
-            await supabase.auth.signOut();
+            logAdminLogin();
+            navigate(redirect);
+        } catch (err) {
+            // Catch-all to prevent button from getting stuck
+            console.error('Login error:', err);
             setLoading(false);
-            setError('Akses ditolak. Gagal verifikasi role.');
-            return;
+            setError('Terjadi kesalahan. Coba lagi.');
         }
-
-        const rawRole = userData.role;
-        const normalizedRole = rawRole?.toLowerCase().trim();
-        const isSuperAdmin = normalizedRole === 'super_admin' || normalizedRole === 'super admin';
-        const isAdmin = normalizedRole === 'admin';
-
-        if (!isAdmin && !isSuperAdmin) {
-            // Not an admin - sign out immediately
-            await supabase.auth.signOut();
-            setLoading(false);
-            setError('Akses ditolak. Akun kamu tidak memiliki hak akses admin.');
-            return;
-        }
-
-        // Step 3: Success - user is admin
-        setLoading(false);
-        logAdminLogin();
-        navigate(redirect);
     };
 
     return (

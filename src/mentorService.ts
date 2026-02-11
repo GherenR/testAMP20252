@@ -48,10 +48,16 @@ export interface ServiceResponse<T> {
  */
 export async function getAllMentors(): Promise<ServiceResponse<MentorDB[]>> {
     try {
-        const { data, error } = await supabase
+        const queryPromise = supabase
             .from('mentors')
             .select('*')
             .order('name', { ascending: true });
+
+        const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('TIMEOUT')), 10000)
+        );
+
+        const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
         if (error) {
             console.error('Error fetching mentors:', error);
@@ -59,7 +65,11 @@ export async function getAllMentors(): Promise<ServiceResponse<MentorDB[]>> {
         }
 
         return { data: data || [], error: null };
-    } catch (err) {
+    } catch (err: any) {
+        if (err?.message === 'TIMEOUT') {
+            console.error('Mentor fetch timeout');
+            return { data: null, error: 'Koneksi timeout. Coba refresh halaman.' };
+        }
         console.error('Unexpected error:', err);
         return { data: null, error: 'Failed to fetch mentors' };
     }
