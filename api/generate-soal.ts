@@ -155,8 +155,8 @@ IMPORTANT: Return ONLY the JSON array, no other text. DO NOT use markdown code b
                 }],
                 generationConfig: {
                     temperature: 0.8,
-                    maxOutputTokens: 4000,
-                    responseMimeType: "application/json"
+                    maxOutputTokens: 2000, // gemini-pro limit is 2048
+                    // responseMimeType: "application/json" // REMOVED: Only supported in gemini-1.5
                 }
             })
         });
