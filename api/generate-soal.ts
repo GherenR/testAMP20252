@@ -7,72 +7,60 @@ const SUBTES_PROMPTS: Record<string, string> = {
 - Modus Tollens/Ponens: "Jika P maka Q. Tidak Q, maka..."
 - Pola bilangan/deret: "Pola: 2, 6, 12, 20, ... Bilangan selanjutnya..."
 - Penalaran logis: "A > B, B > C. Pernyataan yang PASTI BENAR..."
-- Analogi: "Panas : Dingin = Terang : ..."
+- Analogi: "Panas : Dingin = Terang : ..."`,
 
-Example format:
-{
-  "pertanyaan": "Jika Toktok Shop dibuka kembali, Riu dan Maha akan membeli sepatu. Riu tidak membeli sepatu.\\n\\nSimpulan yang BENAR adalah...",
-  "opsi": ["Toktok Shop dibuka dan Maha membeli", "Toktok Shop tidak dibuka", "Maha tetap membeli", "Tidak dapat disimpulkan", "Riu akan membeli nanti"],
-  "jawabanBenar": 1,
-  "pembahasan": "Modus Tollens: Jika P maka Q. Tidak Q, maka tidak P."
-}`,
-
-    'pengetahuan-pemahaman-umum': `Generate SNBT Pengetahuan & Pemahaman Umum questions in Indonesian. Focus on:
+    'pengetahuan-pemahaman-umum': `Generate SNBT Pengetahuan & Pemahaman Umum questions in Indonesian.
+IMPORTANT: Questions MUST be grouped by a reading passage (wacana).
+Focus on:
 - Sinonim kata: "Sinonim 'ameliorasi'..."
 - Antonim kata: "Antonim 'heterogen'..."
-- Kata baku KBBI: "Kata baku yang tepat..."
-- Penulisan EYD: "Penulisan yang benar menurut EYD..."
 - Makna kata: "Makna kata 'sporadis'..."
-- Peribahasa/idiom: "Arti peribahasa..."
+- Analisis teks: Main idea, purpose of the text.
 
-Use vocabulary commonly tested in UTBK/SNBT.`,
+Structure:
+Provide a passage (teks_bacaan) and then 2-3 questions based on that same passage.`,
 
-    'pemahaman-bacaan-menulis': `Generate SNBT Pemahaman Bacaan & Menulis questions in Indonesian. Focus on:
+    'pemahaman-bacaan-menulis': `Generate SNBT Pemahaman Bacaan & Menulis questions in Indonesian.
+IMPORTANT: Questions MUST be grouped by a reading passage (wacana).
+Focus on:
 - Ide pokok paragraf: Provide short paragraph, ask main idea
 - Majas/gaya bahasa: "Kalimat personifikasi/metafora..."
-- Sikap/sudut pandang penulis: Based on text analysis
-- Konjungsi: "baik...maupun adalah konjungsi..."
-- Melengkapi kalimat: "Kata penghubung yang tepat..."
-- Struktur teks: "Paragraf di atas termasuk jenis..."`,
+- Struktur teks: "Paragraf di atas termasuk jenis..."
+- Kelengkapan kalimat/ EYD / PUEBI.
 
-    'pengetahuan-kuantitatif': `Generate SNBT Pengetahuan Kuantitatif questions in Indonesian. Focus on:
-- Eksponen: "Jika 2^x = 32, nilai x..."
-- Persentase: "15% dari 240..."
-- Rata-rata/statistik: "Rata-rata dari 5,8,12,15,20..."
-- FPB/KPK: "FPB dari 48 dan 72..."
-- Akar kuadrat: "√144 + √81 = ..."
-- Perbandingan: "Perbandingan umur A dan B..."
+Structure:
+Provide a passage (teks_bacaan) and then 2-3 questions based on that same passage.`,
 
-Keep calculations simple but require logical thinking.`,
+    'pengetahuan-kuantitatif': `Generate SNBT Pengetahuan Kuantitatif questions in Indonesian.
+Most questions should be independent (teks_bacaan: null).
+Focus on:
+- Eksponen, Persentase, Rata-rata, FPB/KPK, Akar kuadrat, Perbandingan.
+Use Unicode for math symbols.`,
 
-    'literasi-indonesia': `Generate SNBT Literasi Bahasa Indonesia questions in Indonesian. Focus on:
-- Analisis data/tabel/grafik: Provide data, ask interpretation
-- Membaca kritis: Paragraph about social issues, ask conclusions
-- Statistik dalam teks: "Data menunjukkan... Peningkatan berapa..."
-- Argumen dalam teks: "Gagasan utama paragraf..."
-- Implikasi data: "Berdasarkan data, implikasi yang tepat..."
+    'literasi-indonesia': `Generate SNBT Literasi Bahasa Indonesia questions in Indonesian.
+CRITICAL: All questions MUST be grouped by a reading passage (wacana).
+Focus on:
+- Analisis teks lengkap (social issues, digital economy, environment).
+- Membaca kritis: Conclusion, implication, author's perspective.
+- Interpretasi data/statistik dalam teks.
 
-Use current Indonesian issues: digital economy, environment, health, education.`,
+Structure:
+Provide a LONG passage (teks_bacaan, 200-400 words) and then 3-5 questions based on it.`,
 
-    'literasi-inggris': `Generate SNBT Literasi Bahasa Inggris questions in English. Focus on:
-- Grammar: "Choose the correct sentence: She ___ coffee"
-- Conditional: "If I ___ rich, I would travel"
-- Vocabulary: "Ubiquitous means..."
-- Antonyms/Synonyms: "Antonym of 'abundant'..."
-- Preposition/Conjunction: "___ the rain, the event continued"
-- Reading comprehension: Short passage with question
+    'literasi-inggris': `Generate SNBT Literasi Bahasa Inggris questions in English.
+CRITICAL: All questions MUST be grouped by a reading passage (wacana).
+Focus on:
+- Reading comprehension: Main idea, reference, inference, vocabulary in context.
+- Author's purpose/tone.
 
-Keep at intermediate English level (B1-B2).`,
+Structure:
+Provide a LONG passage (teks_bacaan, 200-400 words) and then 3-5 questions based on it.`,
 
-    'penalaran-matematika': `Generate SNBT Penalaran Matematika questions in Indonesian. Focus on:
-- Fungsi: "f(x) = 2x² - 3x + 1, maka f(2) = ..."
-- Gradien/persamaan garis: "Gradien garis melalui (1,3) dan (4,9)..."
-- Deret aritmatika/geometri: "Deret dengan a=5, b=3. S₁₀ = ..."
-- Logaritma: "log₂32 + log₃27 = ..."
-- Persamaan kuadrat: "x²-5x+6=0, akar-akarnya..."
-- Geometri dasar: Luas, keliling, volume
-
-Show calculation in pembahasan.`
+    'penalaran-matematika': `Generate SNBT Penalaran Matematika questions in Indonesian.
+Questions can be independent or grouped by a context/story.
+Focus on:
+- Fungsi, Gradien, Deret, Logaritma, Persamaan kuadrat, Geometri.
+Use Unicode for math symbols.`
 };
 
 const SUBTES_NAMES: Record<string, string> = {
@@ -118,7 +106,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const { subtes, jumlah = 5 } = req.body;
+    const { subtes, jumlahValue = 5 } = req.body;
+    const jumlah = Number(jumlahValue) || 5;
 
     if (!subtes || !SUBTES_PROMPTS[subtes]) {
         return res.status(400).json({ error: 'Invalid subtes type' });
@@ -132,41 +121,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const cleanKey = GEMINI_API_KEY.trim();
 
-    // Calculate Difficulty Distribution
-    let difficultyInstruction = "4. Difficulty: Create a mix of behaviors (Mudah, Sedang, Sulit).";
-
-    if (jumlah >= 5) {
-        const units = Math.floor(jumlah / 5);
-        const mudah = units;
-        const sulit = units;
-        const sedang = jumlah - mudah - sulit;
-
-        difficultyInstruction = `4. Difficulty Distribution (STRICT):
-   - Mudah: ${mudah} questions
-   - Sedang: ${sedang} questions
-   - Sulit: ${sulit} questions`;
-    }
-
-    const systemPrompt = `You are an expert SNBT question creator. Create ${jumlah} questions for ${SUBTES_NAMES[subtes]}.
+    const systemPrompt = `You are an expert SNBT question creator. Create questions for ${SUBTES_NAMES[subtes]} totalling ${jumlah} questions.
 Rules:
-1. Output ONLY a valid JSON Array.
-2. No markdown, no "Here is the JSON".
-3. Use Unicode for Math (x², π, √, etc).
-${difficultyInstruction}
-5. 5 Options (A-E).`;
+1. Output ONLY a valid JSON Array of Group objects.
+2. Group questions by "Reading Passage" (Teks Bacaan).
+3. Use Unicode for Math (x², π, √, etc) or LaTeX \\( ... \\) for complex formulas.
+4. Difficulty Distribution: Mix of Mudah, Sedang, Sulit.
+5. 5 Options (A-E).
+6. Clean text: No random newlines in the middle of sentences in teks_bacaan.`;
 
     const userPrompt = `${SUBTES_PROMPTS[subtes]}
     
-    STRICT JSON OUTPUT:
+    STRICT JSON SCHEMA (Grouped):
     [
       {
-        "pertanyaan": "Question...",
-        "opsi": ["A", "B", "C", "D", "E"],
-        "jawabanBenar": 0,
-        "pembahasan": "Exp...",
-        "difficulty": "sedang"
+        "id_wacana": "wacana_01",
+        "teks_bacaan": "String teks lengkap...",
+        "daftar_soal": [
+          {
+            "pertanyaan": "Question...",
+            "opsi": ["A", "B", "C", "D", "E"],
+            "jawabanBenar": 0,
+            "pembahasan": "Exp...",
+            "difficulty": "sedang"
+          }
+        ]
       }
-    ]`;
+    ]
+    
+    If a question doesn't need a passage, set teks_bacaan and id_wacana to null.`;
 
     // MAX RETRIES
     let attempts = 0;
@@ -184,10 +167,10 @@ ${difficultyInstruction}
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
+                    contents: [{ parts: [{ text: `${systemPrompt}\n\n${userPrompt}\n\nTarget TOTAL questions: ${jumlah}` }] }],
                     generationConfig: {
                         temperature: 0.7,
-                        maxOutputTokens: 3000,
+                        maxOutputTokens: 4000,
                         responseMimeType: "application/json"
                     }
                 })
@@ -200,31 +183,34 @@ ${difficultyInstruction}
             const data = await response.json();
             lastContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
 
-            // Parse
-            const questions = cleanAndExtractJSON(lastContent);
+            // Parse Grouped Data
+            const groups = cleanAndExtractJSON(lastContent);
 
-            if (!Array.isArray(questions)) {
-                throw new Error('Parsed result is not an array');
+            if (!Array.isArray(groups)) {
+                throw new Error('Parsed result is not an array of groups');
             }
 
-            // Map and Validate
-            const formattedQuestions = questions.map((q: any, idx: number) => ({
-                subtes,
-                nomor_soal: idx + 1,
-                pertanyaan: q.pertanyaan || 'Pertanyaan kosong',
-                opsi: Array.isArray(q.opsi) ? q.opsi : [],
-                jawaban_benar: typeof q.jawabanBenar === 'number' ? q.jawabanBenar : (typeof q.jawaban_benar === 'number' ? q.jawaban_benar : 0),
-                pembahasan: q.pembahasan || '',
-                difficulty: q.difficulty || 'sedang'
+            // Flatten for internal legacy handling if needed, but we'll return the Grouped structure
+            // to the frontend to handle.
+            const formattedGroups = groups.map((g: any, gIdx: number) => ({
+                id_wacana: g.id_wacana || (g.teks_bacaan ? `wacana_${Date.now()}_${gIdx}` : null),
+                teks_bacaan: g.teks_bacaan || null,
+                daftar_soal: (g.daftar_soal || []).map((q: any, qIdx: number) => ({
+                    subtes,
+                    pertanyaan: q.pertanyaan || 'Pertanyaan kosong',
+                    opsi: Array.isArray(q.opsi) ? q.opsi : [],
+                    jawaban_benar: typeof q.jawabanBenar === 'number' ? q.jawabanBenar : (typeof q.jawaban_benar === 'number' ? q.jawaban_benar : 0),
+                    pembahasan: q.pembahasan || '',
+                    difficulty: q.difficulty || 'sedang'
+                }))
             }));
 
             console.log(`[generate-soal] Success on attempt ${attempts}`);
-            return res.status(200).json({ success: true, questions: formattedQuestions });
+            return res.status(200).json({ success: true, groups: formattedGroups });
 
         } catch (error: any) {
             console.error(`[generate-soal] Attempt ${attempts} failed:`, error.message);
             lastError = error;
-            // Loop to retry
         }
     }
 

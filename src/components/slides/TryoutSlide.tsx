@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Play, Clock, Calendar, Lock, ChevronRight, Trophy, BookOpen,
     ArrowLeft, ArrowRight, CheckCircle, Timer, AlertTriangle, Unlock,
-    Target, Award, XCircle, Save, RotateCcw, X, MinusCircle
+    Target, Award, XCircle, Save, RotateCcw, X, MinusCircle, FileText
 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { SUBTES_CONFIG } from '../../data/bankSoal';
@@ -32,8 +32,10 @@ interface TryoutSoal {
     opsi: string[];
     jawaban_benar: number;
     pembahasan: string;
-    tingkat_kesulitan: 'mudah' | 'sedang' | 'sulit';
-    bobot_nilai: number;
+    difficulty_level?: string;
+    bobot_nilai?: number;
+    teks_bacaan?: string | null;
+    id_wacana?: string | null;
 }
 
 interface SubtesResult {
@@ -594,50 +596,78 @@ const TryoutPlay = () => {
                         </div>
                     </div>
 
-                    {/* Soal */}
-                    <div className="bg-white/5 p-6 rounded-2xl border border-white/10 mb-6 min-h-[200px]">
-                        <LatexRenderer className="text-white whitespace-pre-line text-lg">
-                            {soal.pertanyaan}
-                        </LatexRenderer>
-                    </div>
+                    {/* Soal & Opsi Container */}
+                    <div className={`grid gap-6 ${soal.teks_bacaan ? 'lg:grid-cols-2' : 'grid-cols-1'}`}>
+                        {/* Left Column: Passage (if exists) */}
+                        {soal.teks_bacaan && (
+                            <div className="bg-white/5 p-6 rounded-2xl border border-white/10 h-fit lg:max-h-[70vh] overflow-y-auto sticky top-4">
+                                <p className="text-[10px] font-bold text-indigo-400 uppercase mb-3 tracking-widest flex items-center gap-2">
+                                    <FileText size={14} /> Teks Bacaan
+                                </p>
+                                <LatexRenderer className="text-white text-sm leading-relaxed whitespace-pre-line">
+                                    {soal.teks_bacaan}
+                                </LatexRenderer>
+                            </div>
+                        )}
 
-                    {/* Opsi */}
-                    <div className="space-y-3 mb-8">
-                        {soal.opsi.map((opt, idx) => (
-                            <button
-                                key={idx}
-                                onClick={() => handleSelectAnswer(soal.id, idx)}
-                                className={`w-full p-4 rounded-xl text-left border transition-all ${jawaban[soal.id] === idx ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800/50 border-slate-700 text-slate-300 hover:bg-slate-800'}`}
-                            >
-                                <span className="font-bold mr-3">{String.fromCharCode(65 + idx)}.</span>
-                                <LatexRenderer className="inline">{opt}</LatexRenderer>
-                            </button>
-                        ))}
+                        {/* Right Column: Question & Opsi */}
+                        <div className="space-y-6">
+                            {/* Soal */}
+                            <div className="bg-white/5 p-6 rounded-2xl border border-white/10 min-h-[120px]">
+                                <p className="text-[10px] font-bold text-indigo-400 uppercase mb-3 tracking-widest">Pertanyaan</p>
+                                <LatexRenderer className="text-white whitespace-pre-line text-lg font-medium leading-relaxed">
+                                    {soal.pertanyaan}
+                                </LatexRenderer>
+                            </div>
+
+                            {/* Opsi */}
+                            <div className="space-y-3">
+                                {soal.opsi.map((opt, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => handleSelectAnswer(soal.id, idx)}
+                                        className={`w-full p-4 rounded-xl text-left border transition-all flex gap-4 ${jawaban[soal.id] === idx ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}
+                                    >
+                                        <span className={`w-8 h-8 flex items-center justify-center rounded-lg font-bold shrink-0 ${jawaban[soal.id] === idx ? 'bg-white/20 text-white' : 'bg-white/10 text-slate-400'}`}>
+                                            {String.fromCharCode(65 + idx)}
+                                        </span>
+                                        <LatexRenderer className="flex-1 pt-1">{opt}</LatexRenderer>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
 
                     {/* Navigasi */}
-                    <div className="flex justify-between gap-4">
+                    <div className="flex justify-between items-center mt-8 pt-6 border-t border-white/10">
                         <button
                             disabled={currentIndex === 0}
                             onClick={() => setCurrentIndex(i => i - 1)}
-                            className="px-6 py-3 bg-slate-700 rounded-xl text-white disabled:opacity-50"
+                            className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white disabled:opacity-30 transition-all font-bold"
                         >Sebelumnya</button>
 
-                        <div className="flex gap-2 overflow-x-auto max-w-[200px] px-2 hide-scrollbar">
+                        <div className="hidden sm:flex gap-1.5 overflow-x-auto max-w-[300px] px-4 py-2 bg-white/5 rounded-full border border-white/5 hide-scrollbar">
                             {soalList.map((s, i) => (
-                                <div key={i} className={`w-3 h-3 rounded-full flex-shrink-0 ${i === currentIndex ? 'bg-white' : jawaban[s.id] !== undefined ? 'bg-indigo-500' : 'bg-slate-700'}`} />
+                                <button
+                                    key={i}
+                                    onClick={() => setCurrentIndex(i)}
+                                    className={`w-2 h-2 rounded-full transition-all shrink-0 ${i === currentIndex ? 'bg-white scale-125' : jawaban[s.id] !== undefined ? 'bg-indigo-400' : 'bg-white/20'}`}
+                                />
                             ))}
                         </div>
 
                         {currentIndex < soalList.length - 1 ? (
                             <button
-                                onClick={() => setCurrentIndex(i => i + 1)}
-                                className="px-6 py-3 bg-indigo-600 rounded-xl text-white font-bold"
+                                onClick={() => {
+                                    setCurrentIndex(i => i + 1);
+                                    saveJawaban(jawaban);
+                                }}
+                                className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold transition-all shadow-lg shadow-indigo-600/20"
                             >Selanjutnya</button>
                         ) : (
                             <button
                                 onClick={finishSubtes}
-                                className="px-6 py-3 bg-emerald-600 rounded-xl text-white font-bold"
+                                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-bold transition-all shadow-lg shadow-emerald-600/20"
                             >Selesai Subtes</button>
                         )}
                     </div>
@@ -890,16 +920,26 @@ const ReviewModalContent = ({ subtes, onClose, soalList, attempt }: { subtes: st
                                     {activeQuestion.nomor_soal}
                                 </span>
                                 <div className="space-y-4">
+                                    {activeQuestion.teks_bacaan && (
+                                        <div className="mb-6 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase mb-3 tracking-widest flex items-center gap-2">
+                                                <FileText size={14} /> Teks Bacaan
+                                            </p>
+                                            <LatexRenderer className="text-slate-700 text-sm leading-relaxed whitespace-pre-line">
+                                                {activeQuestion.teks_bacaan}
+                                            </LatexRenderer>
+                                        </div>
+                                    )}
                                     <LatexRenderer className="text-lg text-slate-800 font-medium whitespace-pre-line leading-relaxed">
                                         {activeQuestion.pertanyaan}
                                     </LatexRenderer>
 
                                     {/* Difficulty Badge */}
-                                    <span className={`inline-block px-2 py-1 rounded text-xs font-bold uppercase ${activeQuestion.tingkat_kesulitan === 'sulit' ? 'bg-red-100 text-red-700' :
-                                        activeQuestion.tingkat_kesulitan === 'mudah' ? 'bg-green-100 text-green-700' :
+                                    <span className={`inline-block px-2 py-1 rounded text-xs font-bold uppercase ${activeQuestion.difficulty_level === 'sulit' ? 'bg-red-100 text-red-700' :
+                                        activeQuestion.difficulty_level === 'mudah' ? 'bg-green-100 text-green-700' :
                                             'bg-blue-100 text-blue-700'
                                         }`}>
-                                        {activeQuestion.tingkat_kesulitan || 'Sedang'}
+                                        {activeQuestion.difficulty_level || 'Sedang'}
                                     </span>
                                 </div>
                             </div>

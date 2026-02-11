@@ -17,6 +17,8 @@ interface Tryout {
 }
 
 interface GeneratedQuestion {
+    id_wacana?: string | null;
+    teks_bacaan?: string | null;
     subtes: string;
     nomor_soal: number;
     pertanyaan: string;
@@ -133,6 +135,8 @@ const TryoutManagement: React.FC = () => {
         pembahasan: string;
         difficulty_level: 'mudah' | 'sedang' | 'sulit';
         bobot_nilai: number;
+        id_wacana?: string | null;
+        teks_bacaan?: string | null;
     }
 
     useEffect(() => {
@@ -185,9 +189,30 @@ const TryoutManagement: React.FC = () => {
             }
 
             const data = await response.json();
+
+            // Flatten the groups for the UI state if needed, or keep them grouped.
+            // For now, we flatten but keep the metadata for saving.
+            const allQuestionsFromGroups: GeneratedQuestion[] = [];
+
+            if (data.groups && Array.isArray(data.groups)) {
+                data.groups.forEach((group: any) => {
+                    (group.daftar_soal || []).forEach((q: any) => {
+                        allQuestionsFromGroups.push({
+                            ...q,
+                            id_wacana: group.id_wacana,
+                            teks_bacaan: group.teks_bacaan,
+                            subtes: subtes // Ensure subtes is correct
+                        });
+                    });
+                });
+            } else if (data.questions) {
+                // Fallback for old flat format
+                allQuestionsFromGroups.push(...data.questions);
+            }
+
             setGeneratedQuestions(prev => ({
                 ...prev,
-                [subtes]: [...(prev[subtes] || []), ...data.questions]
+                [subtes]: [...(prev[subtes] || []), ...allQuestionsFromGroups]
             }));
         } catch (error) {
             console.error('Generation error:', error);
@@ -204,18 +229,20 @@ const TryoutManagement: React.FC = () => {
         setGenerating(true);
         try {
             const allQuestions: any[] = [];
-            Object.entries(generatedQuestions).forEach(([subtes, questions]) => {
+            Object.entries(generatedQuestions).forEach(([subtesKey, questions]) => {
                 questions.forEach((q, idx) => {
                     allQuestions.push({
                         tryout_id: selectedTryoutForGen.id,
-                        subtes: subtes, // Use the key from the loop which is already normalized
+                        subtes: subtesKey,
                         nomor_soal: idx + 1,
                         pertanyaan: q.pertanyaan,
                         opsi: q.opsi,
                         jawaban_benar: q.jawaban_benar,
                         pembahasan: q.pembahasan,
                         difficulty_level: q.difficulty,
-                        bobot_nilai: q.difficulty === 'sulit' ? 3 : (q.difficulty === 'mudah' ? 1 : 2)
+                        bobot_nilai: q.difficulty === 'sulit' ? 3 : (q.difficulty === 'mudah' ? 1 : 2),
+                        id_wacana: q.id_wacana || null,
+                        teks_bacaan: q.teks_bacaan || null
                     });
                 });
             });
@@ -277,50 +304,85 @@ const TryoutManagement: React.FC = () => {
                     return;
                 }
 
-                if (!Array.isArray(data)) {
-                    alert('Format file invalid: Harus berupa JSON Array [].');
-                    return;
-                }
-
-                // Validate and Group
+                // Detect format: Grouped or Flat Array
                 const newQuestions: Record<string, GeneratedQuestion[]> = {};
                 let validCount = 0;
                 let errorMessages: string[] = [];
 
-                data.forEach((item: any, idx: number) => {
-                    const qNum = item.nomor_soal || (idx + 1);
+                if (Array.isArray(data) && data.length > 0 && data[0].daftar_soal) {
+                    // NEW GROUPED FORMAT
+                    data.forEach((group: any) => {
+                        const id_wacana = group.id_wacana || (group.teks_bacaan ? `wacana_imp_${Date.now()}_${Math.random()}` : null);
+                        const teks_bacaan = group.teks_bacaan || null;
 
-                    // Basic validation
-                    if (!item.subtes) {
-                        errorMessages.push(`Soal #${qNum}: Subtes missing.`);
-                        return;
-                    }
-                    if (!item.pertanyaan) {
-                        errorMessages.push(`Soal #${qNum}: Pertanyaan missing.`);
-                        return;
-                    }
-                    if (!Array.isArray(item.opsi) || item.opsi.length < 2) {
-                        errorMessages.push(`Soal #${qNum}: Opsi harus berupa array minimal 2 pilihan.`);
-                        return;
-                    }
+                        if (Array.isArray(group.daftar_soal)) {
+                            group.daftar_soal.forEach((item: any, idx: number) => {
+                                const qNum = item.nomor_soal || (idx + 1);
+                                if (!item.pertanyaan) {
+                                    errorMessages.push(`Group ${id_wacana} - Soal #${qNum}: Pertanyaan missing.`);
+                                    return;
+                                }
 
-                    const subKey = normalizeSubtesCode(String(item.subtes));
+                                const subKey = normalizeSubtesCode(String(item.subtes || 'literasi-indonesia'));
+                                if (!newQuestions[subKey]) newQuestions[subKey] = [];
 
-                    if (!newQuestions[subKey]) {
-                        newQuestions[subKey] = [];
-                    }
-
-                    newQuestions[subKey].push({
-                        subtes: subKey,
-                        nomor_soal: 0, // Will be indexed on save
-                        pertanyaan: item.pertanyaan,
-                        opsi: item.opsi,
-                        jawaban_benar: typeof item.jawaban_benar === 'number' ? item.jawaban_benar : (item.jawabanBenar ?? 0),
-                        pembahasan: item.pembahasan || '',
-                        difficulty: item.difficulty || item.difficulty_level || 'sedang'
+                                newQuestions[subKey].push({
+                                    id_wacana,
+                                    teks_bacaan,
+                                    subtes: subKey,
+                                    nomor_soal: qNum,
+                                    pertanyaan: item.pertanyaan,
+                                    opsi: item.opsi || [],
+                                    jawaban_benar: typeof item.jawaban_benar === 'number' ? item.jawaban_benar : (item.jawabanBenar ?? 0),
+                                    pembahasan: item.pembahasan || '',
+                                    difficulty: item.difficulty || item.difficulty_level || 'sedang'
+                                });
+                                validCount++;
+                            });
+                        }
                     });
-                    validCount++;
-                });
+                } else if (Array.isArray(data)) {
+                    // OLD FLAT FORMAT
+                    data.forEach((item: any, idx: number) => {
+                        const qNum = item.nomor_soal || (idx + 1);
+
+                        // Basic validation
+                        if (!item.subtes) {
+                            errorMessages.push(`Soal #${qNum}: Subtes missing.`);
+                            return;
+                        }
+                        if (!item.pertanyaan) {
+                            errorMessages.push(`Soal #${qNum}: Pertanyaan missing.`);
+                            return;
+                        }
+                        if (!Array.isArray(item.opsi) || item.opsi.length < 2) {
+                            errorMessages.push(`Soal #${qNum}: Opsi harus berupa array minimal 2 pilihan.`);
+                            return;
+                        }
+
+                        const subKey = normalizeSubtesCode(String(item.subtes));
+
+                        if (!newQuestions[subKey]) {
+                            newQuestions[subKey] = [];
+                        }
+
+                        newQuestions[subKey].push({
+                            subtes: subKey,
+                            nomor_soal: 0, // Will be indexed on save
+                            pertanyaan: item.pertanyaan,
+                            opsi: item.opsi,
+                            jawaban_benar: typeof item.jawaban_benar === 'number' ? item.jawaban_benar : (item.jawabanBenar ?? 0),
+                            pembahasan: item.pembahasan || '',
+                            difficulty: item.difficulty || item.difficulty_level || 'sedang',
+                            id_wacana: null,
+                            teks_bacaan: null
+                        });
+                        validCount++;
+                    });
+                } else {
+                    alert('Format file invalid: Harus berupa JSON Array [].');
+                    return;
+                }
 
                 if (validCount === 0) {
                     alert('Tidak ada soal valid yang ditemukan.\n\nErrors:\n' + errorMessages.slice(0, 5).join('\n'));
@@ -1172,6 +1234,14 @@ const TryoutManagement: React.FC = () => {
                                                                                     </button>
                                                                                 </div>
                                                                             </div>
+                                                                            {q.teks_bacaan && (
+                                                                                <div className="mb-4 bg-slate-100 p-4 rounded-lg border-l-4 border-blue-400">
+                                                                                    <p className="text-[10px] font-bold text-blue-600 uppercase mb-2">Teks Bacaan (ID: {q.id_wacana})</p>
+                                                                                    <LatexRenderer className="text-sm text-slate-700 leading-relaxed max-h-[200px] overflow-y-auto">
+                                                                                        {q.teks_bacaan}
+                                                                                    </LatexRenderer>
+                                                                                </div>
+                                                                            )}
                                                                             <LatexRenderer className="text-slate-700 mb-3 whitespace-pre-line text-sm leading-relaxed">{q.pertanyaan}</LatexRenderer>
                                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
                                                                                 {q.opsi.map((o, i) => (
