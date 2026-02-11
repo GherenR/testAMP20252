@@ -18,6 +18,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     const [adminRole, setAdminRole] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [hasChecked, setHasChecked] = useState(false);
+    const [adminStatusCached, setAdminStatusCached] = useState<{ isAdmin: boolean, role: string | null } | null>(null);
 
     // Check admin status from users table (main admin table)
     const checkAdminStatus = async (userId: string): Promise<{ isAdmin: boolean; role: string | null }> => {
@@ -78,14 +79,24 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
             if (session?.user) {
                 setUser(session.user);
-                // Check admin status from database
-                const { isAdmin: adminStatus, role } = await checkAdminStatus(session.user.id);
+                // Check admin status from database (use cache if available)
+                let adminStatus, role;
+                if (adminStatusCached) {
+                    adminStatus = adminStatusCached.isAdmin;
+                    role = adminStatusCached.role;
+                } else {
+                    const status = await checkAdminStatus(session.user.id);
+                    adminStatus = status.isAdmin;
+                    role = status.role;
+                    setAdminStatusCached(status);
+                }
                 setIsAdmin(adminStatus);
                 setAdminRole(role);
             } else {
                 setUser(null);
                 setIsAdmin(false);
                 setAdminRole(null);
+                setAdminStatusCached(null);
             }
             setIsLoading(false);
         });

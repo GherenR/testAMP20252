@@ -123,8 +123,7 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
 
                 if (authUser) {
                     setUser(authUser);
-                    const userProfile = await fetchProfile(authUser.id);
-                    if (isMounted) setProfile(userProfile);
+                    // Profile will be fetched by the auth state change handler
                 }
             } catch (err) {
                 if (!isMounted) return;
@@ -186,7 +185,12 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
                     userProfile = await fetchProfile(session.user.id);
                 }
 
-                if (isMounted) setProfile(userProfile);
+                console.log("Setting profile and loading state:", { userProfile, hasProfile: !!userProfile });
+
+                if (isMounted) {
+                    setProfile(userProfile);
+                    setIsLoading(false);
+                }
             } else if (event === 'SIGNED_OUT') {
                 // Only set sessionExpired if previously authenticated
                 if (user) setSessionExpired(true);
@@ -199,7 +203,7 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
             isMounted = false;
             subscription.unsubscribe();
         };
-    }, [fetchProfile, user]);
+    }, []);
 
     // Sign up with extended profile data
     const signUp = async (signUpData: SignUpData) => {
