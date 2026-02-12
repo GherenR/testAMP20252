@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Clock, ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, Grip, FileText, Cloud, Loader2, MessageSquareWarning, Moon, Sun } from 'lucide-react';
 import { TryoutSoal, TryoutAttempt } from '../../types';
 import LatexRenderer from '../LatexRenderer';
+import LogoIkahata from '../../LogoIKAHATANew.svg';
 
 interface SimulationExamViewProps {
     subtes: string; // Current subtes code
@@ -20,6 +21,147 @@ interface SimulationExamViewProps {
     isSaving?: boolean;
     onReport?: () => void;
 }
+
+// --- SUB COMPONENTS ---
+
+const QuestionOptions: React.FC<{
+    soal: TryoutSoal;
+    jawaban: Record<string, any>;
+    onAnswer: (soalId: string, answer: any, isToggle?: boolean) => void;
+    isDarkMode: boolean;
+    textClass: string;
+    subText: string;
+}> = ({ soal, jawaban, onAnswer, isDarkMode, textClass, subText }) => {
+    return (
+        <div className="space-y-3">
+            {soal.tipe_soal === 'pilihan_ganda' || !soal.tipe_soal ? (
+                soal.opsi.map((opt, idx) => {
+                    const isSelected = jawaban[soal.id] === idx;
+                    let styleClass = isDarkMode ? "border-slate-700 bg-slate-800 hover:border-slate-600" : "border-slate-300 bg-white hover:bg-slate-50";
+
+                    if (isSelected) {
+                        styleClass = "border-blue-500 bg-blue-50 ring-1 ring-blue-500";
+                        // Dark mode selected override
+                        if (isDarkMode) styleClass = "border-blue-500 bg-blue-900/30 ring-1 ring-blue-500";
+                    }
+
+                    return (
+                        <button
+                            key={idx}
+                            onClick={() => onAnswer(soal.id, idx)}
+                            className={`w-full text-left flex items-start gap-4 p-4 border rounded-xl transition-all group ${styleClass}`}
+                        >
+                            <div className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm font-bold shrink-0 transition-colors ${isSelected ? 'bg-blue-500 text-white border-blue-500' : isDarkMode ? 'border-slate-600 text-slate-400 group-hover:border-slate-500' : 'border-slate-400 text-slate-500 group-hover:border-slate-600'}`}>
+                                {String.fromCharCode(65 + idx)}
+                            </div>
+                            <div className={`flex-1 ${isDarkMode ? (isSelected ? 'text-blue-200' : 'text-slate-300') : 'text-slate-800'}`} style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '15px' }}>
+                                <LatexRenderer>{opt}</LatexRenderer>
+                            </div>
+                        </button>
+                    );
+                })
+            ) : (
+                <div className={`p-4 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-500'} border rounded-xl text-center italic`}>
+                    Tipe soal ini ({soal.tipe_soal}) belum didukung penuh di simulasi UI ini.
+                </div>
+            )}
+
+            {soal.tipe_soal === 'pg_kompleks' && (
+                <div className="space-y-3">
+                    <p className={`text-sm ${subText} italic mb-2`}>Pilih jawaban yang benar (bisa lebih dari satu):</p>
+                    {soal.opsi.map((opt, idx) => {
+                        const currentAns = Array.isArray(jawaban[soal.id]) ? jawaban[soal.id] : [];
+                        const isSelected = currentAns.includes(idx);
+                        return (
+                            <label key={idx} className={`flex items-center gap-4 p-4 border ${isDarkMode ? 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700' : 'border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 bg-white'} transition-colors`}>
+                                <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 border-blue-600 text-white' : isDarkMode ? 'bg-slate-900 border-slate-600 text-slate-400' : 'bg-white border-slate-400'}`}>
+                                    {isSelected && <CheckCircle size={14} />}
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    className="hidden"
+                                    checked={isSelected}
+                                    onChange={() => onAnswer(soal.id, idx, true)} // 3rd arg isToggle
+                                />
+                                <LatexRenderer className="flex-1 text-slate-800 font-medium">{opt}</LatexRenderer>
+                            </label>
+                        );
+                    })}
+                </div>
+            )}
+
+            {soal.tipe_soal === 'benar_salah' && (
+                <div className="mt-4">
+                    <div className="overflow-hidden border border-slate-300 rounded-lg">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-xs">
+                                <tr>
+                                    <th className="px-6 py-3 w-1/2">Pernyataan</th>
+                                    <th className="px-6 py-3 text-center w-1/4 border-l border-slate-200">Benar</th>
+                                    <th className="px-6 py-3 text-center w-1/4 border-l border-slate-200">Salah</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200 bg-white">
+                                {soal.opsi.map((stmt, idx) => {
+                                    const currentAns = Array.isArray(jawaban[soal.id]) ? jawaban[soal.id] : [];
+                                    const val = currentAns[idx]; // true, false, or undefined
+
+                                    return (
+                                        <tr key={idx} className="hover:bg-slate-50">
+                                            <td className="px-6 py-4">
+                                                <LatexRenderer className="text-slate-800">{stmt}</LatexRenderer>
+                                            </td>
+                                            <td className="px-6 py-4 text-center border-l border-slate-200">
+                                                <label className="inline-flex items-center justify-center p-2 cursor-pointer">
+                                                    <input
+                                                        type="radio"
+                                                        name={`bs-${soal.id}-${idx}`}
+                                                        checked={val === true}
+                                                        onChange={() => {
+                                                            const next = [...(currentAns || [])];
+                                                            next[idx] = true;
+                                                            onAnswer(soal.id, next);
+                                                        }}
+                                                        className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300"
+                                                    />
+                                                </label>
+                                            </td>
+                                            <td className="px-6 py-4 text-center border-l border-slate-200">
+                                                <label className="inline-flex items-center justify-center p-2 cursor-pointer">
+                                                    <input
+                                                        type="radio"
+                                                        name={`bs-${soal.id}-${idx}`}
+                                                        checked={val === false}
+                                                        onChange={() => {
+                                                            const next = [...(currentAns || [])];
+                                                            next[idx] = false;
+                                                            onAnswer(soal.id, next);
+                                                        }}
+                                                        className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300"
+                                                    />
+                                                </label>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {soal.tipe_soal === 'isian' && (
+                <input
+                    type="text"
+                    value={jawaban[soal.id] || ''}
+                    onChange={(e) => onAnswer(soal.id, e.target.value)}
+                    placeholder="Ketik jawaban Anda..."
+                    className="w-full p-4 border border-slate-300 rounded font-bold text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                />
+            )}
+        </div>
+    );
+};
 
 const SimulationExamView: React.FC<SimulationExamViewProps> = ({
     subtes,
@@ -227,9 +369,12 @@ const SimulationExamView: React.FC<SimulationExamViewProps> = ({
                         <Grip size={24} />
                     </button>
 
-                    <div className="flex flex-col">
-                        <h1 className={`text-lg font-bold leading-tight ${isDarkMode ? 'text-white' : 'text-blue-900'} truncate max-w-[150px] md:max-w-xs`}>{subtesName}</h1>
-                        <p className={`text-xs ${subText} hidden md:block`}>{tryoutName || 'Tryout UTBK'}</p>
+                    <div className="flex items-center gap-3">
+                        <img src={LogoIkahata} alt="IKAHATA Logo" className="h-10 w-auto" />
+                        <div className="flex flex-col">
+                            <h1 className={`text-lg font-bold leading-tight ${isDarkMode ? 'text-white' : 'text-blue-900'} truncate`}>IKAHATA SNBT Tryout System</h1>
+                            <p className={`text-xs ${subText} hidden md:block font-medium`}>{subtesName} - {tryoutName || 'Tryout UTBK'}</p>
+                        </div>
                     </div>
                 </div>
 
@@ -290,6 +435,38 @@ const SimulationExamView: React.FC<SimulationExamViewProps> = ({
                     </div>
 
                     {/* Navigation Grid */}
+                    <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                        <div className="grid grid-cols-5 gap-2">
+                            {soalList.map((s, idx) => {
+                                const isAnswered = jawaban[s.id] !== undefined && jawaban[s.id] !== null && jawaban[s.id] !== '' && (Array.isArray(jawaban[s.id]) ? jawaban[s.id].length > 0 : true);
+                                const isFlagged = flaggedQuestions?.includes(s.id);
+                                const isCurrent = currentNumber === idx;
+
+                                let bgClass = "";
+                                if (isCurrent) bgClass = "bg-blue-600 text-white border-blue-600 ring-2 ring-blue-200";
+                                else if (isFlagged) bgClass = "bg-amber-300 text-black border-amber-400";
+                                else if (isAnswered) bgClass = "bg-slate-800 text-white border-slate-800";
+                                else bgClass = isDarkMode ? "bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600" : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50";
+
+                                return (
+                                    <button
+                                        key={s.id}
+                                        onClick={() => onNavigate(idx)}
+                                        className={`h-10 w-full rounded border text-sm font-bold flex items-center justify-center transition-all ${bgClass}`}
+                                    >
+                                        {idx + 1}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Sidebar Footer */}
+                    <div className={`p-4 border-t ${isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'} text-center`}>
+                        <p className={`text-[10px] ${subText} font-semibold`}>
+                            @ Ikatan Alumni SMA Hang Tuah 1 Jakarta
+                        </p>
+                    </div>
                 </div>
 
 
@@ -382,171 +559,96 @@ const SimulationExamView: React.FC<SimulationExamViewProps> = ({
                 </div >
 
                 {/* Question Content (Scrollable) */}
-                <div className="flex-1 overflow-y-auto p-6 md:p-10">
-                    <div className="max-w-4xl mx-auto w-full">
-                        {/* Reading Passage (Split layout if exists) */}
-                        {soal.teks_bacaan && (
-                            <div className={`mb-8 p-6 ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-[#F9F9F9] border-slate-200'} border rounded-sm transition-colors`}>
-                                <div className="flex items-center gap-2 mb-3 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                    <FileText size={14} /> Bacaan Pendukung
+                <div className="flex-1 overflow-hidden relative flex">
+                    {soal.teks_bacaan ? (
+                        // --- SPLIT VIEW LAYOUT ---
+                        <div className="flex w-full h-full flex-col lg:flex-row">
+                            {/* Left Logic: Reading Passage */}
+                            <div className={`w-full lg:w-1/2 h-full overflow-y-auto p-6 md:p-8 border-b lg:border-b-0 lg:border-r ${isDarkMode ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-[#F8F9FA]'}`}>
+                                <div className="flex items-center gap-2 mb-4 sticky top-0 bg-inherit py-2 z-10">
+                                    <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest px-3 py-1 bg-slate-200/50 rounded-full">
+                                        <FileText size={14} /> Bacaan Pendukung
+                                    </div>
                                 </div>
-                                <LatexRenderer className={`text-base text-justify leading-relaxed font-serif ${isDarkMode ? 'text-slate-300' : 'text-slate-800'}`}>
+                                <LatexRenderer className={`text-base text-justify leading-relaxed font-serif ${isDarkMode ? 'text-slate-300' : 'text-slate-800'} pb-10`}>
                                     {soal.teks_bacaan}
                                 </LatexRenderer>
                             </div>
-                        )}
 
-                        {/* Image */}
-                        {soal.image_url && (
-                            <div className="mb-6">
-                                <img
-                                    src={soal.image_url}
-                                    alt="Ilustrasi Soal"
-                                    className={`max-w-full md:max-w-2xl mx-auto border ${isDarkMode ? 'border-slate-700' : 'border-slate-200'} max-h-[400px] object-contain`}
-                                />
-                            </div>
-                        )}
+                            {/* Right Logic: Question & Options */}
+                            <div className="w-full lg:w-1/2 h-full overflow-y-auto p-6 md:p-8">
+                                <div className="max-w-3xl mx-auto">
+                                    {soal.image_url && (
+                                        <div className="mb-6">
+                                            <img
+                                                src={soal.image_url}
+                                                alt="Ilustrasi Soal"
+                                                className={`max-w-full mx-auto border ${isDarkMode ? 'border-slate-700' : 'border-slate-200'} rounded-lg shadow-sm`}
+                                            />
+                                        </div>
+                                    )}
 
-                        {/* Question Text */}
-                        <div className={`prose max-w-none mb-8 ${textClass}`} style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '16px', lineHeight: '1.6' }}>
-                            <div className="flex gap-2 mb-4">
-                                <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">No. {currentNumber + 1}</span>
-                                <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-1 rounded capitalize">{soal.tipe_soal?.replace('_', ' ') || 'Pilihan Ganda'}</span>
-                                {isFlagged && <span className="bg-amber-100 text-amber-600 text-xs font-bold px-2 py-1 rounded flex items-center gap-1"><AlertTriangle size={10} /> Ragu-ragu</span>}
-                            </div>
-                            <LatexRenderer>{soal.pertanyaan}</LatexRenderer>
-                        </div>
+                                    {/* Question Text */}
+                                    <div className={`prose max-w-none mb-8 ${textClass}`} style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '15px', lineHeight: '1.6' }}>
+                                        <div className="flex gap-2 mb-4">
+                                            <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">No. {currentNumber + 1}</span>
+                                            <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-1 rounded capitalize">{soal.tipe_soal?.replace('_', ' ') || 'Pilihan Ganda'}</span>
+                                            {isFlagged && <span className="bg-amber-100 text-amber-600 text-xs font-bold px-2 py-1 rounded flex items-center gap-1"><AlertTriangle size={10} /> Ragu-ragu</span>}
+                                        </div>
+                                        <LatexRenderer>{soal.pertanyaan}</LatexRenderer>
+                                    </div>
 
-                        {/* Options */}
-                        <div className="space-y-3">
-                            {soal.tipe_soal === 'pilihan_ganda' || !soal.tipe_soal ? (
-                                soal.opsi.map((opt, idx) => {
-                                    const isSelected = jawaban[soal.id] === idx;
-                                    let styleClass = isDarkMode ? "border-slate-700 bg-slate-800 hover:border-slate-600" : "border-slate-300 bg-white hover:bg-slate-50";
-
-                                    if (isSelected) {
-                                        styleClass = "border-blue-500 bg-blue-50 ring-1 ring-blue-500";
-                                        // Dark mode selected override
-                                        if (isDarkMode) styleClass = "border-blue-500 bg-blue-900/30 ring-1 ring-blue-500";
-                                    }
-
-                                    return (
-                                        <button
-                                            key={idx}
-                                            onClick={() => onAnswer(soal.id, idx)}
-                                            className={`w-full text-left flex items-start gap-4 p-4 border rounded-xl transition-all group ${styleClass}`}
-                                        >
-                                            <div className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm font-bold shrink-0 transition-colors ${isSelected ? 'bg-blue-500 text-white border-blue-500' : isDarkMode ? 'border-slate-600 text-slate-400 group-hover:border-slate-500' : 'border-slate-400 text-slate-500 group-hover:border-slate-600'}`}>
-                                                {String.fromCharCode(65 + idx)}
-                                            </div>
-                                            <div className={`flex-1 ${isDarkMode ? (isSelected ? 'text-blue-200' : 'text-slate-300') : 'text-slate-800'}`} style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '15px' }}>
-                                                <LatexRenderer>{opt}</LatexRenderer>
-                                            </div>
-                                        </button>
-                                    );
-                                })
-                            ) : (
-                                <div className={`p-4 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-500'} border rounded-xl text-center italic`}>
-                                    Tipe soal ini ({soal.tipe_soal}) belum didukung penuh di simulasi UI ini.
-                                </div>
-                            )}
-
-                            {soal.tipe_soal === 'pg_kompleks' && (
-                                <div className="space-y-3">
-                                    <p className={`text-sm ${subText} italic mb-2`}>Pilih jawaban yang benar (bisa lebih dari satu):</p>
-                                    {soal.opsi.map((opt, idx) => {
-                                        const currentAns = Array.isArray(jawaban[soal.id]) ? jawaban[soal.id] : [];
-                                        const isSelected = currentAns.includes(idx);
-                                        return (
-                                            <label key={idx} className={`flex items-center gap-4 p-4 border ${isDarkMode ? 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700' : 'border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 bg-white'} transition-colors`}>
-                                                <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 border-blue-600 text-white' : isDarkMode ? 'bg-slate-900 border-slate-600 text-slate-400' : 'bg-white border-slate-400'}`}>
-                                                    {isSelected && <CheckCircle size={14} />}
-                                                </div>
-                                                <input
-                                                    type="checkbox"
-                                                    className="hidden"
-                                                    checked={isSelected}
-                                                    onChange={() => onAnswer(soal.id, idx, true)} // 3rd arg isToggle
-                                                />
-                                                <LatexRenderer className="flex-1 text-slate-800 font-medium">{opt}</LatexRenderer>
-                                            </label>
-                                        );
-                                    })}
-                                </div>
-                            )}
-
-                            {soal.tipe_soal === 'benar_salah' && (
-                                <div className="mt-4">
-                                    <div className="overflow-hidden border border-slate-300 rounded-lg">
-                                        <table className="w-full text-sm text-left">
-                                            <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-xs">
-                                                <tr>
-                                                    <th className="px-6 py-3 w-1/2">Pernyataan</th>
-                                                    <th className="px-6 py-3 text-center w-1/4 border-l border-slate-200">Benar</th>
-                                                    <th className="px-6 py-3 text-center w-1/4 border-l border-slate-200">Salah</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-200 bg-white">
-                                                {soal.opsi.map((stmt, idx) => {
-                                                    const currentAns = Array.isArray(jawaban[soal.id]) ? jawaban[soal.id] : [];
-                                                    const val = currentAns[idx]; // true, false, or undefined
-
-                                                    return (
-                                                        <tr key={idx} className="hover:bg-slate-50">
-                                                            <td className="px-6 py-4">
-                                                                <LatexRenderer className="text-slate-800">{stmt}</LatexRenderer>
-                                                            </td>
-                                                            <td className="px-6 py-4 text-center border-l border-slate-200">
-                                                                <label className="inline-flex items-center justify-center p-2 cursor-pointer">
-                                                                    <input
-                                                                        type="radio"
-                                                                        name={`bs-${soal.id}-${idx}`}
-                                                                        checked={val === true}
-                                                                        onChange={() => {
-                                                                            const next = [...(currentAns || [])];
-                                                                            next[idx] = true;
-                                                                            onAnswer(soal.id, next);
-                                                                        }}
-                                                                        className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300"
-                                                                    />
-                                                                </label>
-                                                            </td>
-                                                            <td className="px-6 py-4 text-center border-l border-slate-200">
-                                                                <label className="inline-flex items-center justify-center p-2 cursor-pointer">
-                                                                    <input
-                                                                        type="radio"
-                                                                        name={`bs-${soal.id}-${idx}`}
-                                                                        checked={val === false}
-                                                                        onChange={() => {
-                                                                            const next = [...(currentAns || [])];
-                                                                            next[idx] = false;
-                                                                            onAnswer(soal.id, next);
-                                                                        }}
-                                                                        className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300"
-                                                                    />
-                                                                </label>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
+                                    {/* Options Component (Reused) */}
+                                    <div className="pb-10">
+                                        <QuestionOptions
+                                            soal={soal}
+                                            jawaban={jawaban}
+                                            onAnswer={onAnswer}
+                                            isDarkMode={isDarkMode}
+                                            textClass={textClass}
+                                            subText={subText}
+                                        />
                                     </div>
                                 </div>
-                            )}
-
-                            {soal.tipe_soal === 'isian' && (
-                                <input
-                                    type="text"
-                                    value={jawaban[soal.id] || ''}
-                                    onChange={(e) => onAnswer(soal.id, e.target.value)}
-                                    placeholder="Ketik jawaban Anda..."
-                                    className="w-full p-4 border border-slate-300 rounded font-bold text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                />
-                            )}
+                            </div>
                         </div>
-                    </div>
-                </div >
+                    ) : (
+                        // --- SINGLE COLUMN LAYOUT (No Passage) ---
+                        <div className="w-full h-full overflow-y-auto p-6 md:p-10">
+                            <div className="max-w-4xl mx-auto w-full">
+                                {soal.image_url && (
+                                    <div className="mb-6">
+                                        <img
+                                            src={soal.image_url}
+                                            alt="Ilustrasi Soal"
+                                            className={`max-w-full md:max-w-2xl mx-auto border ${isDarkMode ? 'border-slate-700' : 'border-slate-200'} max-h-[400px] object-contain text-center`}
+                                        />
+                                    </div>
+                                )}
+
+                                <div className={`prose max-w-none mb-8 ${textClass}`} style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '16px', lineHeight: '1.6' }}>
+                                    <div className="flex gap-2 mb-4">
+                                        <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">No. {currentNumber + 1}</span>
+                                        <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-1 rounded capitalize">{soal.tipe_soal?.replace('_', ' ') || 'Pilihan Ganda'}</span>
+                                        {isFlagged && <span className="bg-amber-100 text-amber-600 text-xs font-bold px-2 py-1 rounded flex items-center gap-1"><AlertTriangle size={10} /> Ragu-ragu</span>}
+                                    </div>
+                                    <LatexRenderer>{soal.pertanyaan}</LatexRenderer>
+                                </div>
+
+                                <div className="space-y-3 pb-10">
+                                    <QuestionOptions
+                                        soal={soal}
+                                        jawaban={jawaban}
+                                        onAnswer={onAnswer}
+                                        isDarkMode={isDarkMode}
+                                        textClass={textClass}
+                                        subText={subText}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
 
                 {/* Footer / Navigation Bar */}
                 <div className="h-20 bg-[#F9F9F9] border-t border-slate-300 flex items-center justify-between px-6 shrink-0 z-10">
