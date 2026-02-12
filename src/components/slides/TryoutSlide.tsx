@@ -36,6 +36,8 @@ interface TryoutSoal {
     bobot_nilai?: number;
     teks_bacaan?: string | null;
     id_wacana?: string | null;
+    tipe_soal?: 'pilihan_ganda' | 'isian' | 'pg_kompleks' | 'benar_salah';
+    jawaban_kompleks?: any;
 }
 
 interface SubtesResult {
@@ -55,7 +57,7 @@ interface TryoutAttempt {
     started_at: string;
     completed_at: string | null;
     current_subtes: string | null;
-    jawaban: Record<string, number>;
+    jawaban: Record<string, any>;
     skor_per_subtes: Record<string, SubtesResult>; // Stored as JSONB
     total_skor: number;
     status: 'in_progress' | 'completed';
@@ -70,7 +72,7 @@ interface UserResult {
     skor: number;
 }
 
-const calculateSubtesScore = (soalList: TryoutSoal[], jawaban: Record<string, number>): SubtesResult => {
+const calculateSubtesScore = (soalList: TryoutSoal[], jawaban: Record<string, any>): SubtesResult => {
     let benar = 0, salah = 0, skorMentah = 0, skorMaksimal = 0;
     soalList.forEach(soal => {
         // Use bobot if available, otherwise default to 2
@@ -78,7 +80,37 @@ const calculateSubtesScore = (soalList: TryoutSoal[], jawaban: Record<string, nu
         const bobot = soal.bobot_nilai || 2;
         skorMaksimal += bobot;
         if (jawaban[soal.id] !== undefined) {
-            if (jawaban[soal.id] === soal.jawaban_benar) {
+            let isCorrect = false;
+            const userAns = jawaban[soal.id];
+
+            switch (soal.tipe_soal) {
+                case 'pg_kompleks':
+                    // Compare arrays of indices
+                    if (Array.isArray(userAns) && Array.isArray(soal.jawaban_kompleks)) {
+                        isCorrect = userAns.length === soal.jawaban_kompleks.length &&
+                            userAns.every(val => soal.jawaban_kompleks.includes(val));
+                    }
+                    break;
+                case 'isian':
+                    // Case-insensitive string match
+                    if (typeof userAns === 'string' && typeof soal.jawaban_kompleks === 'string') {
+                        isCorrect = userAns.trim().toLowerCase() === soal.jawaban_kompleks.trim().toLowerCase();
+                    }
+                    break;
+                case 'benar_salah':
+                    // Compare arrays of booleans
+                    if (Array.isArray(userAns) && Array.isArray(soal.jawaban_kompleks)) {
+                        isCorrect = userAns.length === soal.jawaban_kompleks.length &&
+                            userAns.every((val, idx) => val === soal.jawaban_kompleks[idx]);
+                    }
+                    break;
+                case 'pilihan_ganda':
+                default:
+                    isCorrect = userAns === soal.jawaban_benar;
+                    break;
+            }
+
+            if (isCorrect) {
                 benar++;
                 skorMentah += bobot;
             } else {
@@ -376,7 +408,7 @@ const TryoutPlay = () => {
     // Exam State
     const [currentSubtes, setCurrentSubtes] = useState<string | null>(null);
     const [soalList, setSoalList] = useState<TryoutSoal[]>([]);
-    const [jawaban, setJawaban] = useState<Record<string, number>>({});
+    const [jawaban, setJawaban] = useState<Record<string, any>>({});
     const [timeLeft, setTimeLeft] = useState(0);
     const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -431,8 +463,14 @@ const TryoutPlay = () => {
         await supabase.from('tryout_attempts').update({ jawaban: newJawaban }).eq('id', attempt.id);
     };
 
-    const handleSelectAnswer = (soalId: string, val: number) => {
-        const newJawaban = { ...jawaban, [soalId]: val };
+    const handleSelectAnswer = (soalId: string, val: any, isToggle: boolean = false) => {
+        let newVal = val;
+        if (isToggle) {
+            const current = Array.isArray(jawaban[soalId]) ? [...jawaban[soalId]] : [];
+            if (current.includes(val)) newVal = current.filter(v => v !== val);
+            else newVal = [...current, val];
+        }
+        const newJawaban = { ...jawaban, [soalId]: newVal };
         setJawaban(newJawaban);
         // Persist locally for safety
         localStorage.setItem(`tryout_${id}_answers`, JSON.stringify(newJawaban));
@@ -621,20 +659,93 @@ const TryoutPlay = () => {
                                 </LatexRenderer>
                             </div>
 
-                            {/* Opsi */}
-                            <div className="space-y-3">
-                                {soal.opsi.map((opt, idx) => (
-                                    <button
-                                        key={idx}
-                                        onClick={() => handleSelectAnswer(soal.id, idx)}
-                                        className={`w-full p-4 rounded-xl text-left border transition-all flex gap-4 ${jawaban[soal.id] === idx ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}
-                                    >
-                                        <span className={`w-8 h-8 flex items-center justify-center rounded-lg font-bold shrink-0 ${jawaban[soal.id] === idx ? 'bg-white/20 text-white' : 'bg-white/10 text-slate-400'}`}>
-                                            {String.fromCharCode(65 + idx)}
-                                        </span>
-                                        <LatexRenderer className="flex-1 pt-1">{opt}</LatexRenderer>
-                                    </button>
-                                ))}
+                            {/* Opsi Section */}
+                            <div className="space-y-4">
+                                {(!soal.tipe_soal || soal.tipe_soal === 'pilihan_ganda') && (
+                                    <div className="space-y-3">
+                                        {soal.opsi.map((opt, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => handleSelectAnswer(soal.id, idx)}
+                                                className={`w-full p-4 rounded-xl text-left border transition-all flex gap-4 ${jawaban[soal.id] === idx ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}
+                                            >
+                                                <span className={`w-8 h-8 flex items-center justify-center rounded-lg font-bold shrink-0 ${jawaban[soal.id] === idx ? 'bg-white/20 text-white' : 'bg-white/10 text-slate-400'}`}>
+                                                    {String.fromCharCode(65 + idx)}
+                                                </span>
+                                                <LatexRenderer className="flex-1 pt-1">{opt || ''}</LatexRenderer>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {soal.tipe_soal === 'pg_kompleks' && (
+                                    <div className="space-y-3">
+                                        <p className="text-xs text-indigo-400 mb-2 italic">*Pilih semua jawaban yang benar (Bisa {'>'} 1)</p>
+                                        {(soal.opsi || []).map((opt, idx) => {
+                                            const isSelected = Array.isArray(jawaban[soal.id]) && jawaban[soal.id].includes(idx);
+                                            return (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => handleSelectAnswer(soal.id, idx, true)}
+                                                    className={`w-full p-4 rounded-xl text-left border transition-all flex gap-4 ${isSelected ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}
+                                                >
+                                                    <div className={`w-6 h-6 rounded flex items-center justify-center border ${isSelected ? 'bg-white border-white text-indigo-600' : 'bg-transparent border-white/20'}`}>
+                                                        {isSelected && <CheckCircle size={14} />}
+                                                    </div>
+                                                    <LatexRenderer className="flex-1">{opt || ''}</LatexRenderer>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {soal.tipe_soal === 'isian' && (
+                                    <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
+                                        <p className="text-xs text-indigo-400 mb-3 uppercase tracking-widest font-bold">Jawaban Kamu</p>
+                                        <input
+                                            type="text"
+                                            value={jawaban[soal.id] || ''}
+                                            onChange={e => handleSelectAnswer(soal.id, e.target.value)}
+                                            placeholder="Ketik jawaban di sini..."
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-5 py-4 text-white text-xl font-bold focus:outline-none focus:border-indigo-500 transition-all"
+                                        />
+                                    </div>
+                                )}
+
+                                {soal.tipe_soal === 'benar_salah' && (
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-[1fr,80px,80px] gap-2 px-4 mb-2">
+                                            <span className="text-[10px] font-bold text-slate-500 uppercase">Pernyataan</span>
+                                            <span className="text-[10px] font-bold text-center text-slate-500 uppercase">Benar</span>
+                                            <span className="text-[10px] font-bold text-center text-slate-500 uppercase">Salah</span>
+                                        </div>
+                                        {soal.opsi.map((stmt, idx) => {
+                                            const current = Array.isArray(jawaban[soal.id]) ? jawaban[soal.id] : [];
+                                            const val = current[idx];
+                                            return (
+                                                <div key={idx} className="grid grid-cols-[1fr,80px,80px] gap-2 items-center bg-white/5 p-3 rounded-xl border border-white/10">
+                                                    <LatexRenderer className="text-sm text-slate-200">{stmt}</LatexRenderer>
+                                                    <button
+                                                        onClick={() => {
+                                                            const next = [...current];
+                                                            next[idx] = true;
+                                                            handleSelectAnswer(soal.id, next);
+                                                        }}
+                                                        className={`py-2 rounded-lg font-bold text-xs transition-all ${val === true ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-white/5 text-slate-500 hover:bg-white/10'}`}
+                                                    >Benar</button>
+                                                    <button
+                                                        onClick={() => {
+                                                            const next = [...current];
+                                                            next[idx] = false;
+                                                            handleSelectAnswer(soal.id, next);
+                                                        }}
+                                                        className={`py-2 rounded-lg font-bold text-xs transition-all ${val === false ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 text-slate-500 hover:bg-white/10'}`}
+                                                    >Salah</button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -848,7 +959,34 @@ const ReviewModalContent = ({ subtes, onClose, soalList, attempt }: { subtes: st
 
     const activeQuestion = questions[activeIndex];
     const jawabanUser = attempt.jawaban?.[activeQuestion.id];
-    const isCorrect = jawabanUser === activeQuestion.jawaban_benar;
+    let isCorrect = false;
+
+    if (jawabanUser !== undefined) {
+        switch (activeQuestion.tipe_soal) {
+            case 'pg_kompleks':
+                if (Array.isArray(jawabanUser) && Array.isArray(activeQuestion.jawaban_kompleks)) {
+                    isCorrect = jawabanUser.length === activeQuestion.jawaban_kompleks.length &&
+                        jawabanUser.every(val => activeQuestion.jawaban_kompleks.includes(val));
+                }
+                break;
+            case 'isian':
+                if (typeof jawabanUser === 'string' && typeof activeQuestion.jawaban_kompleks === 'string') {
+                    isCorrect = jawabanUser.trim().toLowerCase() === activeQuestion.jawaban_kompleks.trim().toLowerCase();
+                }
+                break;
+            case 'benar_salah':
+                if (Array.isArray(jawabanUser) && Array.isArray(activeQuestion.jawaban_kompleks)) {
+                    isCorrect = jawabanUser.length === activeQuestion.jawaban_kompleks.length &&
+                        jawabanUser.every((val, idx) => val === activeQuestion.jawaban_kompleks[idx]);
+                }
+                break;
+            case 'pilihan_ganda':
+            default:
+                isCorrect = jawabanUser === activeQuestion.jawaban_benar;
+                break;
+        }
+    }
+
     const isSkipped = jawabanUser === undefined;
 
     return (
@@ -874,10 +1012,36 @@ const ReviewModalContent = ({ subtes, onClose, soalList, attempt }: { subtes: st
                     <div className="grid grid-cols-5 gap-3">
                         {questions.map((q, idx) => {
                             const userAns = attempt.jawaban?.[q.id];
-                            const correct = userAns === q.jawaban_benar;
+                            let correct = false;
                             const skipped = userAns === undefined;
 
-                            let bgClass = 'bg-white border-slate-300 text-slate-700'; // Default/Skipped but viewing logic might differ
+                            if (!skipped) {
+                                switch (q.tipe_soal) {
+                                    case 'pg_kompleks':
+                                        if (Array.isArray(userAns) && Array.isArray(q.jawaban_kompleks)) {
+                                            correct = userAns.length === q.jawaban_kompleks.length &&
+                                                userAns.every(val => q.jawaban_kompleks.includes(val));
+                                        }
+                                        break;
+                                    case 'isian':
+                                        if (typeof userAns === 'string' && typeof q.jawaban_kompleks === 'string') {
+                                            correct = userAns.trim().toLowerCase() === q.jawaban_kompleks.trim().toLowerCase();
+                                        }
+                                        break;
+                                    case 'benar_salah':
+                                        if (Array.isArray(userAns) && Array.isArray(q.jawaban_kompleks)) {
+                                            correct = userAns.length === q.jawaban_kompleks.length &&
+                                                userAns.every((val, idx) => val === q.jawaban_kompleks[idx]);
+                                        }
+                                        break;
+                                    case 'pilihan_ganda':
+                                    default:
+                                        correct = userAns === q.jawaban_benar;
+                                        break;
+                                }
+                            }
+
+                            let bgClass = 'bg-white border-slate-300 text-slate-700';
                             if (skipped) bgClass = 'bg-white border-slate-300 text-slate-400';
                             if (!skipped && correct) bgClass = 'bg-green-100 border-green-500 text-green-700';
                             if (!skipped && !correct) bgClass = 'bg-red-100 border-red-500 text-red-700';
@@ -945,26 +1109,103 @@ const ReviewModalContent = ({ subtes, onClose, soalList, attempt }: { subtes: st
                                 </div>
                             </div>
 
-                            {/* Options */}
-                            <div className="space-y-3 mb-8 pl-12">
-                                {activeQuestion.opsi.map((opt, i) => (
-                                    <div key={i} className={`p-4 rounded-xl border-2 flex items-center gap-4 transition-all ${i === activeQuestion.jawaban_benar ? 'border-green-500 bg-green-50/50' :
-                                        i === jawabanUser ? 'border-red-500 bg-red-50/50' :
-                                            'border-slate-100 bg-white text-slate-500'
-                                        }`}>
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm border ${i === activeQuestion.jawaban_benar ? 'bg-green-500 text-white border-green-500' :
-                                            i === jawabanUser ? 'bg-red-500 text-white border-red-500' :
-                                                'bg-white border-slate-300 text-slate-500'
-                                            }`}>
-                                            {String.fromCharCode(65 + i)}
-                                        </div>
-                                        <LatexRenderer className={`flex-1 font-medium ${i === activeQuestion.jawaban_benar ? 'text-green-900' :
-                                            i === jawabanUser ? 'text-red-900' : 'text-slate-600'
-                                            }`}>{opt}</LatexRenderer>
-                                        {i === activeQuestion.jawaban_benar && <CheckCircle className="text-green-600" size={20} />}
-                                        {i === jawabanUser && i !== activeQuestion.jawaban_benar && <XCircle className="text-red-600" size={20} />}
+                            {/* Options Section (Review Mode) */}
+                            <div className="space-y-4 mb-8 pl-12">
+                                {(!activeQuestion.tipe_soal || activeQuestion.tipe_soal === 'pilihan_ganda') && (
+                                    <div className="space-y-3">
+                                        {(activeQuestion.opsi || []).map((opt, i) => {
+                                            const isCorrectAns = i === activeQuestion.jawaban_benar;
+                                            const isUserAns = i === jawabanUser;
+                                            return (
+                                                <div key={i} className={`p-4 rounded-xl border-2 flex items-center gap-4 transition-all ${isCorrectAns ? 'border-green-500 bg-green-50/50' :
+                                                    isUserAns ? 'border-red-500 bg-red-50/50' :
+                                                        'border-slate-100 bg-white text-slate-500'
+                                                    }`}>
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm border ${isCorrectAns ? 'bg-green-500 text-white border-green-500' :
+                                                        isUserAns ? 'bg-red-500 text-white border-red-500' :
+                                                            'bg-white border-slate-300 text-slate-500'
+                                                        }`}>
+                                                        {String.fromCharCode(65 + i)}
+                                                    </div>
+                                                    <LatexRenderer className={`flex-1 font-medium ${isCorrectAns ? 'text-green-900' :
+                                                        isUserAns ? 'text-red-900' : 'text-slate-600'
+                                                        }`}>{opt || ''}</LatexRenderer>
+                                                    {isCorrectAns && <CheckCircle className="text-green-600" size={20} />}
+                                                    {isUserAns && !isCorrectAns && <XCircle className="text-red-600" size={20} />}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
-                                ))}
+                                )}
+
+                                {activeQuestion.tipe_soal === 'pg_kompleks' && (
+                                    <div className="space-y-3">
+                                        <p className="text-xs text-indigo-600 mb-2 italic">*Pilihan Benar: {Array.isArray(activeQuestion.jawaban_kompleks) ? activeQuestion.jawaban_kompleks.map(idx => String.fromCharCode(65 + idx)).join(', ') : '-'}</p>
+                                        {(activeQuestion.opsi || []).map((opt, i) => {
+                                            const isCorrectAns = Array.isArray(activeQuestion.jawaban_kompleks) && activeQuestion.jawaban_kompleks.includes(i);
+                                            const isUserAns = Array.isArray(jawabanUser) && jawabanUser.includes(i);
+
+                                            let stateClass = 'border-slate-100 bg-white';
+                                            if (isCorrectAns) stateClass = 'border-green-500 bg-green-50/50';
+                                            else if (isUserAns && !isCorrectAns) stateClass = 'border-red-500 bg-red-50/50 text-red-900';
+
+                                            return (
+                                                <div key={i} className={`p-4 rounded-xl border-2 flex items-center gap-4 transition-all ${stateClass}`}>
+                                                    <div className={`w-6 h-6 rounded flex items-center justify-center border ${isUserAns ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-transparent border-slate-300'}`}>
+                                                        {isUserAns && <CheckCircle size={14} />}
+                                                    </div>
+                                                    <LatexRenderer className="flex-1 text-sm">{opt || ''}</LatexRenderer>
+                                                    {isCorrectAns && <CheckCircle className="text-green-600" size={20} />}
+                                                    {isUserAns && !isCorrectAns && <XCircle className="text-red-600" size={20} />}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {activeQuestion.tipe_soal === 'isian' && (
+                                    <div className="space-y-4">
+                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                            <p className="text-xs text-slate-500 uppercase tracking-widest font-bold mb-1">Jawaban Kamu</p>
+                                            <p className={`text-xl font-bold ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                                                {jawabanUser || '(Kosong)'}
+                                            </p>
+                                        </div>
+                                        <div className="bg-green-50 p-4 rounded-xl border border-green-200">
+                                            <p className="text-xs text-green-600 uppercase tracking-widest font-bold mb-1">Jawaban Benar</p>
+                                            <p className="text-xl font-black text-green-700">
+                                                {activeQuestion.jawaban_kompleks}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeQuestion.tipe_soal === 'benar_salah' && (
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-[1fr,100px,100px] gap-2 px-4 mb-2">
+                                            <span className="text-[10px] font-bold text-slate-500 uppercase">Pernyataan</span>
+                                            <span className="text-[10px] font-bold text-center text-slate-500 uppercase">Input Kamu</span>
+                                            <span className="text-[10px] font-bold text-center text-green-600 uppercase">Kunci</span>
+                                        </div>
+                                        {(activeQuestion.opsi || []).map((stmt, i) => {
+                                            const userVal = Array.isArray(jawabanUser) ? jawabanUser[i] : undefined;
+                                            const correctVal = Array.isArray(activeQuestion.jawaban_kompleks) ? activeQuestion.jawaban_kompleks[i] : undefined;
+                                            const rowCorrect = userVal === correctVal;
+
+                                            return (
+                                                <div key={i} className="grid grid-cols-[1fr,100px,100px] gap-2 items-center bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                                    <LatexRenderer className="text-sm text-slate-700">{stmt || ''}</LatexRenderer>
+                                                    <div className={`text-center font-bold text-xs py-1 rounded ${userVal === undefined ? 'text-slate-400' : rowCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                                                        {userVal === true ? 'Benar' : userVal === false ? 'Salah' : '-'}
+                                                    </div>
+                                                    <div className="text-center font-bold text-xs py-1 rounded bg-green-100 text-green-700">
+                                                        {correctVal === true ? 'Benar' : 'Salah'}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Discussion / Pembahasan */}

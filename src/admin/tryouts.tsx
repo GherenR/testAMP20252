@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Calendar, Clock, Eye, Save, X, Sparkles, Loader2, FileText, ChevronDown, ChevronUp, Lock, PlayCircle, Upload, BookOpen } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import DashboardLayout from '../components/admin/DashboardLayout';
@@ -26,6 +26,8 @@ interface GeneratedQuestion {
     jawaban_benar: number;
     pembahasan: string;
     difficulty?: 'mudah' | 'sedang' | 'sulit';
+    tipe_soal?: 'pilihan_ganda' | 'isian' | 'pg_kompleks' | 'benar_salah';
+    jawaban_kompleks?: any;
 }
 
 const SUBTES_LIST = [
@@ -120,9 +122,11 @@ const TryoutManagement: React.FC = () => {
     const [manageExpandedSubtes, setManageExpandedSubtes] = useState<string | null>(null);
     const [isAddingManual, setIsAddingManual] = useState(false);
     const [manualForm, setManualForm] = useState<Partial<Question>>({
+        tipe_soal: 'pilihan_ganda',
         pertanyaan: '',
         opsi: ['', '', '', '', ''],
         jawaban_benar: 0,
+        jawaban_kompleks: null,
         pembahasan: '',
         difficulty_level: 'sedang',
         bobot_nilai: 2
@@ -143,6 +147,8 @@ const TryoutManagement: React.FC = () => {
         bobot_nilai: number;
         id_wacana?: string | null;
         teks_bacaan?: string | null;
+        tipe_soal: 'pilihan_ganda' | 'isian' | 'pg_kompleks' | 'benar_salah';
+        jawaban_kompleks?: any;
     }
 
     useEffect(() => {
@@ -242,8 +248,10 @@ const TryoutManagement: React.FC = () => {
                         subtes: subtesKey,
                         nomor_soal: idx + 1,
                         pertanyaan: q.pertanyaan,
+                        tipe_soal: q.tipe_soal || 'pilihan_ganda',
                         opsi: q.opsi,
                         jawaban_benar: q.jawaban_benar,
+                        jawaban_kompleks: q.jawaban_kompleks,
                         pembahasan: q.pembahasan,
                         difficulty_level: q.difficulty,
                         bobot_nilai: q.difficulty === 'sulit' ? 3 : (q.difficulty === 'mudah' ? 1 : 2),
@@ -293,6 +301,21 @@ const TryoutManagement: React.FC = () => {
                 // 2. Fix common "lazy" AI JSON issues (like trailing commas before ] or })
                 content = content.replace(/,\s*([\]}])/g, "$1");
 
+                // 3. Rescue common LaTeX commands from being consumed as escape sequences (e.g. \theta -> tab, \frac -> form feed)
+                // We replace single backslash commands with double backslash to ensure JSON.parse keeps them as strings.
+                const latexCommands = [
+                    'frac', 'sqrt', 'pm', 'times', 'div', 'cdot', 'alpha', 'beta', 'gamma', 'delta', 'theta', 'pi', 'sigma', 'omega',
+                    'Delta', 'infty', 'approx', 'ne', 'le', 'ge', 'subset', 'cup', 'cap', 'int', 'sum', 'prod', 'begin', 'end',
+                    'left', 'right', 'text', 'mathbb', 'mathbf', 'mathcal', 'vec', 'hat', 'bar', 'tilde'
+                ];
+
+                latexCommands.forEach(cmd => {
+                    // Regex: Match \cmd NOT preceded by \ (negative lookbehind)
+                    // We must dynamically construct regex to match the literal backslash followed by the command name
+                    const regex = new RegExp(`(?<!\\\\)\\\\${cmd}`, 'g');
+                    content = content.replace(regex, `\\\\${cmd}`);
+                });
+
                 let data: any;
                 try {
                     data = JSON.parse(content);
@@ -339,8 +362,10 @@ const TryoutManagement: React.FC = () => {
                                     subtes: subKey,
                                     nomor_soal: qNum,
                                     pertanyaan: item.pertanyaan,
+                                    tipe_soal: item.tipe_soal || 'pilihan_ganda',
                                     opsi: item.opsi || [],
                                     jawaban_benar: typeof item.jawaban_benar === 'number' ? item.jawaban_benar : (item.jawabanBenar ?? 0),
+                                    jawaban_kompleks: item.jawaban_kompleks !== undefined ? item.jawaban_kompleks : (item.jawabanKompleks !== undefined ? item.jawabanKompleks : null),
                                     pembahasan: item.pembahasan || '',
                                     difficulty: item.difficulty || item.difficulty_level || 'sedang'
                                 });
@@ -377,8 +402,10 @@ const TryoutManagement: React.FC = () => {
                             subtes: subKey,
                             nomor_soal: 0, // Will be indexed on save
                             pertanyaan: item.pertanyaan,
+                            tipe_soal: item.tipe_soal || 'pilihan_ganda',
                             opsi: item.opsi,
                             jawaban_benar: typeof item.jawaban_benar === 'number' ? item.jawaban_benar : (item.jawabanBenar ?? 0),
+                            jawaban_kompleks: item.jawaban_kompleks !== undefined ? item.jawaban_kompleks : (item.jawabanKompleks !== undefined ? item.jawabanKompleks : null),
                             pembahasan: item.pembahasan || '',
                             difficulty: item.difficulty || item.difficulty_level || 'sedang',
                             id_wacana: item.id_wacana || null,
@@ -655,6 +682,8 @@ const TryoutManagement: React.FC = () => {
             pertanyaan: manualForm.pertanyaan,
             opsi: manualForm.opsi,
             jawaban_benar: manualForm.jawaban_benar,
+            jawaban_kompleks: manualForm.jawaban_kompleks,
+            tipe_soal: manualForm.tipe_soal,
             pembahasan: manualForm.pembahasan,
             difficulty_level: manualForm.difficulty_level,
             bobot_nilai: manualForm.difficulty_level === 'sulit' ? 3 : (manualForm.difficulty_level === 'mudah' ? 1 : 2),
@@ -936,7 +965,7 @@ const TryoutManagement: React.FC = () => {
                                             Generate Soal AI
                                         </h2>
                                         <p className="text-slate-500 text-sm mt-1">
-                                            {selectedTryoutForGen.nama} • {soalCounts[selectedTryoutForGen.id] || 0} soal tersimpan
+                                            {selectedTryoutForGen.nama} â€¢ {soalCounts[selectedTryoutForGen.id] || 0} soal tersimpan
                                         </p>
                                     </div>
                                     <div className="flex gap-2">
@@ -963,7 +992,7 @@ const TryoutManagement: React.FC = () => {
 
                             <div className="p-6 space-y-4">
                                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
-                                    <p className="font-semibold mb-1">⚡ Cara Generate Soal:</p>
+                                    <p className="font-semibold mb-1">âš¡ Cara Generate Soal:</p>
                                     <ol className="list-decimal list-inside space-y-1 text-amber-700">
                                         <li>Klik tombol "Generate" di samping subtes yang ingin diisi</li>
                                         <li>AI akan membuat soal mirip gaya Pahamify</li>
@@ -991,7 +1020,7 @@ const TryoutManagement: React.FC = () => {
                                                         <div>
                                                             <p className="font-semibold text-slate-800">{subtes.nama}</p>
                                                             <p className="text-xs text-slate-500">
-                                                                Target: {subtes.jumlah} soal • Generated: {generated.length}
+                                                                Target: {subtes.jumlah} soal â€¢ Generated: {generated.length}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -1019,7 +1048,7 @@ const TryoutManagement: React.FC = () => {
                                                     <div className="p-4 space-y-3 border-t border-slate-200 bg-white max-h-96 overflow-y-auto">
                                                         {generated.map((q, idx) => (
                                                             <div key={idx} className="p-3 bg-slate-50 rounded-lg text-sm">
-                                                                <LatexRenderer className="font-medium text-slate-800 mb-2">
+                                                                <LatexRenderer className="font-medium text-slate-800 mb-2 whitespace-pre-line">
                                                                     {`${idx + 1}. ${q.pertanyaan}`}
                                                                 </LatexRenderer>
                                                                 <div className="space-y-1 ml-4">
@@ -1030,13 +1059,13 @@ const TryoutManagement: React.FC = () => {
                                                                             >
                                                                                 {`${String.fromCharCode(65 + oi)}. ${opt}`}
                                                                             </LatexRenderer>
-                                                                            {oi === q.jawaban_benar && <span className="text-green-600 font-semibold"> ✓</span>}
+                                                                            {oi === q.jawaban_benar && <span className="text-green-600 font-semibold"> âœ“</span>}
                                                                         </div>
                                                                     ))}
                                                                 </div>
                                                                 <div className="text-xs text-slate-500 mt-2 italic flex gap-1">
                                                                     <span>Pembahasan:</span>
-                                                                    <LatexRenderer>{q.pembahasan}</LatexRenderer>
+                                                                    <LatexRenderer className="whitespace-pre-line">{q.pembahasan}</LatexRenderer>
                                                                 </div>
                                                             </div>
                                                         ))}
@@ -1123,6 +1152,57 @@ const TryoutManagement: React.FC = () => {
 
                                             <div className="space-y-4">
                                                 <div>
+                                                    <label className="block text-sm font-bold text-slate-700 mb-1">Tipe Soal</label>
+                                                    <div className="flex gap-3 mb-4">
+                                                        {[
+                                                            { id: 'pilihan_ganda', label: 'Pilihan Ganda' },
+                                                            { id: 'pg_kompleks', label: 'PG Kompleks' },
+                                                            { id: 'isian', label: 'Isian Singkat' },
+                                                            { id: 'benar_salah', label: 'Benar / Salah' }
+                                                        ].map(t => (
+                                                            <button
+                                                                key={t.id}
+                                                                type="button"
+                                                                onClick={() => setManualForm({
+                                                                    ...manualForm,
+                                                                    tipe_soal: t.id as any,
+                                                                    opsi: t.id === "benar_salah" ? ["", "", ""] : (t.id === "isian" ? [] : ["", "", "", "", ""]),
+                                                                    jawaban_kompleks: t.id === "isian" ? "" : (t.id === "pg_kompleks" || t.id === "benar_salah" ? [] : null)
+                                                                })}
+                                                                className={`px-3 py-1.5 rounded-lg border font-bold text-[10px] uppercase tracking-wider transition-all ${manualForm.tipe_soal === t.id ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                                            >
+                                                                {t.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-sm font-bold text-slate-700 mb-1">Teks Bacaan (Wacana) - Opsional</label>
+                                                    <textarea
+                                                        className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[120px] text-sm"
+                                                        placeholder="Jika soal ini butuh teks bacaan, tulis di sini..."
+                                                        value={manualForm.teks_bacaan || ''}
+                                                        onChange={e => setManualForm({ ...manualForm, teks_bacaan: e.target.value })}
+                                                    />
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="block text-sm font-bold text-slate-700 mb-1">ID Wacana (Opsional)</label>
+                                                        <input
+                                                            type="text"
+                                                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                                            placeholder="Misal: wacana_01"
+                                                            value={manualForm.id_wacana || ''}
+                                                            onChange={e => setManualForm({ ...manualForm, id_wacana: e.target.value })}
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-end text-[10px] text-slate-500 pb-2 italic">
+                                                        Gunakan ID sama untuk soal berkelompok.
+                                                    </div>
+                                                </div>
+                                                <div>
                                                     <label className="block text-sm font-bold text-slate-700 mb-1">Pertanyaan</label>
                                                     <textarea
                                                         className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[100px]"
@@ -1132,33 +1212,130 @@ const TryoutManagement: React.FC = () => {
                                                     />
                                                 </div>
 
-                                                <div className="grid gap-3">
-                                                    <label className="block text-sm font-bold text-slate-700">Opsi Jawaban</label>
-                                                    {manualForm.opsi?.map((opt, i) => (
-                                                        <div key={i} className="flex gap-2 items-center">
-                                                            <span className="font-mono font-bold text-slate-500 w-6 flex-shrink-0">{String.fromCharCode(65 + i)}.</span>
+                                                {/* Conditional Answer Section */}
+                                                <div className="grid gap-4">
+                                                    {manualForm.tipe_soal === 'pilihan_ganda' && (
+                                                        <>
+                                                            <label className="block text-sm font-bold text-slate-700">Opsi Jawaban</label>
+                                                            {manualForm.opsi?.map((opt, i) => (
+                                                                <div key={i} className="flex gap-2 items-center">
+                                                                    <span className="font-mono font-bold text-slate-500 w-6 flex-shrink-0">{String.fromCharCode(65 + i)}.</span>
+                                                                    <input
+                                                                        type="text"
+                                                                        className="flex-1 p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                                                        placeholder={`Opsi ${String.fromCharCode(65 + i)}`}
+                                                                        value={opt}
+                                                                        onChange={e => {
+                                                                            const newOpsi = [...(manualForm.opsi || [])];
+                                                                            newOpsi[i] = e.target.value;
+                                                                            setManualForm({ ...manualForm, opsi: newOpsi });
+                                                                        }}
+                                                                    />
+                                                                    <input
+                                                                        type="radio"
+                                                                        name="correct_answer"
+                                                                        checked={manualForm.jawaban_benar === i}
+                                                                        onChange={() => setManualForm({ ...manualForm, jawaban_benar: i })}
+                                                                        className="w-5 h-5 text-green-600"
+                                                                    />
+                                                                </div>
+                                                            ))}
+                                                        </>
+                                                    )}
+
+                                                    {manualForm.tipe_soal === 'pg_kompleks' && (
+                                                        <>
+                                                            <label className="block text-sm font-bold text-slate-700">Opsi Jawaban (Bisa pilih {'>'} 1)</label>
+                                                            {manualForm.opsi?.map((opt, i) => (
+                                                                <div key={i} className="flex gap-2 items-center">
+                                                                    <span className="font-mono font-bold text-slate-500 w-6 flex-shrink-0">{String.fromCharCode(65 + i)}.</span>
+                                                                    <input
+                                                                        type="text"
+                                                                        className="flex-1 p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                                                        placeholder={`Opsi ${String.fromCharCode(65 + i)}`}
+                                                                        value={opt}
+                                                                        onChange={e => {
+                                                                            const newOpsi = [...(manualForm.opsi || [])];
+                                                                            newOpsi[i] = e.target.value;
+                                                                            setManualForm({ ...manualForm, opsi: newOpsi });
+                                                                        }}
+                                                                    />
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={Array.isArray(manualForm.jawaban_kompleks) && manualForm.jawaban_kompleks.includes(i)}
+                                                                        onChange={e => {
+                                                                            let current = Array.isArray(manualForm.jawaban_kompleks) ? [...manualForm.jawaban_kompleks] : [];
+                                                                            if (e.target.checked) current.push(i);
+                                                                            else current = current.filter(idx => idx !== i);
+                                                                            setManualForm({ ...manualForm, jawaban_kompleks: current });
+                                                                        }}
+                                                                        className="w-5 h-5 text-blue-600 rounded"
+                                                                    />
+                                                                </div>
+                                                            ))}
+                                                        </>
+                                                    )}
+
+                                                    {manualForm.tipe_soal === 'isian' && (
+                                                        <div className="space-y-2">
+                                                            <label className="block text-sm font-bold text-slate-700 mb-1">Jawaban Benar (Text/Angka)</label>
                                                             <input
                                                                 type="text"
-                                                                className="flex-1 p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                                placeholder={`Opsi ${String.fromCharCode(65 + i)}`}
-                                                                value={opt}
-                                                                onChange={e => {
-                                                                    const newOpsi = [...(manualForm.opsi || [])];
-                                                                    newOpsi[i] = e.target.value;
-                                                                    setManualForm({ ...manualForm, opsi: newOpsi });
-                                                                }}
+                                                                className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-bold text-blue-600"
+                                                                placeholder="Ketik jawaban yang benar di sini..."
+                                                                value={typeof manualForm.jawaban_kompleks === 'string' ? manualForm.jawaban_kompleks : ''}
+                                                                onChange={e => setManualForm({ ...manualForm, jawaban_kompleks: e.target.value })}
                                                             />
-                                                            <input
-                                                                type="radio"
-                                                                name="correct_answer"
-                                                                checked={manualForm.jawaban_benar === i}
-                                                                onChange={() => setManualForm({ ...manualForm, jawaban_benar: i })}
-                                                                className="w-5 h-5 text-green-600"
-                                                                title="Tandai sebagai jawaban benar"
-                                                            />
+                                                            <p className="text-[10px] text-slate-500 italic">Sistem akan melakukan case-insensitive check.</p>
                                                         </div>
-                                                    ))}
-                                                    <p className="text-xs text-slate-500">*pilih radio button di kanan untuk menandai jawaban benar</p>
+                                                    )}
+
+                                                    {manualForm.tipe_soal === 'benar_salah' && (
+                                                        <div className="grid gap-3">
+                                                            <label className="block text-sm font-bold text-slate-700">Pernyataan & Kunci (Benar/Salah)</label>
+                                                            {(manualForm.opsi || ['', '', '']).map((stmt, i) => (
+                                                                <div key={i} className="flex gap-4 items-center bg-slate-50 p-3 rounded-lg border border-slate-200 shadow-sm">
+                                                                    <span className="text-xs font-bold text-slate-400 w-4">{i + 1}.</span>
+                                                                    <input
+                                                                        type="text"
+                                                                        className="flex-1 p-2 border border-slate-300 rounded-lg text-sm"
+                                                                        placeholder={`Pernyataan ${i + 1}`}
+                                                                        value={stmt}
+                                                                        onChange={e => {
+                                                                            const newOpsi = [...(manualForm.opsi || [])];
+                                                                            newOpsi[i] = e.target.value;
+                                                                            setManualForm({ ...manualForm, opsi: newOpsi });
+                                                                        }}
+                                                                    />
+                                                                    <div className="flex gap-2">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                const jk = Array.isArray(manualForm.jawaban_kompleks) ? [...manualForm.jawaban_kompleks] : [];
+                                                                                jk[i] = true;
+                                                                                setManualForm({ ...manualForm, jawaban_kompleks: jk });
+                                                                            }}
+                                                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${Array.isArray(manualForm.jawaban_kompleks) && manualForm.jawaban_kompleks[i] === true ? 'bg-green-600 text-white shadow-md' : 'bg-white text-slate-400 border border-slate-200'}`}
+                                                                        >Benar</button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                const jk = Array.isArray(manualForm.jawaban_kompleks) ? [...manualForm.jawaban_kompleks] : [];
+                                                                                jk[i] = false;
+                                                                                setManualForm({ ...manualForm, jawaban_kompleks: jk });
+                                                                            }}
+                                                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${Array.isArray(manualForm.jawaban_kompleks) && manualForm.jawaban_kompleks[i] === false ? 'bg-red-600 text-white shadow-md' : 'bg-white text-slate-400 border border-slate-200'}`}
+                                                                        >Salah</button>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setManualForm({ ...manualForm, opsi: [...(manualForm.opsi || []), ''] })}
+                                                                className="text-xs text-blue-600 font-bold hover:underline w-fit"
+                                                            >+ Tambah Pernyataan</button>
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 <div>
@@ -1321,14 +1498,13 @@ const TryoutManagement: React.FC = () => {
                                             );
                                         })}
                                     </div>
-                                )
-                                }
+                                )}
                             </div>
                         </div>
                     </div>
                 )}
             </div>
-        </DashboardLayout>
+        </DashboardLayout >
     );
 };
 

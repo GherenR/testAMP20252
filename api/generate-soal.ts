@@ -127,7 +127,11 @@ Rules:
 2. Group questions by "Reading Passage" (Teks Bacaan).
 3. Use Unicode for Math (x², π, √, etc) or LaTeX \\( ... \\) for complex formulas.
 4. Difficulty Distribution: Mix of Mudah, Sedang, Sulit.
-5. 5 Options (A-E).
+5. Mix of Question Types:
+   - "pilihan_ganda": Standard 5 options (A-E).
+   - "pg_kompleks": Multiple correct answers from options.
+   - "isian": Short text/number answer.
+   - "benar_salah": A list of statements that must be marked as Benar/Salah.
 6. Clean text: No random newlines in the middle of sentences in teks_bacaan.`;
 
     const userPrompt = `${SUBTES_PROMPTS[subtes]}
@@ -140,8 +144,10 @@ Rules:
         "daftar_soal": [
           {
             "pertanyaan": "Question...",
-            "opsi": ["A", "B", "C", "D", "E"],
-            "jawabanBenar": 0,
+            "tipe_soal": "pilihan_ganda" | "pg_kompleks" | "isian" | "benar_salah",
+            "opsi": ["A", "B", "C", "D", "E"], // For 'isian', set to []. For 'benar_salah', set to list of statements.
+            "jawabanBenar": 0, // ONLY for 'pilihan_ganda'
+            "jawabanKompleks": [0, 2] | "string answer" | [true, false], // Array of indices for 'pg_kompleks', String for 'isian', Array of booleans for 'benar_salah'
             "pembahasan": "Exp...",
             "difficulty": "sedang"
           }
@@ -195,11 +201,13 @@ Rules:
             const formattedGroups = groups.map((g: any, gIdx: number) => ({
                 id_wacana: g.id_wacana || (g.teks_bacaan ? `wacana_${Date.now()}_${gIdx}` : null),
                 teks_bacaan: g.teks_bacaan || null,
-                daftar_soal: (g.daftar_soal || []).map((q: any, qIdx: number) => ({
+                daftar_soal: (g.daftar_soal || []).map((q: any) => ({
                     subtes,
                     pertanyaan: q.pertanyaan || 'Pertanyaan kosong',
+                    tipe_soal: q.tipe_soal || 'pilihan_ganda',
                     opsi: Array.isArray(q.opsi) ? q.opsi : [],
                     jawaban_benar: typeof q.jawabanBenar === 'number' ? q.jawabanBenar : (typeof q.jawaban_benar === 'number' ? q.jawaban_benar : 0),
+                    jawaban_kompleks: q.jawabanKompleks !== undefined ? q.jawabanKompleks : (q.jawaban_kompleks !== undefined ? q.jawaban_kompleks : null),
                     pembahasan: q.pembahasan || '',
                     difficulty: q.difficulty || 'sedang'
                 }))
