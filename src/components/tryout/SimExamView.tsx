@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Clock, ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, Grip, FileText, Cloud, Loader2, MessageSquareWarning, Moon, Sun } from 'lucide-react';
 import { TryoutSoal, TryoutAttempt } from '../../types';
 import LatexRenderer from '../LatexRenderer';
-import LogoIkahata from '../../LogoIKAHATANew.svg';
+// import LogoIkahata from '../../LogoIKAHATANew.svg'; // Removed to fix build error, using public path instead
 
 interface SimulationExamViewProps {
     subtes: string; // Current subtes code
@@ -370,7 +370,7 @@ const SimulationExamView: React.FC<SimulationExamViewProps> = ({
                     </button>
 
                     <div className="flex items-center gap-3">
-                        <img src={LogoIkahata} alt="IKAHATA Logo" className="h-10 w-auto" />
+                        <img src="/LogoIKAHATANew.svg" alt="IKAHATA Logo" className="h-10 w-auto" />
                         <div className="flex flex-col">
                             <h1 className={`text-lg font-bold leading-tight ${isDarkMode ? 'text-white' : 'text-blue-900'} truncate`}>IKAHATA SNBT Tryout System</h1>
                             <p className={`text-xs ${subText} hidden md:block font-medium`}>{subtesName} - {tryoutName || 'Tryout UTBK'}</p>
