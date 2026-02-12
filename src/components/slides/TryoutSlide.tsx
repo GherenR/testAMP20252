@@ -456,7 +456,29 @@ const TryoutPlay = () => {
     // Timer
     const timerRef = useRef<NodeJS.Timeout | undefined>(undefined);
     useEffect(() => {
-        if (mode === 'exam' && timeLeft > 0) {
+        if (mode === 'exam') {
+            // Check immediately on mount/update if time is already up
+            if (timeLeft <= 0) {
+                // We need a small delay or check if we simply loaded into a finished state
+                // But if we are in 'exam' mode and time is 0, we must finish.
+                // However, we must ensure we don't finish *before* the user even sees it if there's a sync issue.
+                // But logic says: if remaining calculation <= 0, then it is over.
+                const config = SUBTES_CONFIG.find(c => c.kode === currentSubtes);
+                const duration = (config?.waktuMenit || 20) * 60 * 1000;
+
+                // Double check against real time to be sure it's not just initial state 0
+                const savedStart = localStorage.getItem(`start_${attempt?.id}_${currentSubtes}`);
+                if (savedStart) {
+                    const start = parseInt(savedStart);
+                    const endTime = start + duration;
+                    if (Date.now() >= endTime) {
+                        console.log("Timer expired on load, finishing subtes...");
+                        finishSubtes();
+                        return;
+                    }
+                }
+            }
+
             timerRef.current = setInterval(() => {
                 setTimeLeft(prev => {
                     if (prev <= 1) {
@@ -468,7 +490,7 @@ const TryoutPlay = () => {
             }, 1000);
         }
         return () => clearInterval(timerRef.current);
-    }, [mode, timeLeft]);
+    }, [mode, timeLeft, currentSubtes, attempt]);
 
     const handleSubtesClick = (subtes: string) => {
         setPendingSubtes(subtes);
@@ -543,10 +565,19 @@ const TryoutPlay = () => {
             localStorage.setItem(`start_${attempt?.id}_${subtes}`, now.toString());
         }
 
-        const remaining = Math.floor((endTime - Date.now()) / 1000);
+        const remaining = Math.ceil((endTime - Date.now()) / 1000);
 
-        setTimeLeft(remaining > 0 ? remaining : 0);
-        setMode('exam');
+        if (remaining <= 0) {
+            // If already expired, don't even start 'exam' mode effectively, just finish it?
+            // Or start it and let the effect kill it? 
+            // Better to set state and let effect handle it to ensure consistent state transitions
+            setTimeLeft(0);
+            setMode('exam');
+            // The useEffect will catch timeLeft === 0 and finish it.
+        } else {
+            setTimeLeft(remaining);
+            setMode('exam');
+        }
     };
 
     const finishSubtes = async () => {
