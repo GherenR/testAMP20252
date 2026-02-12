@@ -19,15 +19,33 @@ interface ExtendedAttempt extends TryoutAttempt {
     skor_akhir_calculated?: number;
 }
 
+interface Participant {
+    id: string; // user_id
+    email: string;
+    full_name: string;
+    kelas?: string;
+    attempt?: ExtendedAttempt;
+}
+
 export default function UserHistoryModal({ userId, tryoutId, onClose, currentUserName, currentTryoutName }: UserHistoryModalProps) {
     const [attempts, setAttempts] = useState<ExtendedAttempt[]>([]);
+    const [participants, setParticipants] = useState<Participant[]>([]);
+    const [viewMode, setViewMode] = useState<'attempts' | 'participants'>(tryoutId ? 'participants' : 'attempts');
     const [loading, setLoading] = useState(true);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [search, setSearch] = useState('');
 
     useEffect(() => {
-        fetchAttempts();
-    }, [userId, tryoutId]);
+        fetchData();
+    }, [userId, tryoutId, viewMode]);
+
+    const fetchData = async () => {
+        if (viewMode === 'participants' && tryoutId) {
+            await fetchAllParticipants();
+        } else {
+            await fetchAttempts();
+        }
+    };
 
     const fetchAttempts = async () => {
         setLoading(true);
@@ -51,8 +69,6 @@ export default function UserHistoryModal({ userId, tryoutId, onClose, currentUse
                 return;
             }
 
-            // --- 2-Step Fetch for Details ---
-
             // 1. Fetch Tryout Names (if not filtering by tryout)
             const tryoutIds = [...new Set(attemptsData.map(a => a.tryout_id))];
             let tryoutMap: Record<string, Tryout> = {};
@@ -71,18 +87,12 @@ export default function UserHistoryModal({ userId, tryoutId, onClose, currentUse
 
             // Map Data
             const extended: ExtendedAttempt[] = attemptsData.map(a => {
-                // Calculate score if configured (sum of normalized scores)
                 let totalScore = 0;
                 if (a.skor_per_subtes) {
-                    Object.values(a.skor_per_subtes).forEach((s: any) => totalScore += (s.skorNormalized || 0));
-                    // Average it? Or Sum? SNBT usually Average?
-                    // Previous code: (sum / count)
-                    const count = Object.keys(a.skor_per_subtes).length;
-                    if (count > 0) totalScore = totalScore / count;
+                    const values = Object.values(a.skor_per_subtes);
+                    values.forEach((s: any) => totalScore += (s.skorNormalized || 0));
+                    if (values.length > 0) totalScore = totalScore / values.length;
                 }
-
-                // Or use stored score?
-                // The DB might not have consistent score columns, so robust calc is good.
 
                 return {
                     ...a,
@@ -95,13 +105,70 @@ export default function UserHistoryModal({ userId, tryoutId, onClose, currentUse
             });
 
             setAttempts(extended);
+        } catch (err) {
+            console.error('Error fetching attempts:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
+    const fetchAllParticipants = async () => {
+        setLoading(true);
+        try {
+            // 1. Fetch All Users
+            const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('id, email, full_name, kelas')
+                .order('full_name', { ascending: true });
+
+            if (userError) throw userError;
+
+            // 2. Fetch Attempts for this tryout
+            const { data: attemptData, error: attemptError } = await supabase
+                .from('tryout_attempts')
+                .select('*')
+                .eq('tryout_id', tryoutId);
+
+            if (attemptError) throw attemptError;
+
+            // Map them
+            const mapped: Participant[] = (userData || []).map(u => {
+                const attempt = attemptData?.find(a => a.user_id === u.id);
+                let extended: ExtendedAttempt | undefined;
+
+                if (attempt) {
+                    let totalScore = 0;
+                    if (attempt.skor_per_subtes) {
+                        const values = Object.values(attempt.skor_per_subtes);
+                        values.forEach((s: any) => totalScore += (s.skorNormalized || 0));
+                        if (values.length > 0) totalScore = totalScore / values.length;
+                    }
+
+                    extended = {
+                        ...attempt,
+                        skor_akhir_calculated: parseFloat(totalScore.toFixed(2))
+                    };
+                }
+
+                return {
+                    id: u.id,
+                    email: u.email,
+                    full_name: u.full_name,
+                    kelas: u.kelas,
+                    attempt: extended
+                };
+            });
+
+            setParticipants(mapped);
+        } catch (err) {
+            console.error('Error fetching participants:', err);
         } finally {
             setLoading(false);
         }
     };
 
     const handleDelete = async (attemptId: string) => {
+
         if (!confirm('Apakah anda yakin ingin me-RESET data tryout ini? Data akan hilang permanen dan user harus mengerjakan ulang.')) return;
 
         setDeletingId(attemptId);
@@ -129,9 +196,21 @@ export default function UserHistoryModal({ userId, tryoutId, onClose, currentUse
         return false;
     });
 
-    const averageScore = filteredAttempts.length > 0
-        ? (filteredAttempts.reduce((acc, curr) => acc + (curr.skor_akhir_calculated || 0), 0) / filteredAttempts.length).toFixed(2)
-        : '0.00';
+    const filteredParticipants = participants.filter(p => {
+        if (!search) return true;
+        const q = search.toLowerCase();
+        return p.full_name?.toLowerCase().includes(q) || p.email?.toLowerCase().includes(q);
+    });
+
+    const averageScore = viewMode === 'attempts'
+        ? (filteredAttempts.length > 0
+            ? (filteredAttempts.reduce((acc: number, curr: ExtendedAttempt) => acc + (curr.skor_akhir_calculated || 0), 0) / filteredAttempts.length).toFixed(2)
+            : '0.00')
+        : (filteredParticipants.filter(p => p.attempt).length > 0
+            ? (filteredParticipants.reduce((acc: number, curr: Participant) => acc + (curr.attempt?.skor_akhir_calculated || 0), 0) / filteredParticipants.filter(p => p.attempt).length).toFixed(2)
+            : '0.00');
+
+    const totalDisplayCount = viewMode === 'attempts' ? filteredAttempts.length : filteredParticipants.length;
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
@@ -141,7 +220,7 @@ export default function UserHistoryModal({ userId, tryoutId, onClose, currentUse
                     <div>
                         <h2 className="text-xl font-bold flex items-center gap-2 text-white">
                             <RefreshCcw size={24} className="text-indigo-400" />
-                            History & Reset Tryout
+                            {tryoutId ? 'Kelola Peserta Tryout' : 'Riwayat Pengerjaan User'}
                         </h2>
                         <p className="text-slate-400 text-sm mt-1">
                             {userId ? `User: ${currentUserName || 'Selected User'}` : `Tryout: ${currentTryoutName || 'Selected Tryout'}`}
@@ -165,13 +244,29 @@ export default function UserHistoryModal({ userId, tryoutId, onClose, currentUse
                         />
                     </div>
                     <div className="flex items-center gap-4">
+                        {tryoutId && (
+                            <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-700 mr-2">
+                                <button
+                                    onClick={() => setViewMode('participants')}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'participants' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                                >
+                                    Semua User
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('attempts')}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'attempts' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                                >
+                                    Hanya yg Mengerjakan
+                                </button>
+                            </div>
+                        )}
                         <div className="text-right">
                             <p className="text-xs text-slate-400">Rata-rata Skor</p>
                             <p className="text-lg font-bold text-emerald-400">{averageScore}</p>
                         </div>
                         <div className="text-right border-l border-slate-700 pl-4">
-                            <p className="text-xs text-slate-400">Total Data</p>
-                            <p className="text-lg font-bold text-white">{filteredAttempts.length}</p>
+                            <p className="text-xs text-slate-400">Total User</p>
+                            <p className="text-lg font-bold text-white">{totalDisplayCount}</p>
                         </div>
                     </div>
                 </div>
@@ -179,60 +274,115 @@ export default function UserHistoryModal({ userId, tryoutId, onClose, currentUse
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-4">
                     {loading ? (
-                        <div className="text-center py-12 text-slate-500">Memuat data...</div>
-                    ) : filteredAttempts.length === 0 ? (
+                        <div className="text-center py-12 text-slate-500">
+                            <RefreshCcw className="animate-spin mx-auto mb-2 text-indigo-400" size={32} />
+                            Memuat data...
+                        </div>
+                    ) : (viewMode === 'attempts' ? filteredAttempts : filteredParticipants).length === 0 ? (
                         <div className="text-center py-12 text-slate-500 border-2 border-dashed border-slate-700 rounded-xl">
                             Belum ada riwayat pengerjaan.
                         </div>
                     ) : (
                         <div className="grid gap-3">
-                            {filteredAttempts.map(attempt => (
-                                <div key={attempt.id} className="bg-slate-700/50 p-4 rounded-xl border border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4 hover:border-indigo-500/30 transition-all">
-                                    <div className="flex-1 min-w-0 w-full">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <h4 className="font-bold text-white truncate">
-                                                {tryoutId ? (attempt.user_name || attempt.user_email) : (attempt.tryout?.nama || 'Unknown Tryout')}
-                                            </h4>
-                                            <span className={`px-2 py-0.5 text-xs rounded-full ${attempt.completed_at ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                                                {attempt.completed_at ? 'Selesai' : 'In Progress'}
-                                            </span>
+                            {viewMode === 'attempts' ? (
+                                filteredAttempts.map(attempt => (
+                                    <div key={attempt.id} className="bg-slate-700/50 p-4 rounded-xl border border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4 hover:border-indigo-500/30 transition-all">
+                                        <div className="flex-1 min-w-0 w-full">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <h4 className="font-bold text-white truncate">
+                                                    {tryoutId ? (attempt.user_name || attempt.user_email) : (attempt.tryout?.nama || 'Unknown Tryout')}
+                                                </h4>
+                                                <span className={`px-2 py-0.5 text-xs rounded-full ${attempt.completed_at ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                                                    {attempt.completed_at ? 'Selesai' : 'In Progress'}
+                                                </span>
+                                            </div>
+
+                                            {tryoutId && (
+                                                <p className="text-xs text-slate-400 mb-1">{attempt.user_email} • {attempt.user_school}</p>
+                                            )}
+
+                                            <div className="flex gap-4 text-xs text-slate-400">
+                                                <span>Mulai: {new Date(attempt.started_at).toLocaleDateString('id-ID')}</span>
+                                                {attempt.completed_at && (
+                                                    <span>Selesai: {new Date(attempt.completed_at).toLocaleTimeString('id-ID')}</span>
+                                                )}
+                                            </div>
                                         </div>
 
-                                        {tryoutId && (
-                                            <p className="text-xs text-slate-400 mb-1">{attempt.user_email} • {attempt.user_school}</p>
-                                        )}
+                                        <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+                                            <div className="text-right px-4">
+                                                <p className="text-xs text-slate-400">Skor Akhir</p>
+                                                <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">
+                                                    {attempt.skor_akhir_calculated}
+                                                </span>
+                                            </div>
 
-                                        <div className="flex gap-4 text-xs text-slate-400">
-                                            <span>Mulai: {new Date(attempt.started_at).toLocaleDateString('id-ID')}</span>
-                                            {attempt.completed_at && (
-                                                <span>Selesai: {new Date(attempt.completed_at).toLocaleTimeString('id-ID')}</span>
+                                            <button
+                                                onClick={() => handleDelete(attempt.id)}
+                                                disabled={deletingId === attempt.id}
+                                                className="p-3 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-xl transition-all border border-red-500/20 group"
+                                                title="Reset / Hapus Data"
+                                            >
+                                                {deletingId === attempt.id ? (
+                                                    <RefreshCcw size={20} className="animate-spin" />
+                                                ) : (
+                                                    <Trash2 size={20} />
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                filteredParticipants.map(participant => (
+                                    <div key={participant.id} className="bg-slate-700/50 p-4 rounded-xl border border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4 hover:border-indigo-500/30 transition-all">
+                                        <div className="flex-1 min-w-0 w-full">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <h4 className="font-bold text-white truncate">
+                                                    {participant.full_name || 'No Name'}
+                                                </h4>
+                                                <span className={`px-2 py-0.5 text-xs rounded-full ${participant.attempt ? (participant.attempt.completed_at ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400') : 'bg-slate-600/20 text-slate-500'}`}>
+                                                    {participant.attempt ? (participant.attempt.completed_at ? 'Selesai' : 'In Progress') : 'Belum Mulai'}
+                                                </span>
+                                            </div>
+
+                                            <p className="text-xs text-slate-400 mb-1">{participant.email} • {participant.kelas || 'No School'}</p>
+
+                                            {participant.attempt && (
+                                                <div className="flex gap-4 text-xs text-slate-400">
+                                                    <span>Mulai: {new Date(participant.attempt.started_at).toLocaleDateString('id-ID')}</span>
+                                                    {participant.attempt.completed_at && (
+                                                        <span>Selesai: {new Date(participant.attempt.completed_at).toLocaleTimeString('id-ID')}</span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+                                            <div className="text-right px-4">
+                                                <p className="text-xs text-slate-400">Skor Akhir</p>
+                                                <span className={`text-2xl font-black ${participant.attempt ? 'text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400' : 'text-slate-600'}`}>
+                                                    {participant.attempt ? participant.attempt.skor_akhir_calculated : '-'}
+                                                </span>
+                                            </div>
+
+                                            {participant.attempt && (
+                                                <button
+                                                    onClick={() => handleDelete(participant.attempt!.id)}
+                                                    disabled={deletingId === participant.attempt.id}
+                                                    className="p-3 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-xl transition-all border border-red-500/20 group"
+                                                    title="Reset / Hapus Data"
+                                                >
+                                                    {deletingId === participant.attempt.id ? (
+                                                        <RefreshCcw size={20} className="animate-spin" />
+                                                    ) : (
+                                                        <Trash2 size={20} />
+                                                    )}
+                                                </button>
                                             )}
                                         </div>
                                     </div>
-
-                                    <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-                                        <div className="text-right px-4">
-                                            <p className="text-xs text-slate-400">Skor Akhir</p>
-                                            <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">
-                                                {attempt.skor_akhir_calculated}
-                                            </span>
-                                        </div>
-
-                                        <button
-                                            onClick={() => handleDelete(attempt.id)}
-                                            disabled={deletingId === attempt.id}
-                                            className="p-3 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-xl transition-all border border-red-500/20 group"
-                                            title="Reset / Hapus Data"
-                                        >
-                                            {deletingId === attempt.id ? (
-                                                <RefreshCcw size={20} className="animate-spin" />
-                                            ) : (
-                                                <Trash2 size={20} />
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
+                                ))
+                            )}
                         </div>
                     )}
                 </div>

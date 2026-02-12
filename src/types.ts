@@ -50,6 +50,7 @@ export interface TryoutSoal {
   image_url?: string | null;
   tipe_soal?: 'pilihan_ganda' | 'isian' | 'pg_kompleks' | 'benar_salah';
   jawaban_kompleks?: any;
+  table_headers?: string[];
 }
 
 export interface SubtesResult {
