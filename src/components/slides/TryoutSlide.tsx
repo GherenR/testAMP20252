@@ -351,6 +351,8 @@ const TryoutPlay = () => {
     const [jawaban, setJawaban] = useState<Record<string, any>>({});
     const [timeLeft, setTimeLeft] = useState(0);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [showSimulationIntro, setShowSimulationIntro] = useState(false);
+    const [pendingSubtes, setPendingSubtes] = useState<string | null>(null);
 
     // Data
     const [attempt, setAttempt] = useState<TryoutAttempt | null>(null);
@@ -385,7 +387,17 @@ const TryoutPlay = () => {
 
                 if (aData) {
                     setAttempt(aData);
-                    setJawaban(aData.jawaban || {});
+                    setAttempt(aData);
+
+                    // MERGE: DB vs LocalStorage
+                    // We merge them to ensure no data loss if DB save failed but local succeeded.
+                    // Priority: Local > DB (assuming this device has latest unsaved changes)
+                    const localSaved = localStorage.getItem(`tryout_${id}_answers`);
+                    const localAns = localSaved ? JSON.parse(localSaved) : {};
+                    const mergedJawaban = { ...(aData.jawaban || {}), ...localAns };
+
+                    setJawaban(mergedJawaban);
+
                     if (aData.flagged_questions) setFlaggedQuestions(aData.flagged_questions);
                     setCompletedSubtes(Object.keys(aData.skor_per_subtes || {}));
 
@@ -457,6 +469,11 @@ const TryoutPlay = () => {
         }
         return () => clearInterval(timerRef.current);
     }, [mode, timeLeft]);
+
+    const handleSubtesClick = (subtes: string) => {
+        setPendingSubtes(subtes);
+        setShowSimulationIntro(true);
+    };
 
     const startSubtes = async (subtes: string) => {
         const sList = soalBySubtes[subtes];
@@ -588,7 +605,7 @@ const TryoutPlay = () => {
                 subtesName={config?.nama || 'Subtes'}
                 soalList={soalList}
                 jawaban={jawaban}
-                onAnswer={(id, val) => handleSelectAnswer(id, val)}
+                onAnswer={(id, val, isToggle) => handleSelectAnswer(id, val, isToggle)}
                 timeLeft={timeLeft}
                 onFinishSubtes={finishSubtes}
                 currentNumber={currentIndex}
@@ -641,7 +658,7 @@ const TryoutPlay = () => {
                                     </div>
                                 ) : (
                                     <button
-                                        onClick={() => startSubtes(s)}
+                                        onClick={() => handleSubtesClick(s)}
                                         className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold"
                                     >Mulai</button>
                                 )}
@@ -650,6 +667,50 @@ const TryoutPlay = () => {
                     );
                 })}
             </div>
+
+            {/* Simulation Intro Modal */}
+            {showSimulationIntro && (
+                <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl max-w-lg w-full p-8 text-center relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
+
+                        <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <img src="/LogoIKAHATANewRBG.svg" alt="Logo" className="w-12 h-12 object-contain" />
+                        </div>
+
+                        <h3 className="text-2xl font-black text-slate-800 mb-2">SISTEM TRYOUT SNBT IKAHATA</h3>
+                        <p className="text-slate-500 mb-8 font-medium">Ikatan Alumni SMA Hang Tuah 1 Jakarta</p>
+
+                        <div className="bg-blue-50 border border-blue-100 rounded-xl p-6 mb-8 text-left">
+                            <p className="text-blue-900 font-bold mb-2 flex items-center gap-2">
+                                <AlertTriangle size={18} /> Peringatan Simulasi
+                            </p>
+                            <p className="text-slate-700 text-sm leading-relaxed">
+                                Antarmuka (UI) ujian ini telah disesuaikan agar <strong>semirip mungkin</strong> dengan tampilan asli UTBK/SNBT.
+                                Tujuannya adalah agar Anda terbiasa dengan lingkungan ujian yang sesungguhnya.
+                            </p>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowSimulationIntro(false)}
+                                className="flex-1 py-3 px-4 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowSimulationIntro(false);
+                                    if (pendingSubtes) startSubtes(pendingSubtes);
+                                }}
+                                className="flex-1 py-3 px-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20"
+                            >
+                                Mulai Kerjakan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {subtesList.every(s => completedSubtes.includes(s)) && (
                 <button

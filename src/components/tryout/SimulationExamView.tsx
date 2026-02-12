@@ -8,7 +8,7 @@ interface SimulationExamViewProps {
     subtesName: string; // Current subtes name (e.g. "Penalaran Umum")
     soalList: TryoutSoal[];
     jawaban: Record<string, any>;
-    onAnswer: (soalId: string, answer: any) => void;
+    onAnswer: (soalId: string, answer: any, isToggle?: boolean) => void;
     timeLeft: number; // Seconds
     onFinishSubtes: () => void;
     currentNumber: number; // 0-indexed
@@ -44,18 +44,67 @@ const SimulationExamView: React.FC<SimulationExamViewProps> = ({
         return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     };
 
+    const [showTabWarning, setShowTabWarning] = useState(false);
+
+    // Detect Tab Switching
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                setShowTabWarning(true);
+            }
+        };
+
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        return () => {
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+        };
+    }, []);
+
     return (
         <div className="fixed inset-0 bg-[#F5F5F5] text-black font-sans flex flex-col z-50 overflow-hidden">
+            {/* --- TAB SWITCH WARNING MODAL --- */}
+            {showTabWarning && (
+                <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-6 text-center animate-in fade-in duration-300">
+                    <div className="max-w-lg w-full bg-white rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-3 bg-amber-500"></div>
+
+                        <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <AlertTriangle size={40} />
+                        </div>
+
+                        <h2 className="text-2xl font-black text-slate-900 mb-4">Peringatan Aktivitas</h2>
+
+                        <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 mb-6">
+                            <p className="text-amber-800 font-medium">
+                                Anda terdeteksi meninggalkan halaman ujian.
+                            </p>
+                        </div>
+
+                        <p className="text-slate-600 mb-8 leading-relaxed">
+                            "Tidak perlu membuka tab lain atau mencari jawaban.
+                            <strong> Tryout ini adalah simulasi untuk mengukur kemampuan Anda sendiri.</strong>
+                            <br /><br />
+                            Tidak apa-apa jika salah sekarang. Justru <strong>SALAH-nya di Tryout</strong>,
+                            supaya Anda tahu apa yang perlu diperbaiki sebelum ujian yang sesungguhnya."
+                        </p>
+
+                        <button
+                            onClick={() => setShowTabWarning(false)}
+                            className="w-full py-4 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all"
+                        >
+                            Saya Mengerti, Kembali Mengerjakan
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* --- HEADER --- */}
             <div className="h-16 bg-white border-b border-slate-300 flex items-center justify-between px-6 shadow-sm shrink-0">
                 <div className="flex items-center gap-4">
-                    {/* Placeholder for Logo - In real app, put Tut Wuri Handayani logo here */}
-                    <div className="w-10 h-10 bg-blue-900 rounded-full flex items-center justify-center text-white font-bold text-xs">
-                        SNPMB
-                    </div>
+                    <img src="/LogoIKAHATANewRBG.svg" alt="Logo" className="w-12 h-12 object-contain" />
                     <div className="hidden md:block">
-                        <h1 className="text-lg font-bold text-blue-900 leading-tight">SELEKSI NASIONAL PENERIMAAN MAHASISWA BARU</h1>
-                        <p className="text-xs text-slate-500">BALAI PENGELOLAAN PENGUJIAN PENDIDIKAN</p>
+                        <h1 className="text-lg font-bold text-blue-900 leading-tight">SISTEM TRYOUT SNBT IKAHATA</h1>
+                        <p className="text-xs text-slate-500">Ikatan Alumni SMA Hang Tuah 1 Jakarta</p>
                     </div>
                 </div>
 
@@ -163,7 +212,7 @@ const SimulationExamView: React.FC<SimulationExamViewProps> = ({
                             </div>
 
                             {/* Options */}
-                            <div className="space-y-4 max-w-2xl">
+                            <div className="space-y-4 max-w-3xl">
                                 {(!soal.tipe_soal || soal.tipe_soal === 'pilihan_ganda') && soal.opsi.map((opt, idx) => {
                                     const isSelected = jawaban[soal.id] === idx;
                                     return (
@@ -194,14 +243,97 @@ const SimulationExamView: React.FC<SimulationExamViewProps> = ({
                                     );
                                 })}
 
-                                {/* Other Question Types (Simple fallback for now) */}
+                                {soal.tipe_soal === 'pg_kompleks' && (
+                                    <div className="space-y-3">
+                                        <p className="text-sm text-slate-500 italic mb-2">Pilih jawaban yang benar (bisa lebih dari satu):</p>
+                                        {soal.opsi.map((opt, idx) => {
+                                            const currentAns = Array.isArray(jawaban[soal.id]) ? jawaban[soal.id] : [];
+                                            const isSelected = currentAns.includes(idx);
+                                            return (
+                                                <label key={idx} className="flex items-center gap-4 p-4 border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors bg-white">
+                                                    <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-400'}`}>
+                                                        {isSelected && <CheckCircle size={14} />}
+                                                    </div>
+                                                    <input
+                                                        type="checkbox"
+                                                        className="hidden"
+                                                        checked={isSelected}
+                                                        onChange={() => onAnswer(soal.id, idx, true)} // 3rd arg isToggle
+                                                    />
+                                                    <LatexRenderer className="flex-1 text-slate-800 font-medium">{opt}</LatexRenderer>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {soal.tipe_soal === 'benar_salah' && (
+                                    <div className="mt-4">
+                                        <div className="overflow-hidden border border-slate-300 rounded-lg">
+                                            <table className="w-full text-sm text-left">
+                                                <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-xs">
+                                                    <tr>
+                                                        <th className="px-6 py-3 w-1/2">Pernyataan</th>
+                                                        <th className="px-6 py-3 text-center w-1/4 border-l border-slate-200">Benar</th>
+                                                        <th className="px-6 py-3 text-center w-1/4 border-l border-slate-200">Salah</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-200 bg-white">
+                                                    {soal.opsi.map((stmt, idx) => {
+                                                        const currentAns = Array.isArray(jawaban[soal.id]) ? jawaban[soal.id] : [];
+                                                        const val = currentAns[idx]; // true, false, or undefined
+
+                                                        return (
+                                                            <tr key={idx} className="hover:bg-slate-50">
+                                                                <td className="px-6 py-4">
+                                                                    <LatexRenderer className="text-slate-800">{stmt}</LatexRenderer>
+                                                                </td>
+                                                                <td className="px-6 py-4 text-center border-l border-slate-200">
+                                                                    <label className="inline-flex items-center justify-center p-2 cursor-pointer">
+                                                                        <input
+                                                                            type="radio"
+                                                                            name={`bs-${soal.id}-${idx}`}
+                                                                            checked={val === true}
+                                                                            onChange={() => {
+                                                                                const next = [...(currentAns || [])];
+                                                                                next[idx] = true;
+                                                                                onAnswer(soal.id, next);
+                                                                            }}
+                                                                            className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300"
+                                                                        />
+                                                                    </label>
+                                                                </td>
+                                                                <td className="px-6 py-4 text-center border-l border-slate-200">
+                                                                    <label className="inline-flex items-center justify-center p-2 cursor-pointer">
+                                                                        <input
+                                                                            type="radio"
+                                                                            name={`bs-${soal.id}-${idx}`}
+                                                                            checked={val === false}
+                                                                            onChange={() => {
+                                                                                const next = [...(currentAns || [])];
+                                                                                next[idx] = false;
+                                                                                onAnswer(soal.id, next);
+                                                                            }}
+                                                                            className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300"
+                                                                        />
+                                                                    </label>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {soal.tipe_soal === 'isian' && (
                                     <input
                                         type="text"
                                         value={jawaban[soal.id] || ''}
                                         onChange={(e) => onAnswer(soal.id, e.target.value)}
                                         placeholder="Ketik jawaban Anda..."
-                                        className="w-full p-4 border border-slate-300 rounded font-bold text-lg"
+                                        className="w-full p-4 border border-slate-300 rounded font-bold text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                                     />
                                 )}
                             </div>
