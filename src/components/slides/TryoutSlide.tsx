@@ -9,68 +9,8 @@ import { SUBTES_CONFIG } from '../../data/bankSoal';
 import { Routes, Route, useNavigate, useParams, useLocation, Outlet } from 'react-router-dom';
 import LatexRenderer from '../LatexRenderer';
 
-// ============ INTERFACES ============
-interface Tryout {
-    id: string;
-    nama: string;
-    deskripsi: string;
-    tanggal_rilis: string;
-    tanggal_mulai: string;
-    tanggal_selesai: string | null;
-    is_active: boolean;
-    // New fields
-    password?: string | null;
-    access_mode?: 'scheduled' | 'manual_open' | 'manual_close';
-}
-
-interface TryoutSoal {
-    id: string;
-    tryout_id: string;
-    subtes: string;
-    nomor_soal: number;
-    pertanyaan: string;
-    opsi: string[];
-    jawaban_benar: number;
-    pembahasan: string;
-    difficulty_level?: string;
-    bobot_nilai?: number;
-    teks_bacaan?: string | null;
-    id_wacana?: string | null;
-    tipe_soal?: 'pilihan_ganda' | 'isian' | 'pg_kompleks' | 'benar_salah';
-    jawaban_kompleks?: any;
-}
-
-interface SubtesResult {
-    subtes: string;
-    benar: number;
-    salah: number;
-    total: number;
-    skorMentah: number;
-    skorMaksimal: number;
-    skorNormalized: number;
-}
-
-interface TryoutAttempt {
-    id: string;
-    tryout_id: string;
-    user_id: string;
-    started_at: string;
-    completed_at: string | null;
-    current_subtes: string | null;
-    jawaban: Record<string, any>;
-    skor_per_subtes: Record<string, SubtesResult>; // Stored as JSONB
-    total_skor: number;
-    status: 'in_progress' | 'completed';
-    skor_akhir: number; // IRT Score Float
-}
-
-interface UserResult {
-    subtes: string;
-    benar: number;
-    salah: number;
-    total: number;
-    skor: number;
-}
+import SimulationExamView from '../tryout/SimulationExamView';
+import { Tryout, TryoutSoal, TryoutAttempt, SubtesResult } from '../../types';
 
 const calculateSubtesScore = (soalList: TryoutSoal[], jawaban: Record<string, any>): SubtesResult => {
     let benar = 0, salah = 0, skorMentah = 0, skorMaksimal = 0;
@@ -415,6 +355,8 @@ const TryoutPlay = () => {
     // Data
     const [attempt, setAttempt] = useState<TryoutAttempt | null>(null);
     const [soalBySubtes, setSoalBySubtes] = useState<Record<string, TryoutSoal[]>>({});
+    const [flaggedQuestions, setFlaggedQuestions] = useState<string[]>([]);
+    const [userInfo, setUserInfo] = useState<{ email?: string, user_metadata?: any } | null>(null);
 
     // Load Data
     useEffect(() => {
@@ -444,6 +386,7 @@ const TryoutPlay = () => {
                 if (aData) {
                     setAttempt(aData);
                     setJawaban(aData.jawaban || {});
+                    if (aData.flagged_questions) setFlaggedQuestions(aData.flagged_questions);
                     setCompletedSubtes(Object.keys(aData.skor_per_subtes || {}));
 
                     // Resume logic if needed (e.g. if they refreshed inside exam)
@@ -453,9 +396,22 @@ const TryoutPlay = () => {
                     navigate(`../${id}`);
                 }
             }
+            if (user) setUserInfo(user);
         };
         init();
     }, [id, navigate]);
+
+    // Auto-Resume Effect
+    useEffect(() => {
+        if (mode === 'select' && attempt?.status === 'in_progress' && attempt?.current_subtes && soalBySubtes[attempt.current_subtes]) {
+            // Check if subtest is already completed?
+            if (completedSubtes.includes(attempt.current_subtes)) {
+                // Should not happen if logic is correct, but safety check
+                return;
+            }
+            startSubtes(attempt.current_subtes);
+        }
+    }, [mode, attempt, soalBySubtes, completedSubtes]);
 
     // Save Jawaban (Debounced or on Change)
     const saveJawaban = async (newJawaban: Record<string, number>) => {
@@ -502,15 +458,20 @@ const TryoutPlay = () => {
         return () => clearInterval(timerRef.current);
     }, [mode, timeLeft]);
 
-    const startSubtes = (subtes: string) => {
+    const startSubtes = async (subtes: string) => {
         const sList = soalBySubtes[subtes];
-        if (!sList) return;
+        if (!sList || !attempt) return;
 
         const config = SUBTES_CONFIG.find(c => c.kode === subtes);
 
         setCurrentSubtes(subtes);
         setSoalList(sList);
         setCurrentIndex(0);
+
+        // Update DB: Set current_subtes
+        supabase.from('tryout_attempts').update({ current_subtes: subtes }).eq('id', attempt.id).then(({ error }) => {
+            if (error) console.error("Failed to update current_subtes", error);
+        });
 
         // Persistent Timer Logic
         // Calculate based on attempt.started_at + duration
@@ -582,7 +543,8 @@ const TryoutPlay = () => {
         const newScores = { ...(attempt.skor_per_subtes || {}), [currentSubtes]: result };
         const { error } = await supabase.from('tryout_attempts').update({
             skor_per_subtes: newScores,
-            jawaban: jawaban, // Ensure final answers are saved
+            jawaban: jawaban,
+            current_subtes: null,
             last_updated_at: new Date().toISOString()
         }).eq('id', attempt.id);
 
@@ -618,173 +580,34 @@ const TryoutPlay = () => {
 
     // RENDER: EXAM
     if (mode === 'exam') {
-        const soal = soalList[currentIndex];
         const config = SUBTES_CONFIG.find(c => c.kode === currentSubtes);
 
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 p-4">
-                <div className="max-w-4xl mx-auto">
-                    {/* Header */}
-                    <div className="flex justify-between items-center mb-6 bg-white/5 p-4 rounded-xl border border-white/10">
-                        <div>
-                            <h2 className="text-white font-bold">{config?.nama}</h2>
-                            <p className="text-slate-400 text-xs">Soal {soal.nomor_soal} / {soalList.length}</p>
-                        </div>
-                        <div className={`font-mono text-xl font-bold ${timeLeft < 60 ? 'text-red-400 animate-pulse' : 'text-indigo-400'}`}>
-                            {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
-                        </div>
-                    </div>
-
-                    {/* Soal & Opsi Container */}
-                    <div className={`grid gap-6 ${soal.teks_bacaan ? 'lg:grid-cols-2' : 'grid-cols-1'}`}>
-                        {/* Left Column: Passage (if exists) */}
-                        {soal.teks_bacaan && (
-                            <div className="bg-white/5 p-6 rounded-2xl border border-white/10 h-fit lg:max-h-[70vh] overflow-y-auto sticky top-4">
-                                <p className="text-[10px] font-bold text-indigo-400 uppercase mb-3 tracking-widest flex items-center gap-2">
-                                    <FileText size={14} /> Teks Bacaan
-                                </p>
-                                <LatexRenderer className="text-white text-sm leading-relaxed whitespace-pre-line">
-                                    {soal.teks_bacaan}
-                                </LatexRenderer>
-                            </div>
-                        )}
-
-                        {/* Right Column: Question & Opsi */}
-                        <div className="space-y-6">
-                            {/* Soal */}
-                            <div className="bg-white/5 p-6 rounded-2xl border border-white/10 min-h-[120px]">
-                                <p className="text-[10px] font-bold text-indigo-400 uppercase mb-3 tracking-widest">Pertanyaan</p>
-                                <LatexRenderer className="text-white whitespace-pre-line text-lg font-medium leading-relaxed">
-                                    {soal.pertanyaan}
-                                </LatexRenderer>
-                            </div>
-
-                            {/* Opsi Section */}
-                            <div className="space-y-4">
-                                {(!soal.tipe_soal || soal.tipe_soal === 'pilihan_ganda') && (
-                                    <div className="space-y-3">
-                                        {soal.opsi.map((opt, idx) => (
-                                            <button
-                                                key={idx}
-                                                onClick={() => handleSelectAnswer(soal.id, idx)}
-                                                className={`w-full p-4 rounded-xl text-left border transition-all flex gap-4 ${jawaban[soal.id] === idx ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}
-                                            >
-                                                <span className={`w-8 h-8 flex items-center justify-center rounded-lg font-bold shrink-0 ${jawaban[soal.id] === idx ? 'bg-white/20 text-white' : 'bg-white/10 text-slate-400'}`}>
-                                                    {String.fromCharCode(65 + idx)}
-                                                </span>
-                                                <LatexRenderer className="flex-1 pt-1">{opt || ''}</LatexRenderer>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {soal.tipe_soal === 'pg_kompleks' && (
-                                    <div className="space-y-3">
-                                        <p className="text-xs text-indigo-400 mb-2 italic">*Pilih semua jawaban yang benar (Bisa {'>'} 1)</p>
-                                        {(soal.opsi || []).map((opt, idx) => {
-                                            const isSelected = Array.isArray(jawaban[soal.id]) && jawaban[soal.id].includes(idx);
-                                            return (
-                                                <button
-                                                    key={idx}
-                                                    onClick={() => handleSelectAnswer(soal.id, idx, true)}
-                                                    className={`w-full p-4 rounded-xl text-left border transition-all flex gap-4 ${isSelected ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}
-                                                >
-                                                    <div className={`w-6 h-6 rounded flex items-center justify-center border ${isSelected ? 'bg-white border-white text-indigo-600' : 'bg-transparent border-white/20'}`}>
-                                                        {isSelected && <CheckCircle size={14} />}
-                                                    </div>
-                                                    <LatexRenderer className="flex-1">{opt || ''}</LatexRenderer>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-
-                                {soal.tipe_soal === 'isian' && (
-                                    <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
-                                        <p className="text-xs text-indigo-400 mb-3 uppercase tracking-widest font-bold">Jawaban Kamu</p>
-                                        <input
-                                            type="text"
-                                            value={jawaban[soal.id] || ''}
-                                            onChange={e => handleSelectAnswer(soal.id, e.target.value)}
-                                            placeholder="Ketik jawaban di sini..."
-                                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-5 py-4 text-white text-xl font-bold focus:outline-none focus:border-indigo-500 transition-all"
-                                        />
-                                    </div>
-                                )}
-
-                                {soal.tipe_soal === 'benar_salah' && (
-                                    <div className="space-y-4">
-                                        <div className="grid grid-cols-[1fr,80px,80px] gap-2 px-4 mb-2">
-                                            <span className="text-[10px] font-bold text-slate-500 uppercase">Pernyataan</span>
-                                            <span className="text-[10px] font-bold text-center text-slate-500 uppercase">Benar</span>
-                                            <span className="text-[10px] font-bold text-center text-slate-500 uppercase">Salah</span>
-                                        </div>
-                                        {soal.opsi.map((stmt, idx) => {
-                                            const current = Array.isArray(jawaban[soal.id]) ? jawaban[soal.id] : [];
-                                            const val = current[idx];
-                                            return (
-                                                <div key={idx} className="grid grid-cols-[1fr,80px,80px] gap-2 items-center bg-white/5 p-3 rounded-xl border border-white/10">
-                                                    <LatexRenderer className="text-sm text-slate-200">{stmt}</LatexRenderer>
-                                                    <button
-                                                        onClick={() => {
-                                                            const next = [...current];
-                                                            next[idx] = true;
-                                                            handleSelectAnswer(soal.id, next);
-                                                        }}
-                                                        className={`py-2 rounded-lg font-bold text-xs transition-all ${val === true ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-white/5 text-slate-500 hover:bg-white/10'}`}
-                                                    >Benar</button>
-                                                    <button
-                                                        onClick={() => {
-                                                            const next = [...current];
-                                                            next[idx] = false;
-                                                            handleSelectAnswer(soal.id, next);
-                                                        }}
-                                                        className={`py-2 rounded-lg font-bold text-xs transition-all ${val === false ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 text-slate-500 hover:bg-white/10'}`}
-                                                    >Salah</button>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Navigasi */}
-                    <div className="flex justify-between items-center mt-8 pt-6 border-t border-white/10">
-                        <button
-                            disabled={currentIndex === 0}
-                            onClick={() => setCurrentIndex(i => i - 1)}
-                            className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white disabled:opacity-30 transition-all font-bold"
-                        >Sebelumnya</button>
-
-                        <div className="hidden sm:flex gap-1.5 overflow-x-auto max-w-[300px] px-4 py-2 bg-white/5 rounded-full border border-white/5 hide-scrollbar">
-                            {soalList.map((s, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => setCurrentIndex(i)}
-                                    className={`w-2 h-2 rounded-full transition-all shrink-0 ${i === currentIndex ? 'bg-white scale-125' : jawaban[s.id] !== undefined ? 'bg-indigo-400' : 'bg-white/20'}`}
-                                />
-                            ))}
-                        </div>
-
-                        {currentIndex < soalList.length - 1 ? (
-                            <button
-                                onClick={() => {
-                                    setCurrentIndex(i => i + 1);
-                                    saveJawaban(jawaban);
-                                }}
-                                className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold transition-all shadow-lg shadow-indigo-600/20"
-                            >Selanjutnya</button>
-                        ) : (
-                            <button
-                                onClick={finishSubtes}
-                                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-bold transition-all shadow-lg shadow-emerald-600/20"
-                            >Selesai Subtes</button>
-                        )}
-                    </div>
-                </div>
-            </div>
+            <SimulationExamView
+                subtes={currentSubtes || ''}
+                subtesName={config?.nama || 'Subtes'}
+                soalList={soalList}
+                jawaban={jawaban}
+                onAnswer={(id, val) => handleSelectAnswer(id, val)}
+                timeLeft={timeLeft}
+                onFinishSubtes={finishSubtes}
+                currentNumber={currentIndex}
+                onNavigate={setCurrentIndex}
+                flaggedQuestions={flaggedQuestions}
+                onToggleFlag={async (id) => {
+                    const newFlags = flaggedQuestions.includes(id)
+                        ? flaggedQuestions.filter(f => f !== id)
+                        : [...flaggedQuestions, id];
+                    setFlaggedQuestions(newFlags);
+                    if (attempt) {
+                        await supabase.from('tryout_attempts').update({ flagged_questions: newFlags }).eq('id', attempt.id);
+                    }
+                }}
+                userData={{
+                    name: userInfo?.user_metadata?.full_name || userInfo?.user_metadata?.name || 'Peserta',
+                    email: userInfo?.email || ''
+                }}
+            />
         );
     }
 
@@ -1093,6 +916,11 @@ const ReviewModalContent = ({ subtes, onClose, soalList, attempt }: { subtes: st
                                             <LatexRenderer className="text-slate-700 text-sm leading-relaxed whitespace-pre-line">
                                                 {activeQuestion.teks_bacaan}
                                             </LatexRenderer>
+                                        </div>
+                                    )}
+                                    {activeQuestion.image_url && (
+                                        <div className="mb-6">
+                                            <img src={activeQuestion.image_url} alt="Soal" className="max-w-full rounded-lg border border-slate-200" />
                                         </div>
                                     )}
                                     <LatexRenderer className="text-lg text-slate-800 font-medium whitespace-pre-line leading-relaxed">

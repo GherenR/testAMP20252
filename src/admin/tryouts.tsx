@@ -19,6 +19,7 @@ interface Tryout {
 interface GeneratedQuestion {
     id_wacana?: string | null;
     teks_bacaan?: string | null;
+    image_url?: string | null;
     subtes: string;
     nomor_soal: number;
     pertanyaan: string;
@@ -129,7 +130,8 @@ const TryoutManagement: React.FC = () => {
         jawaban_kompleks: null,
         pembahasan: '',
         difficulty_level: 'sedang',
-        bobot_nilai: 2
+        bobot_nilai: 2,
+        image_url: ''
     });
     const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
     const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
@@ -147,6 +149,7 @@ const TryoutManagement: React.FC = () => {
         bobot_nilai: number;
         id_wacana?: string | null;
         teks_bacaan?: string | null;
+        image_url?: string | null;
         tipe_soal: 'pilihan_ganda' | 'isian' | 'pg_kompleks' | 'benar_salah';
         jawaban_kompleks?: any;
     }
@@ -256,7 +259,8 @@ const TryoutManagement: React.FC = () => {
                         difficulty_level: q.difficulty,
                         bobot_nilai: q.difficulty === 'sulit' ? 3 : (q.difficulty === 'mudah' ? 1 : 2),
                         id_wacana: q.id_wacana || null,
-                        teks_bacaan: q.teks_bacaan || null
+                        teks_bacaan: q.teks_bacaan || null,
+                        image_url: q.image_url || null
                     });
                 });
             });
@@ -359,6 +363,7 @@ const TryoutManagement: React.FC = () => {
                                 newQuestions[subKey].push({
                                     id_wacana,
                                     teks_bacaan,
+                                    image_url: item.image || item.image_url || item.gambar || item.img || null,
                                     subtes: subKey,
                                     nomor_soal: qNum,
                                     pertanyaan: item.pertanyaan,
@@ -409,7 +414,8 @@ const TryoutManagement: React.FC = () => {
                             pembahasan: item.pembahasan || '',
                             difficulty: item.difficulty || item.difficulty_level || 'sedang',
                             id_wacana: item.id_wacana || null,
-                            teks_bacaan: item.teks_bacaan || null
+                            teks_bacaan: item.teks_bacaan || null,
+                            image_url: item.image || item.image_url || item.gambar || item.img || null
                         });
                         validCount++;
                     });
@@ -571,7 +577,8 @@ const TryoutManagement: React.FC = () => {
             bobot_nilai: q.bobot_nilai,
             subtes: q.subtes,
             id_wacana: q.id_wacana,
-            teks_bacaan: q.teks_bacaan
+            teks_bacaan: q.teks_bacaan,
+            image_url: q.image_url || ''
         });
         setIsAddingManual(true);
     };
@@ -688,7 +695,8 @@ const TryoutManagement: React.FC = () => {
             difficulty_level: manualForm.difficulty_level,
             bobot_nilai: manualForm.difficulty_level === 'sulit' ? 3 : (manualForm.difficulty_level === 'mudah' ? 1 : 2),
             id_wacana: manualForm.id_wacana || null,
-            teks_bacaan: manualForm.teks_bacaan || null
+            teks_bacaan: manualForm.teks_bacaan || null,
+            image_url: manualForm.image_url || null
         };
 
         if (!editingQuestion) {
@@ -1201,7 +1209,27 @@ const TryoutManagement: React.FC = () => {
                                                     <div className="flex items-end text-[10px] text-slate-500 pb-2 italic">
                                                         Gunakan ID sama untuk soal berkelompok.
                                                     </div>
+                                                    <div className="flex items-end text-[10px] text-slate-500 pb-2 italic">
+                                                        Gunakan ID sama untuk soal berkelompok.
+                                                    </div>
                                                 </div>
+
+                                                <div>
+                                                    <label className="block text-sm font-bold text-slate-700 mb-1">URL Gambar (Opsional)</label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                                        placeholder="https://example.com/image.jpg"
+                                                        value={manualForm.image_url || ''}
+                                                        onChange={e => setManualForm({ ...manualForm, image_url: e.target.value })}
+                                                    />
+                                                    {manualForm.image_url && (
+                                                        <div className="mt-2 p-2 border rounded bg-slate-50">
+                                                            <img src={manualForm.image_url} alt="Preview" className="max-h-40 mx-auto rounded" />
+                                                        </div>
+                                                    )}
+                                                </div>
+
                                                 <div>
                                                     <label className="block text-sm font-bold text-slate-700 mb-1">Pertanyaan</label>
                                                     <textarea
@@ -1464,6 +1492,11 @@ const TryoutManagement: React.FC = () => {
                                                                                     <LatexRenderer className="text-sm text-slate-700 leading-relaxed max-h-[200px] overflow-y-auto">
                                                                                         {q.teks_bacaan}
                                                                                     </LatexRenderer>
+                                                                                </div>
+                                                                            )}
+                                                                            {q.image_url && (
+                                                                                <div className="mb-3">
+                                                                                    <img src={q.image_url} alt="Soal" className="max-h-60 rounded-lg border border-slate-200" />
                                                                                 </div>
                                                                             )}
                                                                             <LatexRenderer className="text-slate-700 mb-3 whitespace-pre-line text-sm leading-relaxed">{q.pertanyaan}</LatexRenderer>
