@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Home, BarChart3, Database, Settings, LogOut, Menu, X, ExternalLink, Upload, Users, Download, History, Copy, Mail, Settings2, BookOpen } from 'lucide-react';
+import { Home, BarChart3, Database, Settings, LogOut, Menu, X, ExternalLink, Upload, Users, Download, History, Copy, Mail, Settings2, BookOpen, Trophy } from 'lucide-react';
 import { useAdminAuth } from '../../contexts/AdminAuthContext';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -24,6 +24,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { path: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
         { path: '/admin/alumni', label: 'Database Mentor', icon: Database },
         { path: '/admin/tryouts', label: 'Kelola Tryout', icon: BookOpen },
+        { path: '/admin/leaderboard', label: 'Leaderboard', icon: Trophy },
         { path: '/admin/import', label: 'Import CSV', icon: Upload },
         { path: '/admin/export', label: 'Export Data', icon: Download },
         { path: '/admin/duplicates', label: 'Cek Duplikat', icon: Copy },

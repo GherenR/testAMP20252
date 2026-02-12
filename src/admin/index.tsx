@@ -14,6 +14,7 @@ import DuplicatesPage from './duplicates';
 import EmailPage from './email';
 import BulkOperationsPage from './bulk';
 import TryoutManagement from './tryouts';
+import LeaderboardPage from './leaderboard';
 
 export default function AdminPage() {
     return (
@@ -31,6 +32,7 @@ export default function AdminPage() {
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/users" element={<UserManagementPage />} />
                 <Route path="/tryouts" element={<TryoutManagement />} />
+                <Route path="/leaderboard" element={<LeaderboardPage />} />
             </Routes>
         </RequireAdmin>
     );

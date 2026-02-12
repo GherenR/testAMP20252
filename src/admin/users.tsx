@@ -3,9 +3,10 @@ import { UserService, User } from '../services/UserService';
 import axios from 'axios';
 import DashboardLayout from '../components/admin/DashboardLayout';
 import RequireAdmin from '../components/admin/RequireAdmin';
-import { Plus, Edit, Trash2, UserCheck, Shield, ShieldCheck, Search, Filter, X, Users } from 'lucide-react';
+import { Plus, Edit, Trash2, UserCheck, Shield, ShieldCheck, Search, Filter, X, Users, History } from 'lucide-react';
 import { logUserCreate, logUserUpdate, logUserDelete } from '../utils/activityLogger';
 import { useAdminAuth } from '../contexts/AdminAuthContext';
+import UserHistoryModal from '../components/admin/UserHistoryModal';
 
 export default function UserManagementPage() {
     const { adminRole } = useAdminAuth();
@@ -19,6 +20,7 @@ export default function UserManagementPage() {
     const [message, setMessage] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [roleFilter, setRoleFilter] = useState<string>('all');
+    const [historyUser, setHistoryUser] = useState<User | null>(null);
 
     useEffect(() => {
         fetchUsers();
@@ -305,99 +307,106 @@ export default function UserManagementPage() {
 
                     {/* Table */}
                     {loading ? (
-                        <div className="text-center py-12 text-slate-400">Loading...</div>
-                    ) : filteredUsers.length === 0 ? (
-                        <div className="text-center py-12 text-slate-400">
-                            Tidak ada user ditemukan
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto rounded-xl border border-slate-700">
-                            <table className="min-w-full bg-slate-800/50">
-                                <thead>
-                                    <tr className="text-left text-slate-400 border-b border-slate-700">
-                                        <th className="p-4 font-medium">User</th>
-                                        <th className="p-4 font-medium">Kelas</th>
-                                        <th className="p-4 font-medium">Target PTN</th>
-                                        <th className="p-4 font-medium">Role</th>
-                                        <th className="p-4 font-medium">Terdaftar</th>
-                                        <th className="p-4 font-medium">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredUsers.map(user => (
-                                        <tr key={user.id} className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors">
-                                            <td className="p-4">
-                                                <div>
-                                                    <p className="font-medium">{user.full_name || '-'}</p>
-                                                    <p className="text-slate-400 text-sm">{user.email}</p>
-                                                </div>
-                                            </td>
-                                            <td className="p-4">
-                                                <div className="text-sm">
-                                                    <p>{user.kelas || '-'}</p>
-                                                    <p className="text-slate-400">{user.angkatan ? `Angkatan ${user.angkatan}` : ''}</p>
-                                                </div>
-                                            </td>
-                                            <td className="p-4">
-                                                <div className="text-sm">
-                                                    {user.target_university_1 ? (
-                                                        <>
-                                                            <p>{user.target_university_1}</p>
-                                                            <p className="text-slate-400">{user.target_major_1}</p>
-                                                        </>
-                                                    ) : (
-                                                        <span className="text-slate-500">-</span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="p-4">
-                                                <select
-                                                    value={user.role || 'user'}
-                                                    onChange={e => handleRoleChange(user.id, e.target.value)}
-                                                    className="bg-transparent border-none text-sm cursor-pointer focus:outline-none"
-                                                    disabled={user.role === 'super_admin' && adminRole !== 'super_admin'}
-                                                >
-                                                    <option value="user">User</option>
-                                                    <option value="admin">Admin</option>
-                                                    {adminRole === 'super_admin' && (
-                                                        <option value="super_admin">Super Admin</option>
-                                                    )}
-                                                </select>
-                                                <div className="mt-1">
-                                                    {getRoleBadge(user.role || 'user')}
-                                                </div>
-                                            </td>
-                                            <td className="p-4 text-sm text-slate-400">
-                                                {new Date(user.created_at).toLocaleDateString('id-ID', {
-                                                    day: 'numeric',
-                                                    month: 'short',
-                                                    year: 'numeric'
-                                                })}
-                                            </td>
-                                            <td className="p-4">
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => openEdit(user)}
-                                                        className="p-2 text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors"
-                                                        title="Edit"
-                                                    >
-                                                        <Edit size={16} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDelete(user.id)}
-                                                        className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
-                                                        title="Hapus"
-                                                        disabled={user.role === 'super_admin' && adminRole !== 'super_admin'}
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                </div>
-                                            </td>
+                        /* Users Table - Scrollable */
+                        <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-xl">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-slate-900/50 border-b border-slate-700 text-slate-400 text-sm uppercase tracking-wider">
+                                            <th className="p-4 font-bold">User Info</th>
+                                            <th className="p-4 font-bold">Role</th>
+                                            <th className="p-4 font-bold hidden md:table-cell">Terdaftar</th>
+                                            <th className="p-4 font-bold text-right">Aksi</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-700">
+                                        {loading ? (
+                                            <tr>
+                                                <td colSpan={4} className="p-8 text-center text-slate-400">
+                                                    <div className="flex justify-center items-center gap-2">
+                                                        <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+                                                        Loading data...
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ) : filteredUsers.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={4} className="p-8 text-center text-slate-400">
+                                                    Tidak ada user ditemukan
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            filteredUsers.map(user => (
+                                                <tr key={user.id} className="hover:bg-slate-700/30 transition-colors">
+                                                    <td className="p-4">
+                                                        <div className="font-bold text-white">{user.full_name || 'Tanpa Nama'}</div>
+                                                        <div className="text-sm text-slate-400 font-mono">{user.email}</div>
+                                                        <div className="md:hidden text-xs text-slate-500 mt-1">
+                                                            {new Date(user.created_at || '').toLocaleDateString('id-ID')}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <select
+                                                            value={user.role || 'user'}
+                                                            onChange={e => handleRoleChange(user.id, e.target.value)}
+                                                            className="bg-transparent border-none text-sm cursor-pointer focus:outline-none"
+                                                            disabled={user.role === 'super_admin' && adminRole !== 'super_admin'}
+                                                        >
+                                                            <option value="user">User</option>
+                                                            <option value="admin">Admin</option>
+                                                            {adminRole === 'super_admin' && (
+                                                                <option value="super_admin">Super Admin</option>
+                                                            )}
+                                                        </select>
+                                                        <div className="mt-1">
+                                                            {getRoleBadge(user.role || 'user')}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4 text-sm text-slate-300 hidden md:table-cell">
+                                                        {new Date(user.created_at || '').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        <div className="flex justify-end gap-2">
+                                                            <button
+                                                                onClick={() => setHistoryUser(user)}
+                                                                className="p-2 text-indigo-400 hover:bg-indigo-500/20 rounded-lg transition-colors"
+                                                                title="History Tryout"
+                                                            >
+                                                                <History size={16} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => openEdit(user)}
+                                                                className="p-2 text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors"
+                                                                title="Edit"
+                                                            >
+                                                                <Edit size={16} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDelete(user.id)}
+                                                                className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+                                                                title="Hapus"
+                                                                disabled={user.role === 'super_admin' && adminRole !== 'super_admin'}
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
+                    ) : null}
+
+                    {/* History Modal */}
+                    {historyUser && (
+                        <UserHistoryModal
+                            userId={historyUser.id}
+                            currentUserName={historyUser.full_name || historyUser.email}
+                            onClose={() => setHistoryUser(null)}
+                        />
                     )}
 
                     {/* Edit Modal */}

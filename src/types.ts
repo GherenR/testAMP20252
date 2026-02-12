@@ -60,6 +60,8 @@ export interface SubtesResult {
   skorMentah: number;
   skorMaksimal: number;
   skorNormalized: number;
+  started_at?: string;
+  finished_at?: string;
 }
 
 export interface TryoutAttempt {

@@ -1,8 +1,10 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Calendar, Clock, Eye, Save, X, Sparkles, Loader2, FileText, ChevronDown, ChevronUp, Lock, PlayCircle, Upload, BookOpen } from 'lucide-react';
+import { Plus, Edit2, Trash2, Calendar, Clock, Eye, Save, X, Sparkles, Loader2, FileText, ChevronDown, ChevronUp, Lock, PlayCircle, Upload, BookOpen, Users } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import DashboardLayout from '../components/admin/DashboardLayout';
 import LatexRenderer from '../components/LatexRenderer';
+import SimulationExamView from '../components/tryout/SimExamView';
+import UserHistoryModal from '../components/admin/UserHistoryModal';
 
 interface Tryout {
     id: string;
@@ -96,6 +98,7 @@ const TryoutManagement: React.FC = () => {
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [showModal, setShowModal] = useState(false);
     const [editingTryout, setEditingTryout] = useState<Tryout | null>(null);
+    const [historyTryout, setHistoryTryout] = useState<Tryout | null>(null);
     const [form, setForm] = useState({
         nama: '',
         deskripsi: '',
@@ -825,7 +828,16 @@ const TryoutManagement: React.FC = () => {
                                         >
                                             <Sparkles size={18} />
                                         </button>
-                                        <button onClick={() => handleEdit(t)} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
+                                        <button
+                                            onClick={() => setHistoryTryout(t)}
+                                            className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg flex items-center gap-2 transition-colors border border-emerald-200 hover:border-emerald-300"
+                                            title="Lihat Peserta"
+                                        >
+                                            <Users size={18} />
+                                            <span className="text-sm font-bold">Peserta</span>
+                                        </button>
+                                        <button
+                                            onClick={() => handleEdit(t)} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
                                             <Edit2 size={18} />
                                         </button>
                                         <button onClick={() => handleDelete(t.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
@@ -973,7 +985,7 @@ const TryoutManagement: React.FC = () => {
                                             Generate Soal AI
                                         </h2>
                                         <p className="text-slate-500 text-sm mt-1">
-                                            {selectedTryoutForGen.nama} â€¢ {soalCounts[selectedTryoutForGen.id] || 0} soal tersimpan
+                                            {selectedTryoutForGen.nama} • {soalCounts[selectedTryoutForGen.id] || 0} soal tersimpan
                                         </p>
                                     </div>
                                     <div className="flex gap-2">
@@ -1000,7 +1012,7 @@ const TryoutManagement: React.FC = () => {
 
                             <div className="p-6 space-y-4">
                                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
-                                    <p className="font-semibold mb-1">âš¡ Cara Generate Soal:</p>
+                                    <p className="font-semibold mb-1">⚡ Cara Generate Soal:</p>
                                     <ol className="list-decimal list-inside space-y-1 text-amber-700">
                                         <li>Klik tombol "Generate" di samping subtes yang ingin diisi</li>
                                         <li>AI akan membuat soal mirip gaya Pahamify</li>
@@ -1008,534 +1020,535 @@ const TryoutManagement: React.FC = () => {
                                         <li>Klik "Simpan Semua Soal" untuk menyimpan ke database</li>
                                     </ol>
                                 </div>
+                            </div>
+                        </div>
+                        <div className="space-y-3">
+                            {SUBTES_LIST.map(subtes => {
+                                const generated = generatedQuestions[subtes.kode] || [];
+                                const isExpanded = expandedSubtes === subtes.kode;
 
-                                {/* Subtes List */}
-                                <div className="space-y-3">
-                                    {SUBTES_LIST.map(subtes => {
-                                        const generated = generatedQuestions[subtes.kode] || [];
-                                        const isExpanded = expandedSubtes === subtes.kode;
-
-                                        return (
-                                            <div key={subtes.kode} className="border border-slate-200 rounded-xl overflow-hidden">
-                                                <div className="flex items-center justify-between p-4 bg-slate-50">
-                                                    <div className="flex items-center gap-3">
-                                                        <button
-                                                            onClick={() => setExpandedSubtes(isExpanded ? null : subtes.kode)}
-                                                            className="p-1 hover:bg-slate-200 rounded"
-                                                        >
-                                                            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                                                        </button>
-                                                        <div>
-                                                            <p className="font-semibold text-slate-800">{subtes.nama}</p>
-                                                            <p className="text-xs text-slate-500">
-                                                                Target: {subtes.jumlah} soal â€¢ Generated: {generated.length}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <button
-                                                        onClick={() => generateQuestions(subtes.kode, 5)}
-                                                        disabled={generatingSubtes === subtes.kode}
-                                                        className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50 disabled:cursor-wait text-sm"
-                                                    >
-                                                        {generatingSubtes === subtes.kode ? (
-                                                            <>
-                                                                <Loader2 className="animate-spin" size={16} />
-                                                                Generating...
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Sparkles size={16} />
-                                                                Generate 5 Soal
-                                                            </>
-                                                        )}
-                                                    </button>
+                                return (
+                                    <div key={subtes.kode} className="border border-slate-200 rounded-xl overflow-hidden">
+                                        <div className="flex items-center justify-between p-4 bg-slate-50">
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    onClick={() => setExpandedSubtes(isExpanded ? null : subtes.kode)}
+                                                    className="p-1 hover:bg-slate-200 rounded"
+                                                >
+                                                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                                </button>
+                                                <div>
+                                                    <p className="font-semibold text-slate-800">{subtes.nama}</p>
+                                                    <p className="text-xs text-slate-500">
+                                                        Target: {subtes.jumlah} soal • Generated: {generated.length}
+                                                    </p>
                                                 </div>
-
-                                                {/* Generated Questions Preview */}
-                                                {isExpanded && generated.length > 0 && (
-                                                    <div className="p-4 space-y-3 border-t border-slate-200 bg-white max-h-96 overflow-y-auto">
-                                                        {generated.map((q, idx) => (
-                                                            <div key={idx} className="p-3 bg-slate-50 rounded-lg text-sm">
-                                                                <LatexRenderer className="font-medium text-slate-800 mb-2 whitespace-pre-line">
-                                                                    {`${idx + 1}. ${q.pertanyaan}`}
-                                                                </LatexRenderer>
-                                                                <div className="space-y-1 ml-4">
-                                                                    {q.opsi.map((opt, oi) => (
-                                                                        <div key={oi} className="flex items-center gap-1">
-                                                                            <LatexRenderer
-                                                                                className={`${oi === q.jawaban_benar ? 'text-green-600 font-semibold' : 'text-slate-600'}`}
-                                                                            >
-                                                                                {`${String.fromCharCode(65 + oi)}. ${opt}`}
-                                                                            </LatexRenderer>
-                                                                            {oi === q.jawaban_benar && <span className="text-green-600 font-semibold"> âœ“</span>}
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                                <div className="text-xs text-slate-500 mt-2 italic flex gap-1">
-                                                                    <span>Pembahasan:</span>
-                                                                    <LatexRenderer className="whitespace-pre-line">{q.pembahasan}</LatexRenderer>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-
-                                                {isExpanded && generated.length === 0 && (
-                                                    <div className="p-4 text-center text-slate-400 text-sm border-t border-slate-200">
-                                                        Belum ada soal yang di-generate untuk subtes ini
-                                                    </div>
-                                                )}
                                             </div>
-                                        );
-                                    })}
-                                </div>
-
-                                {/* Summary & Save */}
-                                {Object.keys(generatedQuestions).length > 0 && (
-                                    <div className="sticky bottom-0 bg-white pt-4 border-t border-slate-200">
-                                        <div className="flex items-center justify-between">
-                                            <p className="text-slate-600">
-                                                Total: <span className="font-bold text-violet-600">
-                                                    {Object.values(generatedQuestions).flat().length} soal
-                                                </span> siap disimpan
-                                            </p>
                                             <button
-                                                onClick={saveGeneratedQuestions}
-                                                disabled={generating}
-                                                className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 disabled:opacity-50 font-semibold"
+                                                onClick={() => generateQuestions(subtes.kode, 5)}
+                                                disabled={generatingSubtes === subtes.kode}
+                                                className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50 disabled:cursor-wait text-sm"
                                             >
-                                                {generating ? (
+                                                {generatingSubtes === subtes.kode ? (
                                                     <>
-                                                        <Loader2 className="animate-spin" size={18} />
-                                                        Menyimpan...
+                                                        <Loader2 className="animate-spin" size={16} />
+                                                        Generating...
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <Save size={18} />
-                                                        Simpan Semua Soal
+                                                        <Sparkles size={16} />
+                                                        Generate 5 Soal
                                                     </>
                                                 )}
                                             </button>
                                         </div>
+
+                                        {/* Generated Questions Preview */}
+                                        {isExpanded && generated.length > 0 && (
+                                            <div className="p-4 space-y-3 border-t border-slate-200 bg-white max-h-96 overflow-y-auto">
+                                                {generated.map((q, idx) => (
+                                                    <div key={idx} className="p-3 bg-slate-50 rounded-lg text-sm">
+                                                        <LatexRenderer className="font-medium text-slate-800 mb-2 whitespace-pre-line">
+                                                            {`${idx + 1}. ${q.pertanyaan}`}
+                                                        </LatexRenderer>
+                                                        <div className="space-y-1 ml-4">
+                                                            {q.opsi.map((opt, oi) => (
+                                                                <div key={oi} className="flex items-center gap-1">
+                                                                    <LatexRenderer
+                                                                        className={`${oi === q.jawaban_benar ? 'text-green-600 font-semibold' : 'text-slate-600'}`}
+                                                                    >
+                                                                        {`${String.fromCharCode(65 + oi)}. ${opt}`}
+                                                                    </LatexRenderer>
+                                                                    {oi === q.jawaban_benar && <span className="text-green-600 font-semibold"> ✓</span>}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                        <div className="text-xs text-slate-500 mt-2 italic flex gap-1">
+                                                            <span>Pembahasan:</span>
+                                                            <LatexRenderer className="whitespace-pre-line">{q.pembahasan}</LatexRenderer>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {isExpanded && generated.length === 0 && (
+                                            <div className="p-4 text-center text-slate-400 text-sm border-t border-slate-200">
+                                                Belum ada soal yang di-generate untuk subtes ini
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
+                                );
+                            })}
                         </div>
+
+                        {/* Summary & Save */}
+                        {Object.keys(generatedQuestions).length > 0 && (
+                            <div className="sticky bottom-0 bg-white pt-4 border-t border-slate-200">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-slate-600">
+                                        Total: <span className="font-bold text-violet-600">
+                                            {Object.values(generatedQuestions).flat().length} soal
+                                        </span> siap disimpan
+                                    </p>
+                                    <button
+                                        onClick={saveGeneratedQuestions}
+                                        disabled={generating}
+                                        className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 disabled:opacity-50 font-semibold"
+                                    >
+                                        {generating ? (
+                                            <>
+                                                <Loader2 className="animate-spin" size={18} />
+                                                Menyimpan...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Save size={18} />
+                                                Simpan Semua Soal
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
+
+                {/* History / Participants Modal */}
+                {
+                    historyTryout && (
+                        <UserHistoryModal
+                            tryoutId={historyTryout.id}
+                            currentTryoutName={historyTryout.nama}
+                            onClose={() => setHistoryTryout(null)}
+                        />
+                    )
+                }
+
                 {/* Manage Questions Modal */}
-                {showManageModal && selectedTryoutForManage && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-                        <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[95vh] overflow-y-auto flex flex-col relative">
-                            {/* Header */}
-                            <div className="p-6 border-b border-slate-200 flex justify-between items-center sticky top-0 bg-white z-10">
-                                <div>
-                                    <h2 className="text-xl font-bold text-slate-800">Kelola & Review Soal: {selectedTryoutForManage.nama}</h2>
-                                    <p className="text-slate-500 text-sm">{soalCounts[selectedTryoutForManage.id] || 0} soal tersimpan</p>
+                {
+                    showManageModal && selectedTryoutForManage && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+                            <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[95vh] overflow-y-auto flex flex-col relative">
+                                {/* Header */}
+                                <div className="p-6 border-b border-slate-200 flex justify-between items-center sticky top-0 bg-white z-10">
+                                    <div>
+                                        <h2 className="text-xl font-bold text-slate-800">Kelola & Review Soal: {selectedTryoutForManage.nama}</h2>
+                                        <p className="text-slate-500 text-sm">{soalCounts[selectedTryoutForManage.id] || 0} soal tersimpan</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {selectedQuestionIds.length > 0 && (
+                                            <button
+                                                onClick={deleteBulkQuestions}
+                                                disabled={submitting}
+                                                className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg flex items-center gap-2 font-bold text-sm transition-all border border-red-200"
+                                            >
+                                                <Trash2 size={16} /> Hapus Terpilih ({selectedQuestionIds.length})
+                                            </button>
+                                        )}
+                                        <button onClick={() => setShowManageModal(false)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600"><X size={20} /></button>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    {selectedQuestionIds.length > 0 && (
-                                        <button
-                                            onClick={deleteBulkQuestions}
-                                            disabled={submitting}
-                                            className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg flex items-center gap-2 font-bold text-sm transition-all border border-red-200"
-                                        >
-                                            <Trash2 size={16} /> Hapus Terpilih ({selectedQuestionIds.length})
-                                        </button>
-                                    )}
-                                    <button onClick={() => setShowManageModal(false)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600"><X size={20} /></button>
-                                </div>
-                            </div>
 
-                            <div className="p-6 overflow-y-auto flex-1">
-                                {isAddingManual ? (
-                                    /* Manual Form */
-                                    <div className="space-y-4">
-                                        <button onClick={() => { setIsAddingManual(false); setEditingQuestion(null); }} className="text-slate-500 hover:text-slate-800 flex items-center gap-2 mb-4 font-bold text-sm"><ChevronDown className="rotate-90" size={16} /> Kembali ke Daftar</button>
+                                <div className="p-6 overflow-y-auto flex-1">
+                                    {isAddingManual ? (
+                                        /* Manual Form */
+                                        <div className="space-y-4">
+                                            <button onClick={() => { setIsAddingManual(false); setEditingQuestion(null); }} className="text-slate-500 hover:text-slate-800 flex items-center gap-2 mb-4 font-bold text-sm"><ChevronDown className="rotate-90" size={16} /> Kembali ke Daftar</button>
 
-                                        <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
-                                            <h3 className="font-bold text-lg mb-4 text-slate-800">
-                                                {editingQuestion ? 'Edit Soal' : 'Tambah Soal Manual'}: {SUBTES_LIST.find(s => s.kode === (editingQuestion?.subtes || manualForm.subtes))?.nama}
-                                            </h3>
+                                            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                                                <h3 className="font-bold text-lg mb-4 text-slate-800">
+                                                    {editingQuestion ? 'Edit Soal' : 'Tambah Soal Manual'}: {SUBTES_LIST.find(s => s.kode === (editingQuestion?.subtes || manualForm.subtes))?.nama}
+                                                </h3>
 
-                                            <div className="space-y-4">
-                                                <div>
-                                                    <label className="block text-sm font-bold text-slate-700 mb-1">Tipe Soal</label>
-                                                    <div className="flex gap-3 mb-4">
-                                                        {[
-                                                            { id: 'pilihan_ganda', label: 'Pilihan Ganda' },
-                                                            { id: 'pg_kompleks', label: 'PG Kompleks' },
-                                                            { id: 'isian', label: 'Isian Singkat' },
-                                                            { id: 'benar_salah', label: 'Benar / Salah' }
-                                                        ].map(t => (
-                                                            <button
-                                                                key={t.id}
-                                                                type="button"
-                                                                onClick={() => setManualForm({
-                                                                    ...manualForm,
-                                                                    tipe_soal: t.id as any,
-                                                                    opsi: t.id === "benar_salah" ? ["", "", ""] : (t.id === "isian" ? [] : ["", "", "", "", ""]),
-                                                                    jawaban_kompleks: t.id === "isian" ? "" : (t.id === "pg_kompleks" || t.id === "benar_salah" ? [] : null)
-                                                                })}
-                                                                className={`px-3 py-1.5 rounded-lg border font-bold text-[10px] uppercase tracking-wider transition-all ${manualForm.tipe_soal === t.id ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                                                            >
-                                                                {t.label}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-
-                                                <div>
-                                                    <label className="block text-sm font-bold text-slate-700 mb-1">Teks Bacaan (Wacana) - Opsional</label>
-                                                    <textarea
-                                                        className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[120px] text-sm"
-                                                        placeholder="Jika soal ini butuh teks bacaan, tulis di sini..."
-                                                        value={manualForm.teks_bacaan || ''}
-                                                        onChange={e => setManualForm({ ...manualForm, teks_bacaan: e.target.value })}
-                                                    />
-                                                </div>
-
-                                                <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-4">
                                                     <div>
-                                                        <label className="block text-sm font-bold text-slate-700 mb-1">ID Wacana (Opsional)</label>
-                                                        <input
-                                                            type="text"
-                                                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                                            placeholder="Misal: wacana_01"
-                                                            value={manualForm.id_wacana || ''}
-                                                            onChange={e => setManualForm({ ...manualForm, id_wacana: e.target.value })}
+                                                        <label className="block text-sm font-bold text-slate-700 mb-1">Tipe Soal</label>
+                                                        <div className="flex gap-3 mb-4">
+                                                            {[
+                                                                { id: 'pilihan_ganda', label: 'Pilihan Ganda' },
+                                                                { id: 'pg_kompleks', label: 'PG Kompleks' },
+                                                                { id: 'isian', label: 'Isian Singkat' },
+                                                                { id: 'benar_salah', label: 'Benar / Salah' }
+                                                            ].map(t => (
+                                                                <button
+                                                                    key={t.id}
+                                                                    type="button"
+                                                                    onClick={() => setManualForm({
+                                                                        ...manualForm,
+                                                                        tipe_soal: t.id as any,
+                                                                        opsi: t.id === "benar_salah" ? ["", "", ""] : (t.id === "isian" ? [] : ["", "", "", "", ""]),
+                                                                        jawaban_kompleks: t.id === "isian" ? "" : (t.id === "pg_kompleks" || t.id === "benar_salah" ? [] : null)
+                                                                    })}
+                                                                    className={`px-3 py-1.5 rounded-lg border font-bold text-[10px] uppercase tracking-wider transition-all ${manualForm.tipe_soal === t.id ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                                                >
+                                                                    {t.label}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-sm font-bold text-slate-700 mb-1">Teks Bacaan (Wacana) - Opsional</label>
+                                                        <textarea
+                                                            className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[120px] text-sm"
+                                                            placeholder="Jika soal ini butuh teks bacaan, tulis di sini..."
+                                                            value={manualForm.teks_bacaan || ''}
+                                                            onChange={e => setManualForm({ ...manualForm, teks_bacaan: e.target.value })}
                                                         />
                                                     </div>
-                                                    <div className="flex items-end text-[10px] text-slate-500 pb-2 italic">
-                                                        Gunakan ID sama untuk soal berkelompok.
-                                                    </div>
-                                                    <div className="flex items-end text-[10px] text-slate-500 pb-2 italic">
-                                                        Gunakan ID sama untuk soal berkelompok.
-                                                    </div>
-                                                </div>
 
-                                                <div>
-                                                    <label className="block text-sm font-bold text-slate-700 mb-1">URL Gambar (Opsional)</label>
-                                                    <input
-                                                        type="text"
-                                                        className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                                        placeholder="https://example.com/image.jpg"
-                                                        value={manualForm.image_url || ''}
-                                                        onChange={e => setManualForm({ ...manualForm, image_url: e.target.value })}
-                                                    />
-                                                    {manualForm.image_url && (
-                                                        <div className="mt-2 p-2 border rounded bg-slate-50">
-                                                            <img src={manualForm.image_url} alt="Preview" className="max-h-40 mx-auto rounded" />
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                <div>
-                                                    <label className="block text-sm font-bold text-slate-700 mb-1">Pertanyaan</label>
-                                                    <textarea
-                                                        className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[100px]"
-                                                        placeholder="Tulis pertanyaan di sini..."
-                                                        value={manualForm.pertanyaan}
-                                                        onChange={e => setManualForm({ ...manualForm, pertanyaan: e.target.value })}
-                                                    />
-                                                </div>
-
-                                                {/* Conditional Answer Section */}
-                                                <div className="grid gap-4">
-                                                    {manualForm.tipe_soal === 'pilihan_ganda' && (
-                                                        <>
-                                                            <label className="block text-sm font-bold text-slate-700">Opsi Jawaban</label>
-                                                            {manualForm.opsi?.map((opt, i) => (
-                                                                <div key={i} className="flex gap-2 items-center">
-                                                                    <span className="font-mono font-bold text-slate-500 w-6 flex-shrink-0">{String.fromCharCode(65 + i)}.</span>
-                                                                    <input
-                                                                        type="text"
-                                                                        className="flex-1 p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                                                        placeholder={`Opsi ${String.fromCharCode(65 + i)}`}
-                                                                        value={opt}
-                                                                        onChange={e => {
-                                                                            const newOpsi = [...(manualForm.opsi || [])];
-                                                                            newOpsi[i] = e.target.value;
-                                                                            setManualForm({ ...manualForm, opsi: newOpsi });
-                                                                        }}
-                                                                    />
-                                                                    <input
-                                                                        type="radio"
-                                                                        name="correct_answer"
-                                                                        checked={manualForm.jawaban_benar === i}
-                                                                        onChange={() => setManualForm({ ...manualForm, jawaban_benar: i })}
-                                                                        className="w-5 h-5 text-green-600"
-                                                                    />
-                                                                </div>
-                                                            ))}
-                                                        </>
-                                                    )}
-
-                                                    {manualForm.tipe_soal === 'pg_kompleks' && (
-                                                        <>
-                                                            <label className="block text-sm font-bold text-slate-700">Opsi Jawaban (Bisa pilih {'>'} 1)</label>
-                                                            {manualForm.opsi?.map((opt, i) => (
-                                                                <div key={i} className="flex gap-2 items-center">
-                                                                    <span className="font-mono font-bold text-slate-500 w-6 flex-shrink-0">{String.fromCharCode(65 + i)}.</span>
-                                                                    <input
-                                                                        type="text"
-                                                                        className="flex-1 p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                                                        placeholder={`Opsi ${String.fromCharCode(65 + i)}`}
-                                                                        value={opt}
-                                                                        onChange={e => {
-                                                                            const newOpsi = [...(manualForm.opsi || [])];
-                                                                            newOpsi[i] = e.target.value;
-                                                                            setManualForm({ ...manualForm, opsi: newOpsi });
-                                                                        }}
-                                                                    />
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={Array.isArray(manualForm.jawaban_kompleks) && manualForm.jawaban_kompleks.includes(i)}
-                                                                        onChange={e => {
-                                                                            let current = Array.isArray(manualForm.jawaban_kompleks) ? [...manualForm.jawaban_kompleks] : [];
-                                                                            if (e.target.checked) current.push(i);
-                                                                            else current = current.filter(idx => idx !== i);
-                                                                            setManualForm({ ...manualForm, jawaban_kompleks: current });
-                                                                        }}
-                                                                        className="w-5 h-5 text-blue-600 rounded"
-                                                                    />
-                                                                </div>
-                                                            ))}
-                                                        </>
-                                                    )}
-
-                                                    {manualForm.tipe_soal === 'isian' && (
-                                                        <div className="space-y-2">
-                                                            <label className="block text-sm font-bold text-slate-700 mb-1">Jawaban Benar (Text/Angka)</label>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div>
+                                                            <label className="block text-sm font-bold text-slate-700 mb-1">ID Wacana (Opsional)</label>
                                                             <input
                                                                 type="text"
-                                                                className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-bold text-blue-600"
-                                                                placeholder="Ketik jawaban yang benar di sini..."
-                                                                value={typeof manualForm.jawaban_kompleks === 'string' ? manualForm.jawaban_kompleks : ''}
-                                                                onChange={e => setManualForm({ ...manualForm, jawaban_kompleks: e.target.value })}
+                                                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                                                placeholder="Misal: wacana_01"
+                                                                value={manualForm.id_wacana || ''}
+                                                                onChange={e => setManualForm({ ...manualForm, id_wacana: e.target.value })}
                                                             />
-                                                            <p className="text-[10px] text-slate-500 italic">Sistem akan melakukan case-insensitive check.</p>
                                                         </div>
-                                                    )}
+                                                        <div className="flex items-end text-[10px] text-slate-500 pb-2 italic">
+                                                            Gunakan ID sama untuk soal berkelompok.
+                                                        </div>
+                                                        <div className="flex items-end text-[10px] text-slate-500 pb-2 italic">
+                                                            Gunakan ID sama untuk soal berkelompok.
+                                                        </div>
+                                                    </div>
 
-                                                    {manualForm.tipe_soal === 'benar_salah' && (
-                                                        <div className="grid gap-3">
-                                                            <label className="block text-sm font-bold text-slate-700">Pernyataan & Kunci (Benar/Salah)</label>
-                                                            {(manualForm.opsi || ['', '', '']).map((stmt, i) => (
-                                                                <div key={i} className="flex gap-4 items-center bg-slate-50 p-3 rounded-lg border border-slate-200 shadow-sm">
-                                                                    <span className="text-xs font-bold text-slate-400 w-4">{i + 1}.</span>
-                                                                    <input
-                                                                        type="text"
-                                                                        className="flex-1 p-2 border border-slate-300 rounded-lg text-sm"
-                                                                        placeholder={`Pernyataan ${i + 1}`}
-                                                                        value={stmt}
-                                                                        onChange={e => {
-                                                                            const newOpsi = [...(manualForm.opsi || [])];
-                                                                            newOpsi[i] = e.target.value;
-                                                                            setManualForm({ ...manualForm, opsi: newOpsi });
-                                                                        }}
-                                                                    />
-                                                                    <div className="flex gap-2">
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => {
-                                                                                const jk = Array.isArray(manualForm.jawaban_kompleks) ? [...manualForm.jawaban_kompleks] : [];
-                                                                                jk[i] = true;
-                                                                                setManualForm({ ...manualForm, jawaban_kompleks: jk });
+                                                    <div>
+                                                        <label className="block text-sm font-bold text-slate-700 mb-1">URL Gambar (Opsional)</label>
+                                                        <input
+                                                            type="text"
+                                                            className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                                            placeholder="https://example.com/image.jpg"
+                                                            value={manualForm.image_url || ''}
+                                                            onChange={e => setManualForm({ ...manualForm, image_url: e.target.value })}
+                                                        />
+                                                        {manualForm.image_url && (
+                                                            <div className="mt-2 p-2 border rounded bg-slate-50">
+                                                                <img src={manualForm.image_url} alt="Preview" className="max-h-40 mx-auto rounded" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-sm font-bold text-slate-700 mb-1">Pertanyaan</label>
+                                                        <textarea
+                                                            className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[100px]"
+                                                            placeholder="Tulis pertanyaan di sini..."
+                                                            value={manualForm.pertanyaan}
+                                                            onChange={e => setManualForm({ ...manualForm, pertanyaan: e.target.value })}
+                                                        />
+                                                    </div>
+
+                                                    {/* Conditional Answer Section */}
+                                                    <div className="grid gap-4">
+                                                        {manualForm.tipe_soal === 'pilihan_ganda' && (
+                                                            <>
+                                                                <label className="block text-sm font-bold text-slate-700">Opsi Jawaban</label>
+                                                                {manualForm.opsi?.map((opt, i) => (
+                                                                    <div key={i} className="flex gap-2 items-center">
+                                                                        <span className="font-mono font-bold text-slate-500 w-6 flex-shrink-0">{String.fromCharCode(65 + i)}.</span>
+                                                                        <input
+                                                                            type="text"
+                                                                            className="flex-1 p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                                                            placeholder={`Opsi ${String.fromCharCode(65 + i)}`}
+                                                                            value={opt}
+                                                                            onChange={e => {
+                                                                                const newOpsi = [...(manualForm.opsi || [])];
+                                                                                newOpsi[i] = e.target.value;
+                                                                                setManualForm({ ...manualForm, opsi: newOpsi });
                                                                             }}
-                                                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${Array.isArray(manualForm.jawaban_kompleks) && manualForm.jawaban_kompleks[i] === true ? 'bg-green-600 text-white shadow-md' : 'bg-white text-slate-400 border border-slate-200'}`}
-                                                                        >Benar</button>
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => {
-                                                                                const jk = Array.isArray(manualForm.jawaban_kompleks) ? [...manualForm.jawaban_kompleks] : [];
-                                                                                jk[i] = false;
-                                                                                setManualForm({ ...manualForm, jawaban_kompleks: jk });
-                                                                            }}
-                                                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${Array.isArray(manualForm.jawaban_kompleks) && manualForm.jawaban_kompleks[i] === false ? 'bg-red-600 text-white shadow-md' : 'bg-white text-slate-400 border border-slate-200'}`}
-                                                                        >Salah</button>
+                                                                        />
+                                                                        <input
+                                                                            type="radio"
+                                                                            name="correct_answer"
+                                                                            checked={manualForm.jawaban_benar === i}
+                                                                            onChange={() => setManualForm({ ...manualForm, jawaban_benar: i })}
+                                                                            className="w-5 h-5 text-green-600"
+                                                                        />
                                                                     </div>
-                                                                </div>
-                                                            ))}
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setManualForm({ ...manualForm, opsi: [...(manualForm.opsi || []), ''] })}
-                                                                className="text-xs text-blue-600 font-bold hover:underline w-fit"
-                                                            >+ Tambah Pernyataan</button>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                                ))}
+                                                            </>
+                                                        )}
 
-                                                <div>
-                                                    <label className="block text-sm font-bold text-slate-700 mb-1">Pembahasan</label>
-                                                    <textarea
-                                                        className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[80px]"
-                                                        placeholder="Tulis pembahasan jawaban di sini..."
-                                                        value={manualForm.pembahasan}
-                                                        onChange={e => setManualForm({ ...manualForm, pembahasan: e.target.value })}
-                                                    />
-                                                </div>
+                                                        {manualForm.tipe_soal === 'pg_kompleks' && (
+                                                            <>
+                                                                <label className="block text-sm font-bold text-slate-700">Opsi Jawaban (Bisa pilih {'>'} 1)</label>
+                                                                {manualForm.opsi?.map((opt, i) => (
+                                                                    <div key={i} className="flex gap-2 items-center">
+                                                                        <span className="font-mono font-bold text-slate-500 w-6 flex-shrink-0">{String.fromCharCode(65 + i)}.</span>
+                                                                        <input
+                                                                            type="text"
+                                                                            className="flex-1 p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                                                            placeholder={`Opsi ${String.fromCharCode(65 + i)}`}
+                                                                            value={opt}
+                                                                            onChange={e => {
+                                                                                const newOpsi = [...(manualForm.opsi || [])];
+                                                                                newOpsi[i] = e.target.value;
+                                                                                setManualForm({ ...manualForm, opsi: newOpsi });
+                                                                            }}
+                                                                        />
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={Array.isArray(manualForm.jawaban_kompleks) && manualForm.jawaban_kompleks.includes(i)}
+                                                                            onChange={e => {
+                                                                                let current = Array.isArray(manualForm.jawaban_kompleks) ? [...manualForm.jawaban_kompleks] : [];
+                                                                                if (e.target.checked) current.push(i);
+                                                                                else current = current.filter(idx => idx !== i);
+                                                                                setManualForm({ ...manualForm, jawaban_kompleks: current });
+                                                                            }}
+                                                                            className="w-5 h-5 text-blue-600 rounded"
+                                                                        />
+                                                                    </div>
+                                                                ))}
+                                                            </>
+                                                        )}
 
-                                                <div>
-                                                    <label className="block text-sm font-bold text-slate-700 mb-1">Tingkat Kesulitan</label>
-                                                    <select
-                                                        className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                        value={manualForm.difficulty_level}
-                                                        onChange={e => setManualForm({ ...manualForm, difficulty_level: e.target.value as any })}
-                                                    >
-                                                        <option value="mudah">Mudah</option>
-                                                        <option value="sedang">Sedang</option>
-                                                        <option value="sulit">Sulit</option>
-                                                    </select>
-                                                </div>
+                                                        {manualForm.tipe_soal === 'isian' && (
+                                                            <div className="space-y-2">
+                                                                <label className="block text-sm font-bold text-slate-700 mb-1">Jawaban Benar (Text/Angka)</label>
+                                                                <input
+                                                                    type="text"
+                                                                    className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-bold text-blue-600"
+                                                                    placeholder="Ketik jawaban yang benar di sini..."
+                                                                    value={typeof manualForm.jawaban_kompleks === 'string' ? manualForm.jawaban_kompleks : ''}
+                                                                    onChange={e => setManualForm({ ...manualForm, jawaban_kompleks: e.target.value })}
+                                                                />
+                                                                <p className="text-[10px] text-slate-500 italic">Sistem akan melakukan case-insensitive check.</p>
+                                                            </div>
+                                                        )}
 
-                                                <div className="flex justify-end gap-3 mt-6">
-                                                    <button
-                                                        onClick={() => { setIsAddingManual(false); setEditingQuestion(null); }}
-                                                        className="px-6 py-2 rounded-lg border border-slate-300 text-slate-600 font-bold hover:bg-slate-50"
-                                                    >Batal</button>
-                                                    <button
-                                                        onClick={saveManualQuestion}
-                                                        className="px-6 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700"
-                                                    >Simpan Soal</button>
+                                                        {manualForm.tipe_soal === 'benar_salah' && (
+                                                            <div className="grid gap-3">
+                                                                <label className="block text-sm font-bold text-slate-700">Pernyataan & Kunci (Benar/Salah)</label>
+                                                                {(manualForm.opsi || ['', '', '']).map((stmt, i) => (
+                                                                    <div key={i} className="flex gap-4 items-center bg-slate-50 p-3 rounded-lg border border-slate-200 shadow-sm">
+                                                                        <span className="text-xs font-bold text-slate-400 w-4">{i + 1}.</span>
+                                                                        <input
+                                                                            type="text"
+                                                                            className="flex-1 p-2 border border-slate-300 rounded-lg text-sm"
+                                                                            placeholder={`Pernyataan ${i + 1}`}
+                                                                            value={stmt}
+                                                                            onChange={e => {
+                                                                                const newOpsi = [...(manualForm.opsi || [])];
+                                                                                newOpsi[i] = e.target.value;
+                                                                                setManualForm({ ...manualForm, opsi: newOpsi });
+                                                                            }}
+                                                                        />
+                                                                        <div className="flex gap-2">
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    const jk = Array.isArray(manualForm.jawaban_kompleks) ? [...manualForm.jawaban_kompleks] : [];
+                                                                                    jk[i] = true;
+                                                                                    setManualForm({ ...manualForm, jawaban_kompleks: jk });
+                                                                                }}
+                                                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${Array.isArray(manualForm.jawaban_kompleks) && manualForm.jawaban_kompleks[i] === true ? 'bg-green-600 text-white shadow-md' : 'bg-white text-slate-400 border border-slate-200'}`}
+                                                                            >Benar</button>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    const jk = Array.isArray(manualForm.jawaban_kompleks) ? [...manualForm.jawaban_kompleks] : [];
+                                                                                    jk[i] = false;
+                                                                                    setManualForm({ ...manualForm, jawaban_kompleks: jk });
+                                                                                }}
+                                                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${Array.isArray(manualForm.jawaban_kompleks) && manualForm.jawaban_kompleks[i] === false ? 'bg-red-600 text-white shadow-md' : 'bg-white text-slate-400 border border-slate-200'}`}
+                                                                            >Salah</button>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setManualForm({ ...manualForm, opsi: [...(manualForm.opsi || []), ''] })}
+                                                                    className="text-xs text-blue-600 font-bold hover:underline w-fit"
+                                                                >+ Tambah Pernyataan</button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-sm font-bold text-slate-700 mb-1">Pembahasan</label>
+                                                        <textarea
+                                                            className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[80px]"
+                                                            placeholder="Tulis pembahasan jawaban di sini..."
+                                                            value={manualForm.pembahasan}
+                                                            onChange={e => setManualForm({ ...manualForm, pembahasan: e.target.value })}
+                                                        />
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-sm font-bold text-slate-700 mb-1">Tingkat Kesulitan</label>
+                                                        <select
+                                                            className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                            value={manualForm.difficulty_level}
+                                                            onChange={e => setManualForm({ ...manualForm, difficulty_level: e.target.value as any })}
+                                                        >
+                                                            <option value="mudah">Mudah</option>
+                                                            <option value="sedang">Sedang</option>
+                                                            <option value="sulit">Sulit</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="flex justify-end gap-3 mt-6">
+                                                        <button
+                                                            onClick={() => { setIsAddingManual(false); setEditingQuestion(null); }}
+                                                            className="px-6 py-2 rounded-lg border border-slate-300 text-slate-600 font-bold hover:bg-slate-50"
+                                                        >Batal</button>
+                                                        <button
+                                                            onClick={saveManualQuestion}
+                                                            className="px-6 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700"
+                                                        >Simpan Soal</button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ) : (
-                                    /* Question List */
-                                    <div className="space-y-4">
-                                        {[...SUBTES_LIST, ...Object.keys(managedQuestions)
-                                            .filter(k => !SUBTES_LIST.some(s => s.kode === k))
-                                            .map(k => ({ kode: k, nama: `Unknown/Old Subtes: ${k}`, jumlah: 0 }))
-                                        ].map(subtes => {
-                                            const questions = managedQuestions[subtes.kode] || [];
-                                            const isExpanded = manageExpandedSubtes === subtes.kode;
-                                            return (
-                                                <div key={subtes.kode} className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                                                    <div className="flex justify-between p-4 bg-slate-50 items-center border-b border-slate-100">
-                                                        <div className="flex items-center gap-3">
-                                                            {questions.length > 0 && (
-                                                                <input
-                                                                    type="checkbox"
-                                                                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                                                    title="Pilih Semua di Subtes Ini"
-                                                                    checked={questions.every(q => selectedQuestionIds.includes(q.id))}
-                                                                    onChange={(e) => toggleSubtesSelection(subtes.kode, e.target.checked)}
-                                                                />
-                                                            )}
-                                                            <button onClick={() => setManageExpandedSubtes(isExpanded ? null : subtes.kode)} className="flex items-center gap-2 font-bold text-slate-800 hover:text-blue-600 transition-colors">
-                                                                {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                                                                {subtes.nama}
-                                                                <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-xs ml-2">{questions.length}</span>
-                                                            </button>
-                                                        </div>
-                                                        <div className="flex gap-2">
-                                                            {questions.length > 0 && (
-                                                                <button
-                                                                    onClick={() => deleteSubtestQuestions(subtes.kode)}
-                                                                    className="px-3 py-1.5 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm font-bold hover:bg-red-100 flex items-center gap-2"
-                                                                >
-                                                                    <Trash2 size={16} /> Hapus Semua
+                                    ) : (
+                                        /* Question List */
+                                        <div className="space-y-4">
+                                            {[...SUBTES_LIST, ...Object.keys(managedQuestions)
+                                                .filter(k => !SUBTES_LIST.some(s => s.kode === k))
+                                                .map(k => ({ kode: k, nama: `Unknown/Old Subtes: ${k}`, jumlah: 0 }))
+                                            ].map(subtes => {
+                                                const questions = managedQuestions[subtes.kode] || [];
+                                                const isExpanded = manageExpandedSubtes === subtes.kode;
+                                                return (
+                                                    <div key={subtes.kode} className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                                                        <div className="flex justify-between p-4 bg-slate-50 items-center border-b border-slate-100">
+                                                            <div className="flex items-center gap-3">
+                                                                {questions.length > 0 && (
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                                        title="Pilih Semua di Subtes Ini"
+                                                                        checked={questions.every(q => selectedQuestionIds.includes(q.id))}
+                                                                        onChange={(e) => toggleSubtesSelection(subtes.kode, e.target.checked)}
+                                                                    />
+                                                                )}
+                                                                <button onClick={() => setManageExpandedSubtes(isExpanded ? null : subtes.kode)} className="flex items-center gap-2 font-bold text-slate-800 hover:text-blue-600 transition-colors">
+                                                                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                                                    {subtes.nama}
+                                                                    <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-xs ml-2">{questions.length}</span>
                                                                 </button>
-                                                            )}
-                                                            <button
-                                                                onClick={() => {
-                                                                    setIsAddingManual(true);
-                                                                    setManualForm(prev => ({ ...prev, subtes: subtes.kode }));
-                                                                }}
-                                                                className="px-3 py-1.5 bg-white border border-blue-200 text-blue-600 rounded-lg text-sm font-bold hover:bg-blue-50 flex items-center gap-2"
-                                                            >
-                                                                <Plus size={16} /> Tambah Manual
-                                                            </button>
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                {questions.length > 0 && (
+                                                                    <button
+                                                                        onClick={() => deleteSubtestQuestions(subtes.kode)}
+                                                                        className="px-3 py-1.5 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm font-bold hover:bg-red-100 flex items-center gap-2"
+                                                                    >
+                                                                        <Trash2 size={16} /> Hapus Semua
+                                                                    </button>
+                                                                )}
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setIsAddingManual(true);
+                                                                        setManualForm(prev => ({ ...prev, subtes: subtes.kode }));
+                                                                    }}
+                                                                    className="px-3 py-1.5 bg-white border border-blue-200 text-blue-600 rounded-lg text-sm font-bold hover:bg-blue-50 flex items-center gap-2"
+                                                                >
+                                                                    <Plus size={16} /> Tambah Manual
+                                                                </button>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    {isExpanded && (
-                                                        <div className="p-4 space-y-4 bg-white">
-                                                            {questions.map((q, idx) => (
-                                                                <div key={q.id} className="p-4 border border-slate-100 rounded-xl bg-slate-50/30 hover:border-slate-300 transition-all relative group">
-                                                                    <div className="flex-1 flex gap-4">
-                                                                        <div className="pt-1">
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                                                                checked={selectedQuestionIds.includes(q.id)}
-                                                                                onChange={() => toggleQuestionSelection(q.id)}
-                                                                            />
-                                                                        </div>
-                                                                        <div className="flex-1">
-                                                                            <div className="flex justify-between items-start mb-2">
-                                                                                <p className="font-bold text-slate-800 flex items-center gap-2">
-                                                                                    <span className="bg-slate-200 text-slate-600 w-6 h-6 flex items-center justify-center rounded-full text-xs">{q.nomor_soal}</span>
-                                                                                    <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider ${q.difficulty_level === 'sulit' ? 'bg-red-100 text-red-600' : q.difficulty_level === 'mudah' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>{q.difficulty_level}</span>
-                                                                                </p>
-                                                                                <div className="flex gap-2">
-                                                                                    <button
-                                                                                        onClick={() => startEditQuestion(q)}
-                                                                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                                                                        title="Edit Soal"
-                                                                                    >
-                                                                                        <Edit2 size={16} />
-                                                                                    </button>
-                                                                                    <button
-                                                                                        onClick={() => deleteQuestion(q.id, subtes.kode)}
-                                                                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
-                                                                                        title="Hapus Soal"
-                                                                                    >
-                                                                                        <Trash2 size={16} />
-                                                                                    </button>
-                                                                                </div>
+                                                        {isExpanded && (
+                                                            <div className="p-4 space-y-4 bg-white">
+                                                                {questions.map((q, idx) => (
+                                                                    <div key={q.id} className="p-4 border border-slate-100 rounded-xl bg-slate-50/30 hover:border-slate-300 transition-all relative group">
+                                                                        <div className="flex-1 flex gap-4">
+                                                                            <div className="pt-1">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                                                    checked={selectedQuestionIds.includes(q.id)}
+                                                                                    onChange={() => toggleQuestionSelection(q.id)}
+                                                                                />
                                                                             </div>
-                                                                            {q.teks_bacaan && (
-                                                                                <div className="mb-4 bg-slate-100 p-4 rounded-lg border-l-4 border-blue-400">
-                                                                                    <p className="text-[10px] font-bold text-blue-600 uppercase mb-2">Teks Bacaan (ID: {q.id_wacana})</p>
-                                                                                    <LatexRenderer className="text-sm text-slate-700 leading-relaxed max-h-[200px] overflow-y-auto">
-                                                                                        {q.teks_bacaan}
-                                                                                    </LatexRenderer>
-                                                                                </div>
-                                                                            )}
-                                                                            {q.image_url && (
-                                                                                <div className="mb-3">
-                                                                                    <img src={q.image_url} alt="Soal" className="max-h-60 rounded-lg border border-slate-200" />
-                                                                                </div>
-                                                                            )}
-                                                                            <LatexRenderer className="text-slate-700 mb-3 whitespace-pre-line text-sm leading-relaxed">{q.pertanyaan}</LatexRenderer>
-                                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
-                                                                                {q.opsi.map((o, i) => (
-                                                                                    <div key={i} className={`flex items-center gap-2 text-xs px-3 py-2 rounded border transition-all ${i === q.jawaban_benar ? 'bg-green-50 border-green-200 text-green-800 font-bold' : 'bg-white border-slate-100 text-slate-500'}`}>
-                                                                                        <span className="font-mono">{String.fromCharCode(65 + i)}.</span>
-                                                                                        <LatexRenderer>{o}</LatexRenderer>
+                                                                            <div className="flex-1">
+                                                                                <div className="flex justify-between items-start mb-2">
+                                                                                    <div className="font-bold text-slate-800 flex items-center gap-2">
+                                                                                        <span className="bg-slate-200 text-slate-600 w-6 h-6 flex items-center justify-center rounded-full text-xs">{q.nomor_soal}</span>
+                                                                                        {/* Question Content Display */}
+                                                                                        <div className="flex-1">
+                                                                                            {q.teks_bacaan && (
+                                                                                                <div className="mb-4 bg-slate-100 p-4 rounded-lg border-l-4 border-blue-400">
+                                                                                                    <p className="text-[10px] font-bold text-blue-600 uppercase mb-2">Teks Bacaan (ID: {q.id_wacana})</p>
+                                                                                                    <LatexRenderer className="text-sm text-slate-700 leading-relaxed max-h-[200px] overflow-y-auto">
+                                                                                                        {q.teks_bacaan}
+                                                                                                    </LatexRenderer>
+                                                                                                </div>
+                                                                                                                )}
+                                                                                            {
+                                                                                                q.image_url && (
+                                                                                                    <div className="mb-3">
+                                                                                                        <img src={q.image_url} alt="Soal" className="max-h-60 rounded-lg border border-slate-200" />
+                                                                                                    </div>
+                                                                                                )
+                                                                                            }
+                                                                                            <LatexRenderer className="text-slate-700 mb-3 whitespace-pre-line text-sm leading-relaxed">{q.pertanyaan}</LatexRenderer>
+                                                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                                                                                                {q.opsi.map((o, i) => (
+                                                                                                    <div key={i} className={`flex items-center gap-2 text-xs px-3 py-2 rounded border transition-all ${i === q.jawaban_benar ? 'bg-green-50 border-green-200 text-green-800 font-bold' : 'bg-white border-slate-100 text-slate-500'}`}>
+                                                                                                        <span className="font-mono">{String.fromCharCode(65 + i)}.</span>
+                                                                                                        <LatexRenderer>{o}</LatexRenderer>
+                                                                                                    </div>
+                                                                                                ))}
+                                                                                            </div>
+                                                                                            {q.pembahasan && (
+                                                                                                <div className="bg-indigo-50/50 p-3 rounded-lg border border-indigo-100 text-[11px] text-indigo-700/80 leading-relaxed italic">
+                                                                                                    <p className="font-bold text-indigo-800 mb-1 flex items-center gap-1 uppercase tracking-wider not-italic">
+                                                                                                        <BookOpen size={12} /> Pembahasan
+                                                                                                    </p>
+                                                                                                    <LatexRenderer>{q.pembahasan}</LatexRenderer>
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </div>
                                                                                     </div>
-                                                                                ))}
-                                                                            </div>
-                                                                            {q.pembahasan && (
-                                                                                <div className="bg-indigo-50/50 p-3 rounded-lg border border-indigo-100 text-[11px] text-indigo-700/80 leading-relaxed italic">
-                                                                                    <p className="font-bold text-indigo-800 mb-1 flex items-center gap-1 uppercase tracking-wider not-italic">
-                                                                                        <BookOpen size={12} /> Pembahasan
-                                                                                    </p>
-                                                                                    <LatexRenderer>{q.pembahasan}</LatexRenderer>
                                                                                 </div>
-                                                                            )}
+                                                                            </div>
                                                                         </div>
                                                                     </div>
-                                                                </div>
-                                                            ))}
-                                                            {questions.length === 0 && (
-                                                                <div className="text-center text-slate-400 py-12 italic bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                                                                    Belum ada soal untuk subtes ini. Klik "Tambah Soal" untuk membuat soal pertama.
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
+                                                                ))}
+                                                                {questions.length === 0 && (
+                                                                    <div className="text-center text-slate-400 py-12 italic bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                                                                        Belum ada soal untuk subtes ini. Klik "Tambah Soal" untuk membuat soal pertama.
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )
+                                                        }
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )
+                                    }
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
             </div>
         </DashboardLayout >
     );

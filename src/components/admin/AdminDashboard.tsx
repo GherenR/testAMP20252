@@ -30,6 +30,17 @@ export default function AdminDashboard() {
     const [systemHealth, setSystemHealth] = useState<{ db: boolean; api: boolean }>({ db: true, api: true });
     const [adminNotes, setAdminNotes] = useState<string>('');
 
+    const formatDate = (dateString: string) => {
+        if (!dateString) return '-';
+        return new Date(dateString).toLocaleString('id-ID', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
     useEffect(() => {
         loadData();
         const fetchHelpers = async () => {
@@ -44,8 +55,11 @@ export default function AdminDashboard() {
                     setActivityLog(
                         logData.map(l => ({
                             id: l.id,
+                            user: l.user_email, // Map correctly to render
+                            type: l.action,     // Map correctly to render
                             action: l.action,
                             created_at: l.created_at,
+                            time: formatDate(l.created_at), // Add formatted time
                             user_email: l.user_email,
                             detail: l.detail,
                         }))
@@ -65,6 +79,7 @@ export default function AdminDashboard() {
                             message: n.message,
                             created_at: n.created_at,
                             type: n.type,
+                            time: formatDate(n.created_at), // Add formatted time
                         }))
                     );
                 }
@@ -83,6 +98,7 @@ export default function AdminDashboard() {
                             created_at: p.submitted_at,
                             type: p.type,
                             name: p.name,
+                            submitted: formatDate(p.submitted_at), // Add formatted time
                         }))
                     );
                 }
@@ -101,6 +117,7 @@ export default function AdminDashboard() {
                             created_at: e.created_at,
                             type: e.type,
                             message: e.message,
+                            time: formatDate(e.created_at), // Add formatted time
                         }))
                     );
                 }
@@ -197,7 +214,7 @@ export default function AdminDashboard() {
                     {loading ? (
                         <div className="text-center py-8 text-slate-400">Loading...</div>
                     ) : stats ? (
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div className="bg-slate-800 p-4 rounded-xl">
                                 <div className="flex items-center gap-2 text-blue-400 mb-2">
                                     <Users size={20} />
