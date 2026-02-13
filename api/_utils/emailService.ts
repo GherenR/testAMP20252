@@ -21,7 +21,7 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
     const formattedMessage = message
         .trim()
         .split('\n')
-        .map(line => line.trim() === '' ? '<div style="height: 12px;"></div>' : `<p style="margin: 0 0 16px 0;">${line}</p>`)
+        .map(line => line.trim() === '' ? '<div style="height: 8px;"></div>' : `<p style="margin: 0 0 10px 0;">${line}</p>`)
         .join('');
 
     // NOTE: SVG logos are often blocked by email clients. 
@@ -38,16 +38,16 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
     <style>
         body { margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
         .wrapper { width: 100%; border: 0; cellpadding: 0; cellspacing: 0; background-color: #f8fafc; }
-        .container { width: 100%; max-width: 600px; margin: 0 auto; padding: 48px 20px; }
+        .container { width: 100%; max-width: 600px; margin: 0 auto; padding: 32px 20px; }
         .main { background-color: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; border-collapse: separate; width: 100%; overflow: hidden; }
-        .header { padding: 48px 40px 32px; text-align: center; }
+        .header { padding: 40px 40px 24px; text-align: center; }
         .logo { width: 80px; height: auto; display: inline-block; }
-        .content { padding: 0 48px 48px; color: #334155; line-height: 1.6; font-size: 16px; text-align: left; }
-        .footer { padding: 32px 48px; text-align: center; color: #64748b; font-size: 14px; background-color: #f1f5f9; border-top: 1px solid #e2e8f0; }
-        .footer-brand { color: #1e293b; font-weight: 700; margin-bottom: 4px; font-size: 16px; letter-spacing: 0.5px; }
-        .footer-org { color: #64748b; font-weight: 500; font-size: 13px; }
-        .footer-copy { margin-top: 16px; font-size: 11px; color: #94a3b8; }
-        p { margin: 0 0 16px 0; }
+        .content { padding: 0 40px 40px; color: #334155; line-height: 1.5; font-size: 15px; text-align: left; }
+        .footer { padding: 24px 40px; text-align: center; color: #64748b; font-size: 13px; background-color: #f1f5f9; border-top: 1px solid #e2e8f0; }
+        .footer-brand { color: #1e293b; font-weight: 700; margin-bottom: 2px; font-size: 15px; letter-spacing: 0.5px; }
+        .footer-org { color: #64748b; font-weight: 500; font-size: 12px; }
+        .footer-copy { margin-top: 12px; font-size: 11px; color: #94a3b8; }
+        p { margin: 0 0 10px 0; }
     </style>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f8fafc;">

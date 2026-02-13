@@ -24,11 +24,14 @@ Terima kasih sudah bersedia menjadi mentor untuk adik-adik kita. Data kamu sudah
 - Universitas: {university}
 - Jurusan: {major}
 - Angkatan: {angkatan}
+- Kategori: {category}
+- WhatsApp: {whatsapp}
+- Instagram: @{instagram}
 
-Silakan cek data kamu secara lengkap di:
+Data lengkap kamu, termasuk riwayat pengalaman dan prestasi, sudah dapat dilihat publik di:
 https://alumnihangtuah2025.vercel.app/database
 
-Cari nama kamu sendiri untuk memastikan semua informasi sudah benar. Jika ada data yang salah atau perlu diperbaiki, silakan hubungi admin (Gheren atau Faisal) untuk melakukan revisi.
+Cari nama kamu sendiri untuk memastikan semua informasi sudah benar. Jika ada data yang salah, ingin update prestasi/pengalaman, atau perlu diperbaiki, silakan hubungi admin (Gheren atau Faisal).
 
 Adik-adik yang tertarik bisa menghubungi kamu melalui WhatsApp.
 
@@ -146,8 +149,9 @@ export default function EmailPage() {
             .replace(/{university}/g, mentor.university)
             .replace(/{major}/g, mentor.major)
             .replace(/{angkatan}/g, String(mentor.angkatan))
-            .replace(/{email}/g, mentor.email || '')
-            .replace(/{whatsapp}/g, mentor.whatsapp || '');
+            .replace(/{whatsapp}/g, mentor.whatsapp || '')
+            .replace(/{instagram}/g, mentor.instagram || '')
+            .replace(/{category}/g, mentor.category || '');
     };
 
     const copyEmailList = () => {
