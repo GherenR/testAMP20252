@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
     Search, TrendingUp, Users, Target, ChevronRight,
     Sparkles, AlertTriangle, CheckCircle, XCircle, Flame,
@@ -38,6 +39,21 @@ export const PeluangSlide: React.FC<PeluangSlideProps> = ({
     const [showResult, setShowResult] = useState(false);
     const [selectedRumpun, setSelectedRumpun] = useState<'SEMUA' | 'SAINTEK' | 'SOSHUM'>('SEMUA');
 
+    const { prodiId } = useParams<{ prodiId: string }>();
+    const navigate = useNavigate();
+
+    // Sync selected prodi with URL prodiId
+    useEffect(() => {
+        if (prodiId) {
+            const prodi = PASSING_GRADE_DATA.find(p => p.id === prodiId);
+            if (prodi) {
+                setSelectedProdi(prodi);
+            }
+        } else {
+            setSelectedProdi(null);
+        }
+    }, [prodiId]);
+
     const universitasList = useMemo(() => getUniversitasList(), []);
 
     const filteredProdi = useMemo(() => {
@@ -68,7 +84,7 @@ export const PeluangSlide: React.FC<PeluangSlideProps> = ({
     };
 
     const handleSelectProdi = (prodi: ProdiData) => {
-        setSelectedProdi(prodi);
+        navigate(prodi.id);
         setShowResult(false);
         setNilaiUser('');
     };
@@ -115,8 +131,8 @@ export const PeluangSlide: React.FC<PeluangSlideProps> = ({
                                     key={rumpun}
                                     onClick={() => setSelectedRumpun(rumpun)}
                                     className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${selectedRumpun === rumpun
-                                            ? 'bg-amber-400 text-slate-900'
-                                            : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                                        ? 'bg-amber-400 text-slate-900'
+                                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                                         }`}
                                 >
                                     {rumpun}
@@ -136,8 +152,8 @@ export const PeluangSlide: React.FC<PeluangSlideProps> = ({
                                     key={prodi.id}
                                     onClick={() => handleSelectProdi(prodi)}
                                     className={`w-full text-left p-4 rounded-2xl transition-all group ${selectedProdi?.id === prodi.id
-                                            ? 'bg-amber-400/20 border-2 border-amber-400'
-                                            : 'bg-slate-800/50 border-2 border-transparent hover:border-slate-600'
+                                        ? 'bg-amber-400/20 border-2 border-amber-400'
+                                        : 'bg-slate-800/50 border-2 border-transparent hover:border-slate-600'
                                         }`}
                                 >
                                     <div className="flex items-start gap-3">
@@ -153,8 +169,8 @@ export const PeluangSlide: React.FC<PeluangSlideProps> = ({
                                             <p className="text-xs text-slate-500 truncate">{prodi.universitas}</p>
                                             <div className="flex items-center gap-2 mt-2">
                                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${prodi.rumpun === 'SAINTEK'
-                                                        ? 'bg-cyan-500/20 text-cyan-400'
-                                                        : 'bg-rose-500/20 text-rose-400'
+                                                    ? 'bg-cyan-500/20 text-cyan-400'
+                                                    : 'bg-rose-500/20 text-rose-400'
                                                     }`}>
                                                     {prodi.rumpun}
                                                 </span>
@@ -241,8 +257,8 @@ export const PeluangSlide: React.FC<PeluangSlideProps> = ({
                                     <button
                                         onClick={() => { setSelectedJalur('snbp'); setShowResult(false); }}
                                         className={`p-4 rounded-2xl border-2 transition-all ${selectedJalur === 'snbp'
-                                                ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
-                                                : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-500'
+                                            ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
+                                            : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-500'
                                             }`}
                                     >
                                         <p className="font-black text-lg">SNBP</p>
@@ -251,8 +267,8 @@ export const PeluangSlide: React.FC<PeluangSlideProps> = ({
                                     <button
                                         onClick={() => { setSelectedJalur('snbt'); setShowResult(false); }}
                                         className={`p-4 rounded-2xl border-2 transition-all ${selectedJalur === 'snbt'
-                                                ? 'bg-sky-500/20 border-sky-400 text-sky-300'
-                                                : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-500'
+                                            ? 'bg-sky-500/20 border-sky-400 text-sky-300'
+                                            : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-500'
                                             }`}
                                     >
                                         <p className="font-black text-lg">SNBT</p>
@@ -284,8 +300,8 @@ export const PeluangSlide: React.FC<PeluangSlideProps> = ({
                                     onClick={handleCekPeluang}
                                     disabled={!nilaiUser}
                                     className={`w-full py-4 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-2 ${nilaiUser
-                                            ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900 hover:shadow-lg hover:shadow-amber-500/30 hover:-translate-y-0.5'
-                                            : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                                        ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900 hover:shadow-lg hover:shadow-amber-500/30 hover:-translate-y-0.5'
+                                        : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                                         }`}
                                 >
                                     {!isLoggedIn && nilaiUser ? (
@@ -335,10 +351,10 @@ export const PeluangSlide: React.FC<PeluangSlideProps> = ({
                                             <div className="flex items-center justify-between text-sm mt-2 pt-2 border-t border-slate-300">
                                                 <span className="text-slate-600">Selisih</span>
                                                 <span className={`font-bold ${parseFloat(nilaiUser) >= (selectedJalur === 'snbp'
-                                                        ? selectedProdi.snbp.estimasiMinRapor
-                                                        : selectedProdi.snbt.estimasiMinSkor)
-                                                        ? 'text-emerald-600'
-                                                        : 'text-red-600'
+                                                    ? selectedProdi.snbp.estimasiMinRapor
+                                                    : selectedProdi.snbt.estimasiMinSkor)
+                                                    ? 'text-emerald-600'
+                                                    : 'text-red-600'
                                                     }`}>
                                                     {parseFloat(nilaiUser) >= (selectedJalur === 'snbp'
                                                         ? selectedProdi.snbp.estimasiMinRapor

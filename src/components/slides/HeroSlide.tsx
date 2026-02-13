@@ -1,5 +1,6 @@
 import React from 'react';
-import { BrainCircuit, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { BrainCircuit, Users, ArrowRight } from 'lucide-react';
 import { COMMUNITY_WA_GROUP } from '../../constants';
 
 interface HeroSlideProps {
@@ -13,6 +14,8 @@ interface HeroSlideProps {
  * User bisa mulai Smart Match atau bergabung komunitas WhatsApp
  */
 export const HeroSlide: React.FC<HeroSlideProps> = ({ onSmartMatchClick, onNavigateToSlide }) => {
+  const navigate = useNavigate();
+
   function setCurrentSlide(slideIndex: number): void {
     onNavigateToSlide(slideIndex);
   }
@@ -41,29 +44,84 @@ export const HeroSlide: React.FC<HeroSlideProps> = ({ onSmartMatchClick, onNavig
           Platform kolaboratif alumni Hang Tuah untuk mendampingi angkatan 2026 menavigasi ambisi menuju kampus impian.
         </p>
 
-        {/* CTA Buttons */}
-        <div className="flex flex-col gap-3 sm:gap-5 mb-12 sm:mb-16">
+        {/* CTA Buttons - Primary Actions */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8 sm:mb-12 justify-center max-w-4xl mx-auto">
           <button
             onClick={onSmartMatchClick}
-            className="group relative bg-indigo-600 text-white px-6 sm:px-12 py-4 sm:py-6 rounded-2xl font-bold transition-all hover:bg-indigo-700 active:scale-95 shadow-2xl shadow-indigo-600/20 text-sm sm:text-lg w-full min-h-[48px] sm:min-h-[56px] touch-none"
+            className="group relative bg-indigo-600 text-white px-6 sm:px-10 py-4 sm:py-5 rounded-2xl font-bold transition-all hover:bg-indigo-700 active:scale-95 shadow-xl shadow-indigo-600/20 text-sm sm:text-base flex-1 min-h-[48px] sm:min-h-[56px] touch-none"
           >
             <span className="flex items-center gap-2 sm:gap-3 justify-center">
-              Coba Smart Match <BrainCircuit size={18} className="sm:w-[22px] sm:h-[22px] group-hover:rotate-12 transition-transform" />
+              Coba Smart Match <BrainCircuit size={18} className="sm:w-5 sm:h-5 group-hover:rotate-12 transition-transform" />
             </span>
           </button>
           <button
             onClick={() => setCurrentSlide(2)}
-            className="group relative bg-slate-900 text-white px-6 sm:px-12 py-4 sm:py-6 rounded-2xl font-bold transition-all hover:bg-slate-950 active:scale-95 shadow-2xl shadow-slate-900/20 text-sm sm:text-lg w-full min-h-[48px] sm:min-h-[56px] touch-none"
+            className="group relative bg-slate-900 text-white px-6 sm:px-10 py-4 sm:py-5 rounded-2xl font-bold transition-all hover:bg-slate-950 active:scale-95 shadow-xl shadow-slate-900/20 text-sm sm:text-base flex-1 min-h-[48px] sm:min-h-[56px] touch-none"
           >
             <span className="flex items-center gap-2 sm:gap-3 justify-center">
-              Cari Manual <BrainCircuit size={18} className="sm:w-[22px] sm:h-[22px] group-hover:rotate-12 transition-transform" />
+              Cari Manual <Users size={18} className="sm:w-5 sm:h-5 group-hover:scale-110 transition-transform" />
             </span>
           </button>
+        </div>
+
+        {/* SNBT Area Highlight - The "Interspersed" Promo Section */}
+        <div className="relative group mb-12 sm:mb-16">
+          <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 to-orange-500/10 rounded-[2.5rem] blur-2xl group-hover:opacity-75 transition-opacity"></div>
+          <div className="relative p-6 sm:p-8 bg-white border border-amber-100 rounded-[2.5rem] shadow-xl shadow-amber-500/5 overflow-hidden">
+            {/* Decoration */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+
+            <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-10">
+              <div className="shrink-0">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-3xl flex items-center justify-center shadow-lg shadow-amber-200 animate-bounce-subtle">
+                  <BrainCircuit size={32} className="text-white sm:w-10 sm:h-10" />
+                </div>
+              </div>
+
+              <div className="text-center lg:text-left flex-1">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-[10px] font-black uppercase tracking-wider mb-3">
+                  <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse"></span>
+                  Fitur Unggulan
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black text-slate-950 mb-2 tracking-tight">
+                  Persiapkan SNBT 2026 di <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600">SNBTArea</span>
+                </h3>
+                <p className="text-sm sm:text-base text-slate-500 font-medium leading-relaxed mb-4 max-w-xl">
+                  Bukan cuma cari mentor, kini kamu bisa simulasi tryout SNBT & cek peluang lolos PTN impian secara mandiri.
+                </p>
+                <div className="flex flex-wrap justify-center lg:justify-start gap-4 text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                    <span className="text-emerald-500">✓</span> Mini Tryout
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                    <span className="text-emerald-500">✓</span> Peluang Lolos
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                    <span className="text-emerald-500">✓</span> Data PTN
+                  </div>
+                </div>
+              </div>
+
+              <div className="shrink-0 w-full lg:w-auto">
+                <button
+                  onClick={() => navigate('/snbt')}
+                  className="w-full lg:w-auto bg-slate-950 text-white px-8 py-4 rounded-2xl font-black text-sm sm:text-base hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center gap-2 group/btn"
+                >
+                  Masuk Area SNBT
+                  <ArrowRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Secondary Info/Link */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-12 sm:mb-16 justify-center">
           <button
             onClick={() => window.open(COMMUNITY_WA_GROUP, '_blank')}
-            className="group bg-white text-slate-900 border-2 border-slate-200 px-6 sm:px-12 py-4 sm:py-6 rounded-2xl font-bold transition-all hover:border-indigo-600 hover:bg-indigo-50 flex items-center gap-2 sm:gap-3 active:scale-95 text-sm sm:text-lg w-full justify-center min-h-[48px] sm:min-h-[56px] touch-none"
+            className="group bg-white text-slate-900 border-2 border-slate-200 px-6 sm:px-8 py-4 rounded-2xl font-bold transition-all hover:border-indigo-600 hover:bg-indigo-50 flex items-center gap-2 sm:gap-3 active:scale-95 text-sm sm:text-base justify-center min-h-[48px] sm:min-h-[56px] touch-none"
           >
-            <Users size={18} className="sm:w-[22px] sm:h-[22px] text-green-600" /> Komunitas WhatsApp
+            <Users size={18} className="sm:w-5 sm:h-5 text-green-600" /> Komunitas WhatsApp
           </button>
         </div>
 

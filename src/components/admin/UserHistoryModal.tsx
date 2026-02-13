@@ -40,128 +40,115 @@ export default function UserHistoryModal({ userId, tryoutId, onClose, currentUse
     }, [userId, tryoutId, viewMode]);
 
     const fetchData = async () => {
-        if (viewMode === 'participants' && tryoutId) {
-            await fetchAllParticipants();
-        } else {
-            await fetchAttempts();
-        }
-    };
-
-    const fetchAttempts = async () => {
         setLoading(true);
         try {
-            let query = supabase.from('tryout_attempts')
-                .select('*')
-                .order('created_at', { ascending: false });
+            if (tryoutId) {
+                // TRYOUT MANAGEMENT MODE: Fetch all participants and their attempts for this specific tryout
 
-            if (userId) query = query.eq('user_id', userId);
-            if (tryoutId) query = query.eq('tryout_id', tryoutId);
+                // 1. Fetch all attempts for this tryout (includes In-Progress)
+                const { data: attemptData, error: attemptError } = await supabase
+                    .from('tryout_attempts')
+                    .select('*')
+                    .eq('tryout_id', tryoutId);
 
-            const { data: attemptsData, error } = await query;
+                if (attemptError) throw attemptError;
 
-            if (error) {
-                console.error('Error fetching attempts:', error);
-                return;
-            }
+                // 2. Fetch all users (Base list)
+                const { data: userData, error: userError } = await supabase
+                    .from('users')
+                    .select('id, email, full_name, kelas')
+                    .order('full_name', { ascending: true });
 
-            if (!attemptsData) {
-                setAttempts([]);
-                return;
-            }
+                if (userError) throw userError;
 
-            // 1. Fetch Tryout Names (if not filtering by tryout)
-            const tryoutIds = [...new Set(attemptsData.map(a => a.tryout_id))];
-            let tryoutMap: Record<string, Tryout> = {};
-            if (!tryoutId && tryoutIds.length > 0) {
-                const { data: tData } = await supabase.from('tryouts').select('*').in('id', tryoutIds);
-                tData?.forEach(t => tryoutMap[t.id] = t);
-            }
+                // 3. Ensure users with attempts are in the list (RLS fallback)
+                const baseUsers = userData || [];
+                const userIdsInBase = new Set(baseUsers.map(u => u.id));
+                const missingUserIds = (attemptData || []).filter(a => !userIdsInBase.has(a.user_id)).map(a => a.user_id);
 
-            // 2. Fetch User Names (if not filtering by user)
-            const userIds = [...new Set(attemptsData.map(a => a.user_id))];
-            let userMap: Record<string, any> = {};
-            if (!userId && userIds.length > 0) {
-                const { data: uData } = await supabase.from('users').select('id, email, full_name, kelas').in('id', userIds);
-                uData?.forEach(u => userMap[u.id] = u);
-            }
-
-            // Map Data
-            const extended: ExtendedAttempt[] = attemptsData.map(a => {
-                let totalScore = 0;
-                if (a.skor_per_subtes) {
-                    const values = Object.values(a.skor_per_subtes);
-                    values.forEach((s: any) => totalScore += (s.skorNormalized || 0));
-                    if (values.length > 0) totalScore = totalScore / values.length;
+                let extraUsers: any[] = [];
+                if (missingUserIds.length > 0) {
+                    const { data } = await supabase
+                        .from('users')
+                        .select('id, email, full_name, kelas')
+                        .in('id', missingUserIds);
+                    if (data) extraUsers = data;
                 }
 
-                return {
-                    ...a,
-                    tryout: tryoutMap[a.tryout_id],
-                    user_email: userId ? undefined : (userMap[a.user_id]?.email || 'Unknown'),
-                    user_name: userId ? undefined : (userMap[a.user_id]?.full_name || 'Unknown'),
-                    user_school: userId ? undefined : (userMap[a.user_id]?.kelas || ''),
-                    skor_akhir_calculated: parseFloat(totalScore.toFixed(2))
-                };
-            });
+                const allUsersMap: Record<string, any> = {};
+                [...baseUsers, ...extraUsers].forEach(u => allUsersMap[u.id] = u);
+                const allUsers = Object.values(allUsersMap).sort((a: any, b: any) => (a.full_name || '').localeCompare(b.full_name || ''));
 
-            setAttempts(extended);
-        } catch (err) {
-            console.error('Error fetching attempts:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchAllParticipants = async () => {
-        setLoading(true);
-        try {
-            // 1. Fetch All Users
-            const { data: userData, error: userError } = await supabase
-                .from('users')
-                .select('id, email, full_name, kelas')
-                .order('full_name', { ascending: true });
-
-            if (userError) throw userError;
-
-            // 2. Fetch Attempts for this tryout
-            const { data: attemptData, error: attemptError } = await supabase
-                .from('tryout_attempts')
-                .select('*')
-                .eq('tryout_id', tryoutId);
-
-            if (attemptError) throw attemptError;
-
-            // Map them
-            const mapped: Participant[] = (userData || []).map(u => {
-                const attempt = attemptData?.find(a => a.user_id === u.id);
-                let extended: ExtendedAttempt | undefined;
-
-                if (attempt) {
+                // 4. Map Attempts (for "Hanya yang Mengerjakan" view)
+                const mappedAttempts: ExtendedAttempt[] = (attemptData || []).map(a => {
+                    const u = allUsersMap[a.user_id];
                     let totalScore = 0;
-                    if (attempt.skor_per_subtes) {
-                        const values = Object.values(attempt.skor_per_subtes);
+                    if (a.skor_per_subtes) {
+                        const values = Object.values(a.skor_per_subtes);
                         values.forEach((s: any) => totalScore += (s.skorNormalized || 0));
                         if (values.length > 0) totalScore = totalScore / values.length;
                     }
 
-                    extended = {
-                        ...attempt,
+                    return {
+                        ...a,
+                        user_email: u?.email || 'Unknown',
+                        user_name: u?.full_name || 'Unknown',
+                        user_school: u?.kelas || '',
                         skor_akhir_calculated: parseFloat(totalScore.toFixed(2))
                     };
+                }).sort((a, b) => b.skor_akhir_calculated - a.skor_akhir_calculated);
+
+                // 5. Map Participants (for "Semua User" view)
+                const mappedParticipants: Participant[] = allUsers.map(u => {
+                    const attempt = mappedAttempts.find(a => a.user_id === u.id);
+                    return {
+                        id: u.id,
+                        email: u.email,
+                        full_name: u.full_name,
+                        kelas: u.kelas,
+                        attempt
+                    };
+                });
+
+                setAttempts(mappedAttempts);
+                setParticipants(mappedParticipants);
+
+            } else if (userId) {
+                // USER HISTORY MODE: Fetch all attempts for a specific user across different tryouts
+                const { data: attemptsData, error } = await supabase
+                    .from('tryout_attempts')
+                    .select('*')
+                    .eq('user_id', userId)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                // Fetch tryout names for these attempts
+                const tIds = [...new Set(attemptsData.map(a => a.tryout_id))];
+                let tMap: Record<string, Tryout> = {};
+                if (tIds.length > 0) {
+                    const { data } = await supabase.from('tryouts').select('*').in('id', tIds);
+                    data?.forEach(t => tMap[t.id] = t);
                 }
 
-                return {
-                    id: u.id,
-                    email: u.email,
-                    full_name: u.full_name,
-                    kelas: u.kelas,
-                    attempt: extended
-                };
-            });
+                const extended = (attemptsData || []).map(a => {
+                    let totalScore = 0;
+                    if (a.skor_per_subtes) {
+                        const values = Object.values(a.skor_per_subtes);
+                        values.forEach((s: any) => totalScore += (s.skorNormalized || 0));
+                        if (values.length > 0) totalScore = totalScore / values.length;
+                    }
+                    return {
+                        ...a,
+                        tryout: tMap[a.tryout_id],
+                        skor_akhir_calculated: parseFloat(totalScore.toFixed(2))
+                    };
+                });
 
-            setParticipants(mapped);
+                setAttempts(extended);
+            }
         } catch (err) {
-            console.error('Error fetching participants:', err);
+            console.error('Error fetching data:', err);
         } finally {
             setLoading(false);
         }

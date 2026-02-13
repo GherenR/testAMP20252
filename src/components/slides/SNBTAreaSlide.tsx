@@ -148,7 +148,7 @@ const TeaserPage: React.FC<{ onLoginClick: () => void; onBackClick: () => void }
                 <FeatureCard
                     icon={<BookOpen className="text-violet-400" size={28} />}
                     title="Mini Tryout SNBT"
-                    description="Latihan soal TPS dengan timer, scoring otomatis, dan pembahasan lengkap. Mirip ujian aslinya!"
+                    description="Latihan soal SNBT dengan timer, scoring otomatis, dan pembahasan lengkap. Mirip ujian aslinya!"
                     color="violet"
                     delay={200}
                 />
@@ -168,7 +168,7 @@ const TeaserPage: React.FC<{ onLoginClick: () => void; onBackClick: () => void }
                 />
                 <FeatureCard
                     icon={<Brain className="text-rose-400" size={28} />}
-                    title="6 Subtes TPS"
+                    title="6 Subtes SNBT"
                     description="Soal lengkap: Penalaran Umum, Kuantitatif, Pemahaman Bacaan, Literasi Indo & Inggris, Penalaran Mat."
                     color="rose"
                     delay={500}
@@ -372,7 +372,7 @@ const DashboardHome: React.FC<{
                         <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                             <BookOpen className="text-white" size={28} />
                         </div>
-                        <h3 className="text-xl font-black text-white mb-2">Mini Tryout TPS</h3>
+                        <h3 className="text-xl font-black text-white mb-2">Mini Tryout SNBT</h3>
                         <p className="text-violet-100 text-sm mb-4">
                             Latihan soal dengan timer dan pembahasan lengkap
                         </p>
@@ -526,7 +526,7 @@ export const SNBTAreaSlide: React.FC = () => {
                             onEditProfile={() => setShowProfileModal(true)}
                         />
                     } />
-                    <Route path="peluang" element={
+                    <Route path="peluang/*" element={
                         <div className="relative min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950">
                             <button
                                 onClick={() => navigate('/snbt')}
@@ -535,7 +535,10 @@ export const SNBTAreaSlide: React.FC = () => {
                                 <ChevronRight className="rotate-180" size={18} />
                                 <span className="hidden sm:inline">Kembali</span>
                             </button>
-                            <PeluangSlide isLoggedIn={true} />
+                            <Routes>
+                                <Route index element={<PeluangSlide isLoggedIn={true} />} />
+                                <Route path=":prodiId" element={<PeluangSlide isLoggedIn={true} />} />
+                            </Routes>
                         </div>
                     } />
                     <Route path="tryout/*" element={

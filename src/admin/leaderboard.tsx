@@ -151,71 +151,71 @@ export default function LeaderboardPage() {
             ) : (
                 <div className="w-full max-w-4xl">
                     {/* PODIUM (Top 3) */}
-                    <div className="flex justify-center items-end gap-4 mb-16 h-80">
+                    <div className="flex flex-col md:flex-row justify-center items-center md:items-end gap-6 md:gap-4 mb-20 md:mb-16 min-h-[400px] md:h-80 w-full pt-10">
                         {/* Rank 2 (Silver) */}
                         {leaderboard[1] && (
-                            <div className="flex flex-col items-center w-1/3 animate-in slide-in-from-bottom-10 delay-100 duration-700">
+                            <div className="flex flex-col items-center w-full md:w-1/3 animate-in slide-in-from-bottom-10 delay-100 duration-700 order-2 md:order-1">
                                 <div className="w-20 h-20 rounded-full border-4 border-slate-300 overflow-hidden mb-[-40px] z-10 bg-slate-200 shadow-xl flex items-center justify-center">
                                     <User size={48} className="text-slate-400" />
                                 </div>
-                                <div className="w-full bg-gradient-to-b from-slate-300 to-slate-400 rounded-t-2xl pt-12 pb-6 px-4 text-center shadow-lg relative h-64 flex flex-col justify-between">
-                                    <div>
-                                        <p className="font-black text-slate-800 text-lg line-clamp-2 leading-tight mb-1">{leaderboard[1].user_name}</p>
-                                        <p className="text-slate-700 text-xs font-bold uppercase">{leaderboard[1].school}</p>
+                                <div className="w-full bg-gradient-to-b from-slate-200 to-slate-400 rounded-t-3xl pt-12 pb-6 px-4 text-center shadow-lg relative h-56 md:h-64 flex flex-col justify-between border-t border-white/20">
+                                    <div className="relative z-10">
+                                        <p className="font-black text-slate-800 text-lg line-clamp-2 leading-tight mb-1 drop-shadow-sm">{leaderboard[1].user_name}</p>
+                                        <p className="text-slate-700 text-xs font-bold uppercase tracking-widest">{leaderboard[1].school}</p>
                                     </div>
-                                    <div className="bg-slate-800/20 py-2 rounded-lg mt-2">
+                                    <div className="bg-slate-900/10 py-2 rounded-xl mt-2 border border-white/10 backdrop-blur-sm">
                                         <p className="text-2xl font-black text-slate-900">{leaderboard[1].score}</p>
                                     </div>
-                                    <div className="absolute top-4 right-4 text-slate-500 opacity-50">
-                                        <Medal size={40} />
+                                    <div className="absolute top-4 right-4 text-slate-100/30">
+                                        <Medal size={48} strokeWidth={1} />
                                     </div>
                                 </div>
-                                <div className="w-full h-4 bg-slate-500 rounded-b-xl opacity-50"></div>
+                                <div className="w-full h-3 bg-slate-500/30 rounded-full mt-2 filter blur-sm"></div>
                             </div>
                         )}
 
                         {/* Rank 1 (Gold) */}
                         {leaderboard[0] && (
-                            <div className="flex flex-col items-center w-1/3 z-20 animate-in slide-in-from-bottom-20 duration-700">
-                                <div className="mb-2 text-yellow-500 animate-bounce">
-                                    <Trophy size={48} />
+                            <div className="flex flex-col items-center w-full md:w-1/3 z-20 animate-in slide-in-from-bottom-20 duration-700 order-1 md:order-2 scale-105 md:scale-110">
+                                <div className="mb-4 text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)] animate-bounce">
+                                    <Trophy size={56} fill="currentColor" />
                                 </div>
-                                <div className="w-24 h-24 rounded-full border-4 border-yellow-400 overflow-hidden mb-[-48px] z-10 bg-slate-200 shadow-2xl ring-4 ring-yellow-500/30 flex items-center justify-center">
+                                <div className="w-24 h-24 rounded-full border-4 border-yellow-400 overflow-hidden mb-[-48px] z-10 bg-slate-100 shadow-2xl ring-8 ring-yellow-500/10 flex items-center justify-center">
                                     <User size={64} className="text-slate-400" />
                                 </div>
-                                <div className="w-full bg-gradient-to-b from-yellow-400 to-amber-500 rounded-t-2xl pt-14 pb-8 px-4 text-center shadow-2xl relative h-80 flex flex-col justify-between transform scale-110">
-                                    <div>
-                                        <p className="font-black text-amber-900 text-xl line-clamp-2 leading-tight mb-1">{leaderboard[0].user_name}</p>
-                                        <p className="text-amber-800 text-sm font-bold uppercase">{leaderboard[0].school}</p>
+                                <div className="w-full bg-gradient-to-b from-yellow-300 via-yellow-400 to-amber-500 rounded-t-3xl pt-14 pb-8 px-4 text-center shadow-[0_20px_50px_rgba(245,158,11,0.3)] relative h-72 md:h-80 flex flex-col justify-between border-t border-white/40">
+                                    <div className="relative z-10">
+                                        <p className="font-black text-amber-950 text-xl line-clamp-2 leading-tight mb-1">{leaderboard[0].user_name}</p>
+                                        <p className="text-amber-900/80 text-sm font-bold uppercase tracking-widest">{leaderboard[0].school}</p>
                                     </div>
-                                    <div className="bg-white/30 py-3 rounded-xl mt-2 backdrop-blur-sm">
-                                        <p className="text-4xl font-black text-amber-950">{leaderboard[0].score}</p>
-                                        <p className="text-xs text-amber-900 font-bold uppercase tracking-wider">Nilai Rata-rata</p>
+                                    <div className="bg-white/40 py-3 rounded-2xl mt-2 backdrop-blur-md border border-white/20 shadow-inner">
+                                        <p className="text-4xl font-black text-amber-950 drop-shadow-sm">{leaderboard[0].score}</p>
+                                        <p className="text-[10px] text-amber-900 font-black uppercase tracking-[0.2em] mt-1">Nilai Akhir IRT</p>
                                     </div>
                                 </div>
-                                <div className="w-full h-4 bg-amber-600 rounded-b-xl opacity-50 scale-110"></div>
+                                <div className="w-full h-4 bg-amber-600/30 rounded-full mt-3 filter blur-md"></div>
                             </div>
                         )}
 
                         {/* Rank 3 (Bronze) */}
                         {leaderboard[2] && (
-                            <div className="flex flex-col items-center w-1/3 animate-in slide-in-from-bottom-10 delay-200 duration-700">
-                                <div className="w-20 h-20 rounded-full border-4 border-orange-300 overflow-hidden mb-[-40px] z-10 bg-slate-200 shadow-xl flex items-center justify-center">
+                            <div className="flex flex-col items-center w-full md:w-1/3 animate-in slide-in-from-bottom-10 delay-200 duration-700 order-3 md:order-3">
+                                <div className="w-20 h-20 rounded-full border-4 border-amber-600/50 overflow-hidden mb-[-40px] z-10 bg-slate-200 shadow-xl flex items-center justify-center">
                                     <User size={48} className="text-slate-400" />
                                 </div>
-                                <div className="w-full bg-gradient-to-b from-orange-300 to-orange-400 rounded-t-2xl pt-12 pb-6 px-4 text-center shadow-lg relative h-56 flex flex-col justify-between">
-                                    <div>
-                                        <p className="font-black text-orange-900 text-lg line-clamp-2 leading-tight mb-1">{leaderboard[2].user_name}</p>
-                                        <p className="text-orange-900/80 text-xs font-bold uppercase">{leaderboard[2].school}</p>
+                                <div className="w-full bg-gradient-to-b from-amber-600/80 to-amber-700 rounded-t-3xl pt-12 pb-6 px-4 text-center shadow-lg relative h-48 md:h-56 flex flex-col justify-between border-t border-white/10">
+                                    <div className="relative z-10">
+                                        <p className="font-black text-amber-100 text-lg line-clamp-2 leading-tight mb-1 drop-shadow-sm">{leaderboard[2].user_name}</p>
+                                        <p className="text-amber-200/60 text-xs font-bold uppercase tracking-widest">{leaderboard[2].school}</p>
                                     </div>
-                                    <div className="bg-orange-900/10 py-2 rounded-lg mt-2">
-                                        <p className="text-2xl font-black text-orange-900">{leaderboard[2].score}</p>
+                                    <div className="bg-black/20 py-2 rounded-xl mt-2 backdrop-blur-sm border border-white/5">
+                                        <p className="text-2xl font-black text-white">{leaderboard[2].score}</p>
                                     </div>
-                                    <div className="absolute top-4 right-4 text-orange-800 opacity-50">
-                                        <Medal size={40} />
+                                    <div className="absolute top-4 right-4 text-amber-200/20">
+                                        <Award size={48} strokeWidth={1} />
                                     </div>
                                 </div>
-                                <div className="w-full h-4 bg-orange-600 rounded-b-xl opacity-50"></div>
+                                <div className="w-full h-3 bg-amber-900/30 rounded-full mt-2 filter blur-sm"></div>
                             </div>
                         )}
                     </div>

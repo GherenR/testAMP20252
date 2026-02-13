@@ -37,5 +37,13 @@ export default defineConfig({
       'X-Frame-Options': 'DENY',
       'X-XSS-Protection': '1; mode=block',
     },
+    // Proxy for local API development (Vercel functions)
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 })

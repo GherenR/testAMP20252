@@ -185,10 +185,23 @@ export default function EmailPage() {
                 })
             });
 
-            const data = await response.json();
+            let data: any = {};
+            const contentType = response.headers.get('content-type');
+
+            if (contentType && contentType.includes('application/json')) {
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    console.error('Failed to parse JSON error response:', e);
+                }
+            } else {
+                const text = await response.text();
+                console.warn('Received non-JSON response:', text.substring(0, 100));
+            }
 
             if (!response.ok) {
-                throw new Error(data.message || data.error || 'Failed to send');
+                const errorMsg = data.message || data.error || `Server error (${response.status})`;
+                throw new Error(errorMsg);
             }
 
             return true;
@@ -321,8 +334,8 @@ export default function EmailPage() {
 
                     {message && (
                         <div className={`mb-4 p-4 rounded-xl flex items-center gap-3 ${message.type === 'success' ? 'bg-green-900/50 border border-green-500' :
-                                message.type === 'error' ? 'bg-red-900/50 border border-red-500' :
-                                    'bg-blue-900/50 border border-blue-500'
+                            message.type === 'error' ? 'bg-red-900/50 border border-red-500' :
+                                'bg-blue-900/50 border border-blue-500'
                             }`}>
                             {message.type === 'success' && <Check size={20} />}
                             {message.type === 'error' && <AlertCircle size={20} />}
@@ -359,8 +372,8 @@ export default function EmailPage() {
                                             key={t.id}
                                             onClick={() => handleTemplateChange(t.id)}
                                             className={`p-3 rounded-lg text-left transition ${selectedTemplateId === t.id
-                                                    ? 'bg-indigo-600 text-white'
-                                                    : 'bg-slate-700 hover:bg-slate-600'
+                                                ? 'bg-indigo-600 text-white'
+                                                : 'bg-slate-700 hover:bg-slate-600'
                                                 }`}
                                         >
                                             <FileText size={18} className="mb-1" />

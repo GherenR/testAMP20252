@@ -7,7 +7,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
-    const { signOut } = useAdminAuth();
+    const { signOut, adminRole } = useAdminAuth();
 
     // Set document title for admin dashboard
     useEffect(() => {
@@ -113,9 +113,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             <Menu size={24} />
                         </button>
                         <div className="flex items-center gap-2 text-sm text-slate-400">
-                            <span className="hidden sm:inline">Alumni Mentorship</span>
+                            <span className="hidden sm:inline">AMP IKAHATA</span>
                             <span className="text-slate-600">•</span>
-                            <span className="text-indigo-400 font-medium">Admin</span>
+                            <span className="text-indigo-400 font-bold uppercase tracking-wider">
+                                {adminRole?.replace('_', ' ') || 'Admin'}
+                            </span>
                         </div>
                         <div className="w-8 lg:hidden" /> {/* Spacer for alignment */}
                     </header>

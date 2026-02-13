@@ -168,12 +168,17 @@ Rules:
         console.log(`[generate-soal] Attempt ${attempts} for ${subtes}...`);
 
         try {
-            // Use gemini-1.5-flash for stability
+            // Use gemini-1.5-flash for stability with system_instruction
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cleanKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: `${systemPrompt}\n\n${userPrompt}\n\nTarget TOTAL questions: ${jumlah}` }] }],
+                    system_instruction: {
+                        parts: [{ text: systemPrompt }]
+                    },
+                    contents: [{
+                        parts: [{ text: `${userPrompt}\n\nTarget TOTAL questions: ${jumlah}` }]
+                    }],
                     generationConfig: {
                         temperature: 0.7,
                         maxOutputTokens: 4000,
@@ -183,10 +188,19 @@ Rules:
             });
 
             if (!response.ok) {
-                throw new Error(`Gemini API Error: ${response.status} ${await response.text()}`);
+                const errorText = await response.text();
+                console.error(`[generate-soal] Gemini API error ${response.status}:`, errorText);
+                throw new Error(`Gemini API Error: ${response.status} - ${errorText.substring(0, 100)}`);
             }
 
             const data = await response.json();
+
+            // Check for safety blocks or empty candidates
+            if (!data.candidates || data.candidates.length === 0) {
+                console.error('[generate-soal] No candidates returned. Possible safety block:', JSON.stringify(data.promptFeedback || {}));
+                throw new Error('Gemini tidak memberikan jawaban (kemungkinan terblokir filter keamanan)');
+            }
+
             lastContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
 
             // Parse Grouped Data

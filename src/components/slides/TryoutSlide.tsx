@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
     Play, Clock, Calendar, Lock, ChevronRight, Trophy, BookOpen,
     ArrowLeft, ArrowRight, CheckCircle, Timer, AlertTriangle, Unlock,
@@ -346,37 +346,41 @@ const TryoutDetail = () => {
 const TryoutPlay = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const [mode, setMode] = useState<'select' | 'exam' | 'result' | 'review'>('select');
+
+    // Data Loading State
     const [subtesList, setSubtesList] = useState<string[]>([]);
     const [completedSubtes, setCompletedSubtes] = useState<string[]>([]);
-
-    // Exam State
-    const [currentSubtes, setCurrentSubtes] = useState<string | null>(null);
-    const [soalList, setSoalList] = useState<TryoutSoal[]>([]);
-    const [jawaban, setJawaban] = useState<Record<string, any>>({});
-    const [timeLeft, setTimeLeft] = useState(0);
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const [showSimulationIntro, setShowSimulationIntro] = useState(false);
-    const [pendingSubtes, setPendingSubtes] = useState<string | null>(null);
-    const [pendingReviewSubtes, setPendingReviewSubtes] = useState<string | null>(null);
-    const [showReportModal, setShowReportModal] = useState(false);
-
-    // Data
     const [attempt, setAttempt] = useState<TryoutAttempt | null>(null);
     const [soalBySubtes, setSoalBySubtes] = useState<Record<string, TryoutSoal[]>>({});
-    const [flaggedQuestions, setFlaggedQuestions] = useState<string[]>([]);
     const [userInfo, setUserInfo] = useState<{ email?: string, user_metadata?: any } | null>(null);
     const [tryoutName, setTryoutName] = useState('');
-    const [isSaving, setIsSaving] = useState(false);
+    const [loading, setLoading] = useState(true);
 
-    // Load Data
+    // Common State for Selection
+    const [showSimulationIntro, setShowSimulationIntro] = useState(false);
+    const [pendingSubtes, setPendingSubtes] = useState<string | null>(null);
+
+    const refreshAttempt = useCallback(async () => {
+        if (!id) return;
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            const { data: aData } = await supabase.from('tryout_attempts')
+                .select('*').eq('tryout_id', id).eq('user_id', user.id).single();
+
+            if (aData) {
+                setAttempt(aData);
+                const completedKeys = Object.keys(aData.skor_per_subtes || {}).filter(k => isSubtesFinished(aData.skor_per_subtes[k]));
+                setCompletedSubtes(completedKeys);
+            }
+        }
+    }, [id]);
+
     useEffect(() => {
         const init = async () => {
             if (!id) return;
             // Load Soal
             const { data: sData } = await supabase.from('tryout_soal').select('*').eq('tryout_id', id);
             if (sData) {
-                // Sort by nomor_soal first
                 const sortedSoal = [...sData].sort((a, b) => a.nomor_soal - b.nomor_soal);
                 const grouped: Record<string, TryoutSoal[]> = {};
                 sortedSoal.forEach(s => {
@@ -384,7 +388,6 @@ const TryoutPlay = () => {
                     grouped[s.subtes].push(s);
                 });
                 setSoalBySubtes(grouped);
-                console.log('Processed SOS grouped by subtes:', Object.keys(grouped));
                 setSubtesList(Object.keys(grouped));
             }
 
@@ -392,323 +395,294 @@ const TryoutPlay = () => {
             const { data: tData } = await supabase.from('tryouts').select('nama').eq('id', id).single();
             if (tData) setTryoutName(tData.nama);
 
-            // Load Attempt
+            await refreshAttempt();
+
             const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const { data: aData } = await supabase.from('tryout_attempts')
-                    .select('*').eq('tryout_id', id).eq('user_id', user.id).single();
-
-                if (aData) {
-                    setAttempt(aData);
-                    setAttempt(aData);
-
-                    // MERGE: DB vs LocalStorage
-                    // We merge them to ensure no data loss if DB save failed but local succeeded.
-                    // Priority: Local > DB (assuming this device has latest unsaved changes)
-                    const localSaved = localStorage.getItem(`tryout_${id}_answers`);
-                    const localAns = localSaved ? JSON.parse(localSaved) : {};
-                    const mergedJawaban = { ...(aData.jawaban || {}), ...localAns };
-
-                    setJawaban(mergedJawaban);
-
-                    if (aData.flagged_questions) setFlaggedQuestions(aData.flagged_questions);
-
-                    // Only count as completed if it has a score (finished)
-                    const completedKeys = Object.keys(aData.skor_per_subtes || {}).filter(k => isSubtesFinished(aData.skor_per_subtes[k]));
-                    setCompletedSubtes(completedKeys);
-
-                    // Resume logic if needed (e.g. if they refreshed inside exam)
-                    // Currently simplification: Send them to selection screen.
-                } else {
-                    // No attempt? Should have been created in Detail. Redirect back.
-                    navigate(`../${id}`);
-                }
-            }
             if (user) setUserInfo(user);
+
+            setLoading(false);
         };
         init();
-    }, [id, navigate]);
-
-    // Auto-Resume Effect
-    useEffect(() => {
-        if (mode === 'select' && attempt?.status === 'in_progress' && attempt?.current_subtes && soalBySubtes[attempt.current_subtes]) {
-            // Check if subtest is already completed?
-            if (completedSubtes.includes(attempt.current_subtes)) {
-                // Should not happen if logic is correct, but safety check
-                return;
-            }
-            startSubtes(attempt.current_subtes);
-        }
-    }, [mode, attempt, soalBySubtes, completedSubtes]);
-
-    // Save Jawaban (Debounced or on Change)
-    const saveJawaban = async (newJawaban: Record<string, number>) => {
-        if (!attempt) return;
-        setIsSaving(true);
-        // Simulate network delay for UX (optional, but good for feeling)
-        // await new Promise(r => setTimeout(r, 500)); 
-        await supabase.from('tryout_attempts').update({ jawaban: newJawaban }).eq('id', attempt.id);
-        setIsSaving(false);
-    };
-
-    const handleSelectAnswer = (soalId: string, val: any, isToggle: boolean = false) => {
-        let newVal = val;
-        if (isToggle) {
-            const current = Array.isArray(jawaban[soalId]) ? [...jawaban[soalId]] : [];
-            if (current.includes(val)) newVal = current.filter(v => v !== val);
-            else newVal = [...current, val];
-        }
-        const newJawaban = { ...jawaban, [soalId]: newVal };
-        setJawaban(newJawaban);
-        // Persist locally for safety
-        localStorage.setItem(`tryout_${id}_answers`, JSON.stringify(newJawaban));
-
-        // Debounce saving to server? For now direct call is safer for "Tersimpan" indicator immediately
-        // But we should debounce to avoid spamming DB. 
-        // Let's us a simple timeout ref approach if we wanted perfect debounce.
-        // For now, let's just fire it.
-        saveJawaban(newJawaban);
-    };
-
-    // Sync localStorage on mount if valid
-    useEffect(() => {
-        if (!id) return;
-        const saved = localStorage.getItem(`tryout_${id}_answers`);
-        if (saved) {
-            setJawaban(prev => ({ ...prev, ...JSON.parse(saved) }));
-        }
-    }, [id]);
-
-    // Timer
-    const timerRef = useRef<NodeJS.Timeout | undefined>(undefined);
-    useEffect(() => {
-        if (mode === 'exam') {
-            // Check immediately on mount/update if time is already up
-            if (timeLeft <= 0) {
-                // We need a small delay or check if we simply loaded into a finished state
-                // But if we are in 'exam' mode and time is 0, we must finish.
-                // However, we must ensure we don't finish *before* the user even sees it if there's a sync issue.
-                // But logic says: if remaining calculation <= 0, then it is over.
-                const config = SUBTES_CONFIG.find(c => c.kode === currentSubtes);
-                const duration = (config?.waktuMenit || 20) * 60 * 1000;
-
-                // Double check against real time to be sure it's not just initial state 0
-                const savedStart = localStorage.getItem(`start_${attempt?.id}_${currentSubtes}`);
-                if (savedStart) {
-                    const start = parseInt(savedStart);
-                    const endTime = start + duration;
-                    if (Date.now() >= endTime) {
-                        console.log("Timer expired on load, finishing subtes...");
-                        finishSubtes();
-                        return;
-                    }
-                }
-            }
-
-            timerRef.current = setInterval(() => {
-                setTimeLeft(prev => {
-                    if (prev <= 1) {
-                        finishSubtes();
-                        return 0;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
-        }
-        return () => clearInterval(timerRef.current);
-    }, [mode, timeLeft, currentSubtes, attempt]);
+    }, [id, refreshAttempt]);
 
     const handleSubtesClick = (subtes: string) => {
         setPendingSubtes(subtes);
         setShowSimulationIntro(true);
     };
 
-    const handleReviewClick = (subtes: string) => {
-        setPendingReviewSubtes(subtes);
-        setCurrentSubtes(subtes);
-        setMode('review');
-    };
-
-    const startSubtes = async (subtes: string) => {
-        const sList = soalBySubtes[subtes];
-        if (!sList || !attempt) return;
-
-        const config = SUBTES_CONFIG.find(c => c.kode === subtes);
-
-        setCurrentSubtes(subtes);
-        setSoalList(sList);
-        setCurrentIndex(0);
-
-        // Update DB: Set current_subtes
-        supabase.from('tryout_attempts').update({ current_subtes: subtes }).eq('id', attempt.id).then(({ error }) => {
-            if (error) console.error("Failed to update current_subtes", error);
-        });
-
-        // Persistent Timer Logic
-        // Calculate based on attempt.started_at + duration
-        // If not started (new subtes), ideally we should track subtes start time too?
-        // But for Tryout, usually it's one big timer? 
-        // Or per subtes? The code implies "startSubtes" sets timer.
-        // User asked for "Tryout timer runs continuously".
-        // This implies the whole tryout has a fixed start/end?
-        // But here we set `timeLeft` per subtes.
-
-        // IF the user requirement is "whole tryout timer", that's different.
-        // But usually Subtes have individual times.
-        // The user said "timer will still run unless user quit...".
-        // "tryout session to be like permanent... timer will still run".
-        // This implies we need to track when the *Subtes* started.
-        // `attempt` creates `started_at` for the whole attempt.
-        // If subtes are independent, we need `subtes_started_at`.
-        // BUT current schema doesn't have `subtes_started_at`.
-
-        // COMPROMISE: We use the `started_at` of the TRYOUT if it's a single session tryout?
-        // Or we just allow the timer to be volatile per subtes but warn them?
-        // User specifically asked for this.
-        // "if they refresh... timer will still run".
-        // I will assume the timer is relative to "Now" and we need to save `subtes_start` in `jawaban` or somewhere?
-        // Or maybe just use `attempt.started_at` for EVERYTHING?
-        // But subtes have different durations.
-
-        // Solution: We update `skor_per_subtes` with a `started_at` timestamp?
-        // Or just rely on client side? Client side resets on refresh!
-        // To properly fix this, I would need a `subtes_attempts` table.
-        // Given constraints, I will use `localStorage` to backup the start time of the subtes.
-        // This is robust enough for refresh, but not for "close browser and come back 1 hour later on different device".
-        // User said "stores the answer... cannot be continued".
-
-        // Let's use `attempt.started_at` + Total Duration for the whole tryout?
-        // But the UI is "Select Subtes".
-
-        // I will stick to: Timer runs based on `Date.now()`.
-        // I'll save `subtes_start_${subtes}` to LocalStorage.
-        // AND I'll calculate `timeLeft` based on that.
-
-        // Server-Side Timer Logic
-        const now = new Date();
-        const duration = (config?.waktuMenit || 20) * 60 * 1000;
-        let endTime: number;
-
-        // Check if DB already has a started_at for this subtest
-        const existingData = attempt.skor_per_subtes?.[subtes];
-
-        if (existingData?.started_at) {
-            // RESUME: Use server time
-            const startTime = new Date(existingData.started_at).getTime();
-            endTime = startTime + duration;
-        } else {
-            // START NEW: Set server time
-            const startTimeIso = now.toISOString();
-            const newScores = {
-                ...(attempt.skor_per_subtes || {}),
-                [subtes]: {
-                    ...(attempt.skor_per_subtes?.[subtes] || {}),
-                    started_at: startTimeIso
-                }
-            };
-
-            // Optimistic update
-            setAttempt({ ...attempt, skor_per_subtes: newScores as any });
-
-            // Update DB
-            supabase.from('tryout_attempts').update({
-                skor_per_subtes: newScores,
-                current_subtes: subtes
-            }).eq('id', attempt.id).then(({ error }) => {
-                if (error) console.error("Failed to set start time", error);
-            });
-
-            endTime = now.getTime() + duration;
-        }
-
-        const remaining = Math.ceil((endTime - Date.now()) / 1000);
-
-        if (remaining <= 0) {
-            setTimeLeft(0);
-            setMode('exam');
-        } else {
-            setTimeLeft(remaining);
-            setMode('exam');
-        }
-    };
-
-    const finishSubtes = async () => {
-        if (!currentSubtes || !attempt) return;
-        clearInterval(timerRef.current);
-
-        // Calculate Score
-        const result = calculateSubtesScore(soalList, jawaban);
-
-        // Preserve started_at
-        const existingData = attempt.skor_per_subtes?.[currentSubtes];
-        if (existingData?.started_at) {
-            result.started_at = existingData.started_at;
-        }
-        result.finished_at = new Date().toISOString();
-
-        // Update DB
-        const newScores = { ...(attempt.skor_per_subtes || {}), [currentSubtes]: result };
-        const { error } = await supabase.from('tryout_attempts').update({
-            skor_per_subtes: newScores,
-            jawaban: jawaban,
-            current_subtes: null,
-            last_updated_at: new Date().toISOString()
-        }).eq('id', attempt.id);
-
-        if (error) console.error("Failed to save result", error);
-
-        // Update local state
-        setAttempt(prev => prev ? { ...prev, skor_per_subtes: newScores } : null);
-        setCompletedSubtes(prev => [...prev, currentSubtes]);
-        setMode('select');
-        saveJawaban(jawaban); // Force save
+    const startSubtes = (subtes: string) => {
+        navigate(`exam/${subtes}`);
     };
 
     const finishTryout = async () => {
         if (!attempt) return;
-
-        // 1. Mark as finished in DB
         const { error } = await supabase.from('tryout_attempts').update({
             completed_at: new Date().toISOString(),
             last_updated_at: new Date().toISOString()
         }).eq('id', attempt.id);
 
-        if (error) {
-            console.error("Failed to finish tryout", error);
-            alert("Gagal menyimpan status selesai");
-            return;
+        if (!error) {
+            navigate(`/snbt/tryout/${id}/result`);
         }
+    };
 
-        // 2. Navigate
-        navigate(`/snbt/tryout/${id}/result`);
-    }
+    if (loading || !attempt) return <div className="p-12 text-center text-slate-400">Memuat data tryout...</div>;
 
-    if (!attempt || Object.keys(soalBySubtes).length === 0) return <div className="p-8 text-center text-slate-400">Memuat data tryout...</div>;
+    return (
+        <Routes>
+            <Route index element={
+                <SubtestSelection
+                    subtesList={subtesList}
+                    completedSubtes={completedSubtes}
+                    soalBySubtes={soalBySubtes}
+                    attempt={attempt}
+                    handleSubtesClick={handleSubtesClick}
+                    finishTryout={finishTryout}
+                    showSimulationIntro={showSimulationIntro}
+                    setShowSimulationIntro={setShowSimulationIntro}
+                    pendingSubtes={pendingSubtes}
+                    startSubtes={startSubtes}
+                />
+            } />
+            <Route path="exam/:subtestId" element={
+                <ExamRouteWrapper
+                    id={id!}
+                    attempt={attempt}
+                    soalBySubtes={soalBySubtes}
+                    userInfo={userInfo}
+                    tryoutName={tryoutName}
+                    onFinishSubtes={refreshAttempt}
+                />
+            } />
+            <Route path="review/:subtestId" element={
+                <ReviewRouteWrapper
+                    soalBySubtes={soalBySubtes}
+                    attempt={attempt}
+                    tryoutName={tryoutName}
+                />
+            } />
+        </Routes>
+    );
+};
 
-    // RENDER: EXAM
-    if (mode === 'exam') {
-        const config = SUBTES_CONFIG.find(c => c.kode === currentSubtes);
+// --- Sub-components ---
 
-        return (
+const SubtestSelection = ({
+    subtesList, completedSubtes, soalBySubtes, attempt,
+    handleSubtesClick, finishTryout,
+    showSimulationIntro, setShowSimulationIntro, pendingSubtes, startSubtes
+}: any) => {
+    const navigate = useNavigate();
+    const isAllFinished = subtesList.length > 0 && subtesList.every((s: string) => completedSubtes.includes(s));
+    const progressPercentage = Math.round((completedSubtes.length / Math.max(subtesList.length, 1)) * 100);
+
+    return (
+        <div className="max-w-3xl mx-auto py-12 px-4 animate-in fade-in duration-500">
+            <h1 className="text-3xl font-black text-white mb-2 text-center">Pilih Subtes</h1>
+            <p className="text-slate-500 text-center mb-10">Selesaikan seluruh subtes untuk melihat hasil akhir</p>
+
+            <div className="mb-10 max-w-md mx-auto bg-slate-800/30 p-4 rounded-3xl border border-white/5">
+                <div className="flex justify-between text-[10px] text-slate-400 mb-2 font-black uppercase tracking-widest">
+                    <span>Progres Belajar</span>
+                    <span>{completedSubtes.length} / {subtesList.length} Subtest</span>
+                </div>
+                <div className="h-3 bg-slate-900 rounded-full overflow-hidden p-0.5">
+                    <div className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 rounded-full transition-all duration-700 shadow-[0_0_15px_rgba(99,102,241,0.5)]" style={{ width: `${progressPercentage}%` }}></div>
+                </div>
+            </div>
+
+            <div className="grid gap-4 mb-10">
+                {subtesList.map((s: string) => {
+                    const isDone = completedSubtes.includes(s);
+                    const config = SUBTES_CONFIG.find(c => c.kode === s);
+                    const result = attempt.skor_per_subtes?.[s];
+
+                    return (
+                        <div key={s} className={`group relative p-6 rounded-3xl border-2 transition-all ${isDone ? 'bg-slate-800/40 border-slate-700/50 opacity-80' : 'bg-white/5 border-white/10 hover:border-indigo-500/50 hover:bg-white/10 hover:-translate-y-1'}`}>
+                            <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-5">
+                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shadow-lg transition-transform group-hover:scale-110 ${isDone ? 'bg-slate-700 text-slate-500 shadow-none' : 'bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-indigo-500/20'}`}>
+                                        {config?.emoji || '📝'}
+                                    </div>
+                                    <div>
+                                        <h3 className={`font-black text-xl mb-1 ${isDone ? 'text-slate-500' : 'text-white'}`}>{config?.nama || s}</h3>
+                                        <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-wider text-slate-500">
+                                            <span className="flex items-center gap-1"><BookOpen size={14} /> {soalBySubtes[s]?.length} Soal</span>
+                                            <span className="flex items-center gap-1"><Clock size={14} /> {config?.waktuMenit} Menit</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {isDone ? (
+                                    <div className="text-right">
+                                        <div className="flex flex-col items-end gap-1">
+                                            <div className="px-3 py-1 bg-emerald-500/10 rounded-lg">
+                                                <span className="text-emerald-400 font-extrabold text-sm uppercase tracking-widest">Selesai</span>
+                                            </div>
+                                            {isAllFinished && (
+                                                <button
+                                                    onClick={() => navigate(`review/${s}`)}
+                                                    className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-tight"
+                                                >
+                                                    Tinjau Ulang
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => handleSubtesClick(s)}
+                                        className="px-8 py-3 bg-white text-slate-900 hover:bg-indigo-50 rounded-2xl font-black text-sm transition-all active:scale-95 shadow-xl shadow-white/5"
+                                    >MULAI</button>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {showSimulationIntro && (
+                <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+                    <div className="bg-white rounded-[2rem] max-w-lg w-full p-10 text-center relative overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+                        <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600"></div>
+                        <div className="w-24 h-24 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto mb-8 rotate-3 shadow-inner">
+                            <img src="/LogoIKAHATANewRBG.svg" alt="Logo" className="w-14 h-14 object-contain" />
+                        </div>
+                        <h3 className="text-3xl font-black text-slate-900 mb-2">SIAP SIMULASI?</h3>
+                        <p className="text-slate-500 mb-10 font-bold uppercase tracking-widest text-[10px]">Sistem Tryout SNBT IKAHATA</p>
+
+                        <div className="bg-slate-50 border-2 border-slate-100 rounded-3xl p-6 mb-10 text-left relative">
+                            <div className="absolute -top-3 left-6 px-3 py-1 bg-amber-400 text-amber-950 rounded-lg text-[10px] font-black flex items-center gap-1.5 shadow-md">
+                                <AlertTriangle size={12} strokeWidth={3} /> PERHATIAN
+                            </div>
+                            <p className="text-slate-600 text-sm leading-relaxed font-medium">
+                                Antarmuka (UI) ujian ini telah disesuaikan agar <strong>semirip mungkin</strong> dengan tampilan asli UTBK.
+                                <br /><br />
+                                <span className="opacity-70 text-xs italic">* Gunakan laptop/PC untuk pengalaman terbaik.</span>
+                            </p>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <button
+                                onClick={() => setShowSimulationIntro(false)}
+                                className="flex-1 py-4 px-6 bg-slate-100 text-slate-600 font-extrabold rounded-2xl hover:bg-slate-200"
+                            >NANTI DULU</button>
+                            <button
+                                onClick={() => {
+                                    setShowSimulationIntro(false);
+                                    if (pendingSubtes) startSubtes(pendingSubtes);
+                                }}
+                                className="flex-1 py-4 px-6 bg-blue-600 text-white font-extrabold rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-500/20"
+                            >GAS MULAI!</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {isAllFinished && (
+                <button
+                    onClick={finishTryout}
+                    className="w-full py-5 bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 text-white font-black rounded-3xl shadow-2xl hover:shadow-orange-500/40 flex items-center justify-center gap-3 transition-all hover:-translate-y-1 uppercase tracking-widest"
+                >
+                    <Trophy size={24} /> Lihat Hasil Akhir
+                </button>
+            )}
+        </div>
+    );
+};
+
+const ExamRouteWrapper = ({ id, attempt, soalBySubtes, userInfo, tryoutName, onFinishSubtes }: any) => {
+    const { subtestId } = useParams<{ subtestId: string }>();
+    const navigate = useNavigate();
+    const [timeLeft, setTimeLeft] = useState(0);
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [jawaban, setJawaban] = useState<Record<string, any>>(attempt?.jawaban || {});
+    const [flaggedQuestions, setFlaggedQuestions] = useState<string[]>(attempt?.flagged_questions || []);
+    const [isSaving, setIsSaving] = useState(false);
+    const [showReportModal, setShowReportModal] = useState(false);
+
+    const sList = useMemo(() => subtestId ? (soalBySubtes[subtestId] || []) : [], [subtestId, soalBySubtes]);
+    const config = useMemo(() => subtestId ? SUBTES_CONFIG.find(c => c.kode === subtestId) : null, [subtestId]);
+
+    useEffect(() => {
+        if (!subtestId || !attempt) return;
+
+        const startSession = async () => {
+            const existing = attempt.skor_per_subtes?.[subtestId];
+            const duration = (config?.waktuMenit || 30) * 60;
+
+            if (existing?.started_at && !existing?.finished_at) {
+                const start = new Date(existing.started_at).getTime();
+                const now = Date.now();
+                const elapsed = Math.floor((now - start) / 1000);
+                setTimeLeft(Math.max(duration - elapsed, 0));
+            } else if (!existing?.finished_at) {
+                // Start a new session
+                const startTime = new Date().toISOString();
+                const newScores = {
+                    ...(attempt.skor_per_subtes || {}),
+                    [subtestId]: { started_at: startTime }
+                };
+                await supabase.from('tryout_attempts').update({ skor_per_subtes: newScores }).eq('id', attempt.id);
+                setTimeLeft(duration);
+            }
+        };
+        startSession();
+    }, [subtestId, attempt, config]);
+
+    const handleSelectAnswer = async (soalId: string, val: any, isToggle: boolean = false) => {
+        const newJawaban = { ...jawaban };
+        if (isToggle) {
+            const curr = Array.isArray(newJawaban[soalId]) ? [...newJawaban[soalId]] : [];
+            if (curr.includes(val)) newJawaban[soalId] = curr.filter((v: any) => v !== val);
+            else newJawaban[soalId] = [...curr, val];
+        } else {
+            newJawaban[soalId] = val;
+        }
+        setJawaban(newJawaban);
+        setIsSaving(true);
+        await supabase.from('tryout_attempts').update({ jawaban: newJawaban }).eq('id', attempt.id);
+        setIsSaving(false);
+    };
+
+    const finishSubtes = async () => {
+        if (!subtestId || !attempt) return;
+        const res = calculateSubtesScore(sList, jawaban);
+        res.subtes = subtestId;
+        res.finished_at = new Date().toISOString();
+        const existing = attempt.skor_per_subtes?.[subtestId];
+        if (existing?.started_at) res.started_at = existing.started_at;
+
+        const newScores = { ...attempt.skor_per_subtes, [subtestId]: res };
+        const { error } = await supabase.from('tryout_attempts')
+            .update({ skor_per_subtes: newScores, jawaban })
+            .eq('id', attempt.id);
+
+        if (!error) {
+            await onFinishSubtes();
+            navigate('../', { relative: 'path' });
+        }
+    };
+
+    if (!subtestId || sList.length === 0) return null;
+
+    return (
+        <>
             <SimulationExamView
-                subtes={currentSubtes || ''}
+                subtes={subtestId}
                 subtesName={config?.nama || 'Subtes'}
-                soalList={soalList}
+                soalList={sList}
                 jawaban={jawaban}
-                onAnswer={(id: string, val: any, isToggle?: boolean) => handleSelectAnswer(id, val, isToggle)}
+                onAnswer={handleSelectAnswer}
                 timeLeft={timeLeft}
                 onFinishSubtes={finishSubtes}
                 currentNumber={currentIndex}
                 onNavigate={setCurrentIndex}
                 flaggedQuestions={flaggedQuestions}
                 onToggleFlag={async (id: string) => {
-                    const newFlags = flaggedQuestions.includes(id)
-                        ? flaggedQuestions.filter(f => f !== id)
-                        : [...flaggedQuestions, id];
+                    const newFlags = flaggedQuestions.includes(id) ? flaggedQuestions.filter(f => f !== id) : [...flaggedQuestions, id];
                     setFlaggedQuestions(newFlags);
-                    if (attempt) {
-                        await supabase.from('tryout_attempts').update({ flagged_questions: newFlags }).eq('id', attempt.id);
-                    }
+                    await supabase.from('tryout_attempts').update({ flagged_questions: newFlags }).eq('id', attempt.id);
                 }}
                 userData={{
                     name: userInfo?.user_metadata?.full_name || userInfo?.user_metadata?.name || 'Peserta',
@@ -718,172 +692,39 @@ const TryoutPlay = () => {
                 isSaving={isSaving}
                 onReport={() => setShowReportModal(true)}
             />
-        );
-    }
+            <ReportIssueModal isOpen={showReportModal} onClose={() => setShowReportModal(false)} meta={{ tryout_id: id, subtes: subtestId, mode: 'exam' }} />
+        </>
+    );
+};
 
-    // RENDER: REVIEW
-    if (mode === 'review' && currentSubtes) {
-        const config = SUBTES_CONFIG.find(c => c.kode === currentSubtes);
-        const sList = soalBySubtes[currentSubtes] || [];
+const ReviewRouteWrapper = ({ soalBySubtes, attempt, tryoutName }: any) => {
+    const { subtestId } = useParams<{ subtestId: string }>();
+    const navigate = useNavigate();
+    const config = subtestId ? SUBTES_CONFIG.find(c => c.kode === subtestId) : null;
+    const sList = subtestId ? (soalBySubtes[subtestId] || []) : [];
 
-        return (
+    if (!subtestId) return null;
+
+    return (
+        <div className="fixed inset-0 z-[100] bg-white">
             <ReviewExamView
                 subtesName={config?.nama || 'Subtes'}
                 soalList={sList}
                 jawaban={attempt?.jawaban || {}}
-                onClose={() => setMode('select')}
+                onClose={() => navigate('../', { relative: 'path' })}
                 tryoutName={tryoutName}
-            />
-        );
-    }
-
-    // RENDER: SELECT SUBTES
-
-    // Check if ALL subtests are completed
-    const isAllFinished = subtesList.length > 0 && subtesList.every(s => completedSubtes.includes(s));
-    const progressPercentage = Math.round((completedSubtes.length / Math.max(subtesList.length, 1)) * 100);
-
-    return (
-        <div className="max-w-3xl mx-auto py-12 px-4">
-            <h1 className="text-2xl font-black text-white mb-2 text-center">Pilih Subtes</h1>
-
-            {/* Progress Bar */}
-            <div className="mb-8 max-w-md mx-auto">
-                <div className="flex justify-between text-xs text-slate-400 mb-1 font-bold uppercase tracking-wider">
-                    <span>Progress Pengerjaan</span>
-                    <span>{completedSubtes.length} / {subtesList.length} Subtest</span>
-                </div>
-                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div>
-                </div>
-            </div>
-
-            <div className="grid gap-4 mb-8">
-                {subtesList.map(s => {
-                    const isDone = completedSubtes.includes(s);
-                    const config = SUBTES_CONFIG.find(c => c.kode === s);
-                    const result = attempt.skor_per_subtes?.[s];
-
-                    return (
-                        <div key={s} className={`p-5 rounded-2xl border ${isDone ? 'bg-slate-800/50 border-slate-700' : 'bg-white/5 border-white/10 hover:border-indigo-500/50'} transition-all`}>
-                            <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-4">
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${isDone ? 'bg-slate-700 text-slate-400' : 'bg-indigo-500/20 text-indigo-400'}`}>
-                                        {config?.emoji || '📝'}
-                                    </div>
-                                    <div>
-                                        <h3 className={`font-bold text-lg ${isDone ? 'text-slate-400' : 'text-white'}`}>{config?.nama || s}</h3>
-                                        <p className="text-sm text-slate-500">{soalBySubtes[s]?.length} Soal • {config?.waktuMenit} Menit</p>
-                                    </div>
-                                </div>
-
-                                {isDone ? (
-                                    <div className="text-right">
-                                        {isAllFinished ? (
-                                            <>
-                                                <p className="text-emerald-400 font-bold text-xl">{result?.skorNormalized}</p>
-                                                <button
-                                                    onClick={() => handleReviewClick(s)}
-                                                    className="text-xs text-indigo-400 hover:text-indigo-300 underline mt-1"
-                                                >
-                                                    Lihat Pembahasan
-                                                </button>
-                                            </>
-                                        ) : (
-                                            <div className="flex flex-col items-end">
-                                                <span className="flex items-center gap-1 text-emerald-500 font-bold bg-emerald-500/10 px-3 py-1 rounded-full text-sm">
-                                                    <CheckCircle size={16} /> Selesai
-                                                </span>
-                                                <span className="text-[10px] text-slate-500 mt-1 italic">Nilai keluar setelah semua selesai</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <button
-                                        onClick={() => handleSubtesClick(s)}
-                                        className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold"
-                                    >Mulai</button>
-                                )}
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-
-            {/* Simulation Intro Modal */}
-            {showSimulationIntro && (
-                <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl max-w-lg w-full p-8 text-center relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
-
-                        <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <img src="/LogoIKAHATANewRBG.svg" alt="Logo" className="w-12 h-12 object-contain" />
-                        </div>
-
-                        <h3 className="text-2xl font-black text-slate-800 mb-2">SISTEM TRYOUT SNBT IKAHATA</h3>
-                        <p className="text-slate-500 mb-8 font-medium">Ikatan Alumni SMA Hang Tuah 1 Jakarta</p>
-
-                        <div className="bg-blue-50 border border-blue-100 rounded-xl p-6 mb-8 text-left">
-                            <p className="text-blue-900 font-bold mb-2 flex items-center gap-2">
-                                <AlertTriangle size={18} /> Peringatan Simulasi
-                            </p>
-                            <p className="text-slate-700 text-sm leading-relaxed">
-                                Antarmuka (UI) ujian ini telah disesuaikan agar <strong>semirip mungkin</strong> dengan tampilan asli UTBK/SNBT.
-                                Tujuannya adalah agar Anda terbiasa dengan lingkungan ujian yang sesungguhnya.
-                            </p>
-                        </div>
-
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => setShowSimulationIntro(false)}
-                                className="flex-1 py-3 px-4 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200"
-                            >
-                                Batal
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setShowSimulationIntro(false);
-                                    if (pendingSubtes) startSubtes(pendingSubtes);
-                                }}
-                                className="flex-1 py-3 px-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20"
-                            >
-                                Mulai Kerjakan
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {subtesList.length > 0 && subtesList.every(s => completedSubtes.includes(s)) && (
-                <button
-                    onClick={finishTryout}
-                    className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold rounded-xl shadow-lg hover:shadow-orange-500/20 flex items-center justify-center gap-2"
-                >
-                    <Trophy size={20} /> Lihat Hasil Akhir
-                </button>
-            )}
-
-            <ReportIssueModal
-                isOpen={showReportModal}
-                onClose={() => setShowReportModal(false)}
-                meta={{
-                    tryout_id: id,
-                    subtes: currentSubtes || pendingReviewSubtes,
-                    mode: mode
-                }}
             />
         </div>
     );
-};
+}
 
 // 4. TRYOUT RESULT
 const TryoutResult = () => {
-    const { id } = useParams<{ id: string }>();
+    const { id, subtestId: subtestParam } = useParams<{ id: string, subtestId?: string }>();
     const navigate = useNavigate();
     const [attempt, setAttempt] = useState<TryoutAttempt | null>(null);
     const [soalList, setSoalList] = useState<TryoutSoal[]>([]);
     const [loading, setLoading] = useState(true);
-    const [selectedSubtestForReview, setSelectedSubtestForReview] = useState<string | null>(null);
 
     useEffect(() => {
         const fetch = async () => {
@@ -904,9 +745,21 @@ const TryoutResult = () => {
 
     if (loading || !attempt) return <div className="p-8 text-center text-slate-400">Memuat hasil...</div>;
 
-    const scores = Object.values(attempt.skor_per_subtes || {});
+    const allScores = Object.values(attempt.skor_per_subtes || {}).map(s => s as SubtesResult);
+
+    // Filter out "ghost" scores: 
+    // 1. Must be finished (finished_at exists or has a valid score)
+    // 2. Must have a corresponding config in SUBTES_CONFIG (avoid internal/undefined subtests)
+    const scores = allScores.filter(s => {
+        const hasConfig = SUBTES_CONFIG.some(c => c.kode === s.subtes);
+        const isFinished = typeof s.skorNormalized === 'number' && (s.finished_at || s.total > 0);
+        return hasConfig && isFinished;
+    });
+
     // Use stored irt_score if available, otherwise calculate on the fly (for jitter consistency)
-    const finalScore = scores.length > 0 ? (scores.reduce((a, b) => a + b.skorNormalized, 0) / scores.length).toFixed(2) : "0.00";
+    const finalScore = scores.length > 0
+        ? (scores.reduce((a, b) => a + b.skorNormalized, 0) / scores.length).toFixed(2)
+        : "0.00";
 
     // Analytics
     const sortedByScore = [...scores].sort((a, b) => b.skorNormalized - a.skorNormalized);
@@ -960,7 +813,8 @@ const TryoutResult = () => {
 
             {/* Score Breakdown */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
-                {Object.entries(attempt.skor_per_subtes || {}).map(([subtes, res]) => {
+                {scores.map((res) => {
+                    const subtes = res.subtes;
                     const config = SUBTES_CONFIG.find(c => c.kode === subtes);
                     return (
                         <div key={subtes} className="flex flex-col p-5 bg-slate-800/50 rounded-xl border border-slate-700 hover:border-indigo-500/50 transition-all">
@@ -976,7 +830,7 @@ const TryoutResult = () => {
                             </div>
 
                             <button
-                                onClick={() => setSelectedSubtestForReview(subtes)}
+                                onClick={() => navigate(`review/${subtes}`)}
                                 className="w-full py-2 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-lg text-sm font-bold transition-all border border-indigo-500/30 flex items-center justify-center gap-2"
                             >
                                 <BookOpen size={16} /> Lihat Pembahasan
@@ -986,22 +840,43 @@ const TryoutResult = () => {
                 })}
             </div>
 
-            {/* Unified Review Modal */}
-            {selectedSubtestForReview && (
-                <div className="fixed inset-0 z-[100] bg-white">
-                    <ReviewExamView
-                        subtesName={SUBTES_CONFIG.find(c => c.kode === selectedSubtestForReview)?.nama || 'Pembahasan'}
-                        soalList={soalList.filter(s => s.subtes === selectedSubtestForReview)}
+            {/* Unified Review Modal via Routes */}
+            <Routes>
+                <Route path="review/:subtestId" element={
+                    <ReviewModalWrapper
+                        id={id || ''}
+                        soalList={soalList}
                         jawaban={attempt.jawaban}
-                        onClose={() => setSelectedSubtestForReview(null)}
-                        tryoutName="Pembahasan Soal"
                     />
-                </div>
-            )}
+                } />
+            </Routes>
 
             <button onClick={() => navigate('/snbt/tryout')} className="mt-12 px-8 py-3 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-700">
                 Kembali ke Menu Utama
             </button>
+        </div>
+    );
+};
+
+// Helper component to manage review state based on URL
+const ReviewModalWrapper = ({ id, soalList, jawaban }: { id: string, soalList: TryoutSoal[], jawaban: any }) => {
+    const { subtestId } = useParams<{ subtestId: string }>();
+    const navigate = useNavigate();
+
+    if (!subtestId) return null;
+
+    const subtesName = SUBTES_CONFIG.find(c => c.kode === subtestId)?.nama || 'Pembahasan';
+    const filteredSoal = soalList.filter(s => s.subtes === subtestId);
+
+    return (
+        <div className="fixed inset-0 z-[100] bg-white">
+            <ReviewExamView
+                subtesName={subtesName}
+                soalList={filteredSoal}
+                jawaban={jawaban}
+                onClose={() => navigate(`/snbt/tryout/${id}/result`)}
+                tryoutName="Pembahasan Soal"
+            />
         </div>
     );
 };
@@ -1013,7 +888,7 @@ export const TryoutSlide: React.FC<{ isLoggedIn: boolean }> = ({ isLoggedIn }) =
             <Route index element={<TryoutList />} />
             <Route path=":id" element={<TryoutDetail />} />
             <Route path=":id/play" element={<TryoutPlay />} />
-            <Route path=":id/result" element={<TryoutResult />} />
+            <Route path=":id/result/*" element={<TryoutResult />} />
         </Routes>
     );
 };

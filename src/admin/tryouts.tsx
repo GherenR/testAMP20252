@@ -198,15 +198,26 @@ const TryoutManagement: React.FC = () => {
                 body: JSON.stringify({ subtes, jumlah: Math.min(jumlah, 10) }) // Max 10 at a time
             });
 
+            let data: any = {};
+            const contentType = response.headers.get('content-type');
+
+            if (contentType && contentType.includes('application/json')) {
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    console.error('Failed to parse JSON error response:', e);
+                }
+            } else {
+                const text = await response.text();
+                console.warn('Received non-JSON response from generate-soal:', text.substring(0, 100));
+            }
+
             if (!response.ok) {
-                const err = await response.json();
-                const msg = err.details || err.message || err.error || 'Unknown error';
-                console.error('Generate soal failed:', err);
+                const msg = data.details || data.message || data.error || `Server error (${response.status})`;
+                console.error('Generate soal failed:', data);
                 alert(`Gagal generate soal: ${msg}`);
                 return;
             }
-
-            const data = await response.json();
 
             // Flatten the groups for the UI state if needed, or keep them grouped.
             // For now, we flatten but keep the metadata for saving.
@@ -1499,7 +1510,7 @@ const TryoutManagement: React.FC = () => {
                                                                                                         {q.teks_bacaan}
                                                                                                     </LatexRenderer>
                                                                                                 </div>
-                                                                                                                )}
+                                                                                            )}
                                                                                             {
                                                                                                 q.image_url && (
                                                                                                     <div className="mb-3">

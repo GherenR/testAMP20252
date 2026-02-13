@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, Grip, FileText, Cloud, Loader2, MessageSquareWarning, Moon, Sun, X, User } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, Grip, FileText, Cloud, Loader2, MessageSquareWarning, Moon, Sun, X, User, Type } from 'lucide-react';
 import { TryoutSoal, TryoutAttempt } from '../../types';
 import LatexRenderer from '../LatexRenderer';
 
@@ -213,6 +213,7 @@ const SimulationExamView: React.FC<SimulationExamViewProps> = ({
 
     // Zoom Logic
     const [zoomLevel, setZoomLevel] = useState(2); // Index: 0 (0.8x), 1 (0.9x), 2 (1.0x), 3 (1.25x), 4 (1.5x)
+    const [showZoomMenu, setShowZoomMenu] = useState(false);
     const zoomMap: Record<number, number> = {
         0: 0.8,
         1: 0.9,
@@ -471,14 +472,29 @@ const SimulationExamView: React.FC<SimulationExamViewProps> = ({
                             </div>
                         </div>
 
-                        {/* Floating Zoom Controls - Lower Right */}
-                        <div className="absolute bottom-6 right-6 flex items-center gap-1 p-1 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl z-40">
-                            <button onClick={() => setZoomLevel(0)} className={`w-8 h-8 rounded-xl text-[10px] font-black flex items-center justify-center transition-all ${zoomLevel === 0 ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100'}`}>A--</button>
-                            <button onClick={() => setZoomLevel(1)} className={`w-8 h-8 rounded-xl text-[11px] font-black flex items-center justify-center transition-all ${zoomLevel === 1 ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100'}`}>A-</button>
-                            <button onClick={() => setZoomLevel(2)} className={`w-8 h-8 rounded-xl text-[12px] font-black flex items-center justify-center transition-all ${zoomLevel === 2 ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100'}`}>A</button>
-                            <button onClick={() => setZoomLevel(3)} className={`w-8 h-8 rounded-xl text-[14px] font-black flex items-center justify-center transition-all ${zoomLevel === 3 ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100'}`}>A+</button>
-                            <button onClick={() => setZoomLevel(4)} className={`w-8 h-8 rounded-xl text-[16px] font-black flex items-center justify-center transition-all ${zoomLevel === 4 ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100'}`}>A++</button>
-                        </div>
+                    </div>
+
+                    {/* Floating Zoom Controls - Minimal & Collapsible (Sticky) */}
+                    <div className="absolute bottom-24 right-6 flex flex-col items-end gap-2 z-40">
+                        {showZoomMenu && (
+                            <div className="flex flex-col gap-1 p-1 bg-white dark:bg-slate-800 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl animate-in slide-in-from-bottom-2 duration-200">
+                                <button onClick={() => { setZoomLevel(4); setShowZoomMenu(false); }} className={`w-10 h-10 rounded-xl text-[16px] font-black flex items-center justify-center transition-all ${zoomLevel === 4 ? 'bg-blue-600 text-white shadow-lg' : isDarkMode ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`} title="Sangat Besar">A++</button>
+                                <button onClick={() => { setZoomLevel(3); setShowZoomMenu(false); }} className={`w-10 h-10 rounded-xl text-[14px] font-black flex items-center justify-center transition-all ${zoomLevel === 3 ? 'bg-blue-600 text-white shadow-lg' : isDarkMode ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`} title="Besar">A+</button>
+                                <button onClick={() => { setZoomLevel(2); setShowZoomMenu(false); }} className={`w-10 h-10 rounded-xl text-[12px] font-black flex items-center justify-center transition-all ${zoomLevel === 2 ? 'bg-blue-600 text-white shadow-lg' : isDarkMode ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`} title="Normal">A</button>
+                                <button onClick={() => { setZoomLevel(1); setShowZoomMenu(false); }} className={`w-10 h-10 rounded-xl text-[11px] font-black flex items-center justify-center transition-all ${zoomLevel === 1 ? 'bg-blue-600 text-white shadow-lg' : isDarkMode ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`} title="Kecil">A-</button>
+                                <button onClick={() => { setZoomLevel(0); setShowZoomMenu(false); }} className={`w-10 h-10 rounded-xl text-[10px] font-black flex items-center justify-center transition-all ${zoomLevel === 0 ? 'bg-blue-600 text-white shadow-lg' : isDarkMode ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`} title="Sangat Kecil">A--</button>
+                            </div>
+                        )}
+                        <button
+                            onClick={() => setShowZoomMenu(!showZoomMenu)}
+                            className={`w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center transition-all active:scale-95 border-2 ${showZoomMenu
+                                ? 'bg-blue-600 border-blue-600 text-white'
+                                : isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400 hover:border-blue-500' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-600'
+                                }`}
+                            title="Pengaturan Ukuran Font"
+                        >
+                            <Type size={22} strokeWidth={2.5} />
+                        </button>
                     </div>
 
                     {/* Footer Navigation - Modern Style */}
@@ -540,7 +556,7 @@ const SimulationExamView: React.FC<SimulationExamViewProps> = ({
                             </div>
                         </div>
                         <div className="p-6 border-t border-slate-100 dark:border-slate-700">
-                            <button onClick={() => setShowFinishConfirm(true)} className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold uppercase tracking-widest text-xs">Selesai Sekarang</button>
+                            <button onClick={() => { setShowFinishConfirm(true); setShowMobileNav(false); }} className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold uppercase tracking-widest text-xs">Selesai Sekarang</button>
                         </div>
                     </div>
                 </div>

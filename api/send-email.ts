@@ -52,10 +52,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const data = await response.json();
 
         if (!response.ok) {
-            console.error('Resend error:', data);
+            console.error('[send-email] Resend API error:', data);
             return res.status(response.status).json({
-                error: data.message || 'Failed to send email',
-                details: data
+                error: data.message || 'Gagal mengirim email',
+                details: data,
+                hint: response.status === 403 ? 'Cek apakah domain pengirim sudah diverifikasi di Resend.' : undefined
             });
         }
 
