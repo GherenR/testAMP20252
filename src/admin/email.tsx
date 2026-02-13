@@ -271,25 +271,37 @@ export default function EmailPage() {
                 await sendEmailDirect(mentor);
                 sent++;
             } catch (error: any) {
-                errors.push(`${mentor.name}: ${error.message}`);
+                const errorMsg = error.message || 'Unknown error';
+                errors.push(`${mentor.name}: ${errorMsg}`);
 
-                // If API not configured, stop and show message
-                if (error.message?.includes('configured')) {
+                // Check for fatal errors (case-insensitive)
+                const lowerMsg = errorMsg.toLowerCase();
+
+                if (lowerMsg.includes('configured')) {
                     setMessage({
                         type: 'info',
                         text: `⚠️ Email API belum dikonfigurasi. Pastikan GMAIL_USER atau RESEND_API_KEY sudah diset di Vercel.`
                     });
                     setSending(false);
-                    setSendProgress(null);
                     return;
                 }
-                if (error.message?.includes('limit reached')) {
+
+                if (lowerMsg.includes('limit reached')) {
                     setMessage({
                         type: 'error',
                         text: `🚫 Limit email harian tercapai. Terkirim: ${sent}, Gagal: ${selectedMentors.length - sent}`
                     });
                     setSending(false);
-                    setSendProgress(null);
+                    return;
+                }
+
+                // If Gmail specifically fails, we stop to avoid further blocks
+                if (lowerMsg.includes('gmail error')) {
+                    setMessage({
+                        type: 'error',
+                        text: `❌ Error pada Gmail: ${errorMsg}. Pengiriman dihentikan.`
+                    });
+                    setSending(false);
                     return;
                 }
             }
@@ -368,16 +380,38 @@ export default function EmailPage() {
                     {/* Send Progress */}
                     {sendProgress && (
                         <div className="mb-4 p-4 bg-indigo-900/50 border border-indigo-500 rounded-xl">
-                            <div className="flex items-center gap-3">
-                                <Loader2 className="animate-spin" size={20} />
-                                <span>Mengirim: {sendProgress.sent}/{sendProgress.total}</span>
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-3">
+                                    <Loader2 className="animate-spin" size={20} />
+                                    <span className="font-semibold">Mengirim: {sendProgress.sent}/{sendProgress.total}</span>
+                                </div>
+                                <span className="text-xs text-indigo-300">
+                                    {Math.round((sendProgress.sent / sendProgress.total) * 100)}% Complete
+                                </span>
                             </div>
-                            <div className="mt-2 bg-slate-700 rounded-full h-2">
+                            <div className="bg-slate-700 rounded-full h-2 mb-4">
                                 <div
-                                    className="bg-indigo-500 h-2 rounded-full transition-all"
+                                    className="bg-indigo-500 h-2 rounded-full transition-all duration-500"
                                     style={{ width: `${(sendProgress.sent / sendProgress.total) * 100}%` }}
                                 />
                             </div>
+
+                            {/* Real-time Error Log */}
+                            {sendProgress.errors.length > 0 && (
+                                <div className="mt-4 pt-4 border-t border-indigo-500/30">
+                                    <div className="flex items-center gap-2 text-red-400 text-sm font-bold mb-2">
+                                        <AlertCircle size={14} /> Gagal Terkirim ({sendProgress.errors.length}):
+                                    </div>
+                                    <div className="max-h-32 overflow-y-auto space-y-1 custom-scrollbar pr-2">
+                                        {sendProgress.errors.map((err, idx) => (
+                                            <div key={idx} className="text-xs bg-red-900/20 border border-red-900/30 p-2 rounded text-red-300 flex items-start gap-2 animate-fadeIn">
+                                                <span className="opacity-50">•</span>
+                                                <span>{err}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 

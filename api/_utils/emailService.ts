@@ -1,6 +1,8 @@
 import nodemailer from 'nodemailer';
 import { supabase } from './supabase.js';
 
+let transporter: nodemailer.Transporter | null = null;
+
 /**
  * Reusable function to send branded emails using Gmail SMTP
  * Fallback to Resend API if Gmail is not configured or fails.
@@ -91,10 +93,10 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
 </html>
     `;
 
-    console.log(`[EmailService] Sending email to ${recipientList.length} recipients. Branding: ${WEBSITE_NAME}`);
+    console.log(`[EmailService] Target: ${to}. Branding: ${WEBSITE_NAME}`);
 
     try {
-        // ... (Check daily limit code remains the same)
+        // 1. Check daily limit
         let dailyCount = 0;
         try {
             const { count, error: countError } = await supabase
@@ -104,12 +106,13 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
                 .eq('status', 'success');
 
             if (!countError) dailyCount = count || 0;
+            console.log(`[EmailService] Daily count: ${dailyCount}/100`);
         } catch (dbErr: any) {
-            console.error('[EmailService] DB Error:', dbErr.message);
+            console.error('[EmailService] DB Error calculating limit:', dbErr.message);
         }
 
         if (dailyCount >= 100) {
-            throw new Error('Daily email limit reached (100/day).');
+            throw new Error('Limit reached: Daily email limit reached (100/day).');
         }
 
         let provider = 'none';
@@ -120,10 +123,17 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
         if (GMAIL_USER && GMAIL_APP_PASSWORD) {
             provider = 'gmail';
             try {
-                const transporter = nodemailer.createTransport({
-                    service: 'gmail',
-                    auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD },
-                });
+                // Reuse or create transporter
+                if (!transporter) {
+                    console.log('[EmailService] Creating new SMTP transporter');
+                    transporter = nodemailer.createTransport({
+                        service: 'gmail',
+                        auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD },
+                        pool: true, // Use connection pooling for bulk sends
+                        maxConnections: 3,
+                        maxMessages: 100,
+                    });
+                }
 
                 await transporter.sendMail({
                     from: `"${WEBSITE_NAME}" <${GMAIL_USER}>`,
@@ -142,6 +152,10 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
             } catch (err: any) {
                 console.error('[EmailService] Gmail failed:', err.message);
                 lastError = `Gmail Error: ${err.message}`;
+                // If auth failure or similar, invalidate transporter
+                if (err.message.includes('Invalid login') || err.message.includes('AUTH')) {
+                    transporter = null;
+                }
             }
         }
 
