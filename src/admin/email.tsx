@@ -20,17 +20,20 @@ const DEFAULT_TEMPLATES: EmailTemplate[] = [
 
 Selamat datang di Alumni Mentorship Project (AMP) IKAHATA!
 
-Terima kasih sudah bersedia menjadi mentor untuk adik-adik kita. Data kamu sudah tercatat:
+Terima kasih sudah bersedia menjadi mentor untuk adik-adik kita. Data kamu sudah tercatat di database kami:
 - Universitas: {university}
 - Jurusan: {major}
 - Angkatan: {angkatan}
 
+Silakan cek data kamu secara lengkap di:
+https://alumnihangtuah2025.vercel.app/database
+
+Cari nama kamu sendiri untuk memastikan semua informasi sudah benar. Jika ada data yang salah atau perlu diperbaiki, silakan hubungi admin (Gheren atau Faisal) untuk melakukan revisi.
+
 Adik-adik yang tertarik bisa menghubungi kamu melalui WhatsApp.
 
-Jika ada perubahan data, silakan hubungi admin.
-
 Salam hangat,
-Tim AMP IKAHATA`
+IKAHATA`
     },
     {
         id: 'update',
@@ -48,13 +51,13 @@ Jika ada perubahan (kontak, status, dll), mohon balas email ini atau hubungi adm
 Terima kasih atas kerjasamanya!
 
 Salam,
-Tim AMP IKAHATA`
+IKAHATA`
     },
     {
         id: 'reminder',
         name: 'Mentor Reminder',
         subject: 'Reminder: Kamu adalah Mentor AMP! 📚',
-        body: `Halo {name}!
+        body: `Halo {name}! 👋
 
 Ini reminder bahwa kamu terdaftar sebagai mentor di Alumni Mentorship Project IKAHATA.
 
@@ -63,7 +66,7 @@ Jangan lupa untuk membalas pesan dari adik-adik yang menghubungi ya! 💪
 Terima kasih sudah menjadi bagian dari program ini.
 
 Salam,
-Tim AMP IKAHATA`
+IKAHATA`
     },
     {
         id: 'custom',
@@ -74,7 +77,7 @@ Tim AMP IKAHATA`
 [Tulis pesan kamu di sini]
 
 Salam,
-Tim AMP IKAHATA`
+IKAHATA`
     }
 ];
 

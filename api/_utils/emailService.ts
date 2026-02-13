@@ -7,7 +7,7 @@ import { supabase } from './supabase.js';
  * Includes a daily limit of 100 emails.
  */
 export async function sendBrandEmail(to: string | string[], subject: string, message: string) {
-    const WEBSITE_NAME = process.env.VITE_WEBSITE_NAME || 'AMP IKAHATA';
+    const WEBSITE_NAME = process.env.VITE_WEBSITE_NAME || 'IKAHATA';
     const GMAIL_USER = process.env.GMAIL_USER;
     const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD; // 16-character Google App Password
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -15,65 +15,79 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
 
     const recipientList = Array.isArray(to) ? to : [to];
     const today = new Date().toISOString().split('T')[0];
+    const timestamp = new Date().getTime(); // Unique ID to prevent Gmail threading/clipping
 
-    // Format message for HTML: replace newlines with paragraphs/breaks
+    // Format message for HTML: replace newlines with professional spacing
     const formattedMessage = message
+        .trim()
         .split('\n')
-        .map(line => line.trim() === '' ? '<br>' : `<p style="margin-bottom: 16px; margin-top: 0;">${line}</p>`)
+        .map(line => line.trim() === '' ? '<div style="height: 12px;"></div>' : `<p style="margin: 0 0 16px 0;">${line}</p>`)
         .join('');
+
+    // NOTE: SVG logos are often blocked by email clients. 
+    // It is STRONGLY recommended to use a .png version of your logo.
+    const logoUrl = `${APP_URL}/LogoIKAHATANewRBG.svg`;
 
     const htmlTemplate = `
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!--[if mso]>
-    <noscript>
-    <xml>
-    <o:OfficeDocumentSettings>
-    <o:PixelsPerInch>96</o:PixelsPerInch>
-    </o:OfficeDocumentSettings>
-    </xml>
-    </noscript>
-    <![endif]-->
+    <title>${subject}</title>
     <style>
-        body { margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
-        img { border: 0; line-height: 100%; outline: none; text-decoration: none; }
-        table { border-collapse: collapse !important; }
-        .wrapper { width: 100%; table-layout: fixed; background-color: #f1f5f9; padding: 40px 0; }
-        .main { background-color: #ffffff; margin: 0 auto; width: 100%; max-width: 600px; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0; }
-        .header { padding: 40px 0 32px; text-align: center; background-color: #ffffff; }
-        .logo { width: 70px; height: auto; display: block; margin: 0 auto; }
-        .content { padding: 40px; color: #334155; line-height: 1.7; font-size: 16px; }
-        .footer { padding: 32px 40px; text-align: center; color: #94a3b8; font-size: 13px; background-color: #f8fafc; border-top: 1px solid #f1f5f9; }
-        .footer p { margin: 4px 0; }
-        .btn { display: inline-block; padding: 12px 24px; background-color: #2563eb; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; margin-top: 16px; }
+        body { margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        .wrapper { width: 100%; border: 0; cellpadding: 0; cellspacing: 0; background-color: #f8fafc; }
+        .container { width: 100%; max-width: 600px; margin: 0 auto; padding: 48px 20px; }
+        .main { background-color: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; border-collapse: separate; width: 100%; overflow: hidden; }
+        .header { padding: 48px 40px 32px; text-align: center; }
+        .logo { width: 80px; height: auto; display: inline-block; }
+        .content { padding: 0 48px 48px; color: #334155; line-height: 1.6; font-size: 16px; text-align: left; }
+        .footer { padding: 32px 48px; text-align: center; color: #64748b; font-size: 14px; background-color: #f1f5f9; border-top: 1px solid #e2e8f0; }
+        .footer-brand { color: #1e293b; font-weight: 700; margin-bottom: 4px; font-size: 16px; letter-spacing: 0.5px; }
+        .footer-org { color: #64748b; font-weight: 500; font-size: 13px; }
+        .footer-copy { margin-top: 16px; font-size: 11px; color: #94a3b8; }
+        p { margin: 0 0 16px 0; }
     </style>
 </head>
-<body>
-    <div class="wrapper">
-        <center>
-            <div class="main">
-                <div class="header">
-                    <img src="${APP_URL}/LogoIKAHATANewRBG.svg" alt="${WEBSITE_NAME}" class="logo">
-                </div>
-                <div class="content">
-                    ${formattedMessage}
-                </div>
-                <div class="footer">
-                    <p style="color: #64748b; font-weight: 600; margin-bottom: 8px;">${WEBSITE_NAME}</p>
-                    <p>Alumni Mentorship Project SMA Hang Tuah 1 Jakarta</p>
-                    <p style="margin-top: 16px; font-size: 11px;">&copy; ${new Date().getFullYear()} All rights reserved.</p>
-                </div>
-            </div>
-        </center>
-    </div>
+<body style="margin: 0; padding: 0; background-color: #f8fafc;">
+    <table class="wrapper" width="100%" border="0" cellpadding="0" cellspacing="0">
+        <tr>
+            <td align="center">
+                <table class="container" width="100%" max-width="600" border="0" cellpadding="0" cellspacing="0" style="max-width: 600px;">
+                    <tr>
+                        <td align="center">
+                            <table class="main" width="100%" border="0" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td class="header">
+                                        <img src="${logoUrl}" alt="${WEBSITE_NAME}" class="logo">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="content">
+                                        ${formattedMessage}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="footer">
+                                        <div class="footer-brand">${WEBSITE_NAME}</div>
+                                        <div class="footer-org">Ikatan Alumni SMA Hang Tuah 1 Jakarta</div>
+                                        <div class="footer-copy">&copy; ${new Date().getFullYear()} All rights reserved.</div>
+                                        <div style="display:none !important; font-size:1px; color:#f1f5f9; line-height:1px; max-height:0px; max-width:0px; opacity:0; overflow:hidden;">Ref: ${timestamp}</div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
     `;
 
-    console.log(`[EmailService] Attempting to send email to ${recipientList.length} recipients. Provider order: Gmail -> Resend`);
+    console.log(`[EmailService] Sending email to ${recipientList.length} recipients. Branding: ${WEBSITE_NAME}`);
 
     try {
         // 1. Check daily limit (100 emails)
@@ -85,34 +99,26 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
                 .gte('sent_at', `${today}T00:00:00Z`)
                 .eq('status', 'success');
 
-            if (countError) {
-                console.error('[EmailService] Database error checking limit (likely table missing):', countError.message);
-                // We proceed if table is missing, but log it
-            } else {
-                dailyCount = count || 0;
-            }
+            if (!countError) dailyCount = count || 0;
         } catch (dbErr: any) {
-            console.error('[EmailService] Unexpected DB error during limit check:', dbErr.message);
+            console.error('[EmailService] DB Error:', dbErr.message);
         }
 
         if (dailyCount >= 100) {
-            throw new Error('Daily email limit reached (100/day). Please try again tomorrow.');
+            throw new Error('Daily email limit reached (100/day).');
         }
 
         let provider = 'none';
         let sent = false;
         let lastError = '';
 
-        // 2. Try Gmail SMTP first
+        // 2. Gmail SMTP
         if (GMAIL_USER && GMAIL_APP_PASSWORD) {
             provider = 'gmail';
             try {
                 const transporter = nodemailer.createTransport({
                     service: 'gmail',
-                    auth: {
-                        user: GMAIL_USER,
-                        pass: GMAIL_APP_PASSWORD,
-                    },
+                    auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD },
                 });
 
                 await transporter.sendMail({
@@ -124,16 +130,14 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
                 });
 
                 sent = true;
-                console.log('[EmailService] Gmail SMTP success');
+                console.log('[EmailService] Gmail success');
             } catch (err: any) {
-                console.error('[EmailService] Gmail SMTP failed:', err.message);
+                console.error('[EmailService] Gmail failed:', err.message);
                 lastError = `Gmail Error: ${err.message}`;
             }
-        } else {
-            console.warn('[EmailService] Gmail credentials missing, skipping...');
         }
 
-        // 3. Fallback to Resend if Gmail failed or not configured
+        // 3. Resend Fallback
         if (!sent && RESEND_API_KEY) {
             provider = 'resend';
             try {
@@ -154,36 +158,32 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
 
                 if (response.ok) {
                     sent = true;
-                    console.log('[EmailService] Resend fallback success');
+                    console.log('[EmailService] Resend success');
                 } else {
                     const data = await response.json();
                     lastError = `Resend Error: ${data.message || response.statusText}`;
-                    console.error('[EmailService] Resend API error:', lastError);
+                    console.error('[EmailService] Resend failed:', lastError);
                 }
             } catch (err: any) {
-                console.error('[EmailService] Resend fallback failed:', err.message);
+                console.error('[EmailService] Resend failed:', err.message);
                 lastError = `Resend Error: ${err.message}`;
             }
-        } else if (!sent && !RESEND_API_KEY) {
-            console.warn('[EmailService] Resend API Key missing, no more fallback options.');
         }
 
-        // 4. Log the result (don't let logging failure block the success return)
+        // 4. Logging
         try {
             await supabase.from('email_logs').insert({
-                recipient: recipientList.join(', ').substring(0, 255), // Truncate if too long
+                recipient: recipientList.join(', ').substring(0, 255),
                 subject: subject.substring(0, 255),
                 provider: provider,
                 status: sent ? 'success' : 'error',
-                error_message: sent ? null : (lastError || 'No provider configured').substring(0, 500)
+                error_message: sent ? null : (lastError || 'No provider').substring(0, 500)
             });
         } catch (logErr: any) {
-            console.error('[EmailService] Failed to log email to database:', logErr.message);
+            console.error('[EmailService] Log failed:', logErr.message);
         }
 
-        if (!sent) {
-            throw new Error(lastError || 'No email provider configured or all providers failed. Check your environment variables.');
-        }
+        if (!sent) throw new Error(lastError || 'All email providers failed.');
 
         return { success: true, provider };
 
