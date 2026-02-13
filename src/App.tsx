@@ -381,10 +381,38 @@ const MainApp: React.FC = () => {
 
 const App: React.FC = () => (
   <Routes>
-    <Route path="/admin/login" element={<AdminLogin />} />
-    <Route path="/admin/*" element={<AdminAuthProvider><AdminPage /></AdminAuthProvider>} />
-    <Route path="/snbt/*" element={<UserAuthProvider><SNBTAreaSlide /></UserAuthProvider>} />
-    <Route path="/*" element={<UserAuthProvider><MainApp /></UserAuthProvider>} />
+    {/* Admin Routes */}
+    <Route
+      path="/admin/*"
+      element={
+        <AdminAuthProvider>
+          <Routes>
+            <Route path="login" element={<AdminLogin />} />
+            <Route path="*" element={<AdminPage />} />
+          </Routes>
+        </AdminAuthProvider>
+      }
+    />
+
+    {/* SNBT Area Routes */}
+    <Route
+      path="/snbt/*"
+      element={
+        <UserAuthProvider>
+          <SNBTAreaSlide />
+        </UserAuthProvider>
+      }
+    />
+
+    {/* Main App Routes */}
+    <Route
+      path="/*"
+      element={
+        <UserAuthProvider>
+          <MainApp />
+        </UserAuthProvider>
+      }
+    />
   </Routes>
 );
 

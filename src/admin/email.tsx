@@ -224,10 +224,15 @@ export default function EmailPage() {
             setMessage({ type: 'success', text: `✅ Email berhasil dikirim ke ${mentor.name}` });
         } catch (error: any) {
             // If API not configured, offer Gmail as alternative
-            if (error.message?.includes('not configured')) {
+            if (error.message?.includes('configured')) {
                 setMessage({
                     type: 'info',
-                    text: `⚠️ Email API belum diset. Gunakan tombol "Buka Gmail" untuk mengirim manual.`
+                    text: `⚠️ Email API belum dikonfigurasi. Hubungi Admin untuk menset GMAIL_USER atau RESEND_API_KEY.`
+                });
+            } else if (error.message?.includes('limit reached')) {
+                setMessage({
+                    type: 'error',
+                    text: `🚫 Limit email harian tercapai (100/hari). Silakan coba lagi besok.`
                 });
             } else {
                 setMessage({ type: 'error', text: `❌ Gagal kirim ke ${mentor.name}: ${error.message}` });
@@ -262,10 +267,19 @@ export default function EmailPage() {
                 errors.push(`${mentor.name}: ${error.message}`);
 
                 // If API not configured, stop and show message
-                if (error.message?.includes('not configured')) {
+                if (error.message?.includes('configured')) {
                     setMessage({
                         type: 'info',
-                        text: `⚠️ Email API belum dikonfigurasi. Tambahkan RESEND_API_KEY di Vercel Environment Variables. Daftar gratis di resend.com`
+                        text: `⚠️ Email API belum dikonfigurasi. Pastikan GMAIL_USER atau RESEND_API_KEY sudah diset di Vercel.`
+                    });
+                    setSending(false);
+                    setSendProgress(null);
+                    return;
+                }
+                if (error.message?.includes('limit reached')) {
+                    setMessage({
+                        type: 'error',
+                        text: `🚫 Limit email harian tercapai. Terkirim: ${sent}, Gagal: ${selectedMentors.length - sent}`
                     });
                     setSending(false);
                     setSendProgress(null);
@@ -519,7 +533,7 @@ export default function EmailPage() {
                                         Kirim ke {selectedMentorIds.size} Mentor (Direct)
                                     </button>
                                     <p className="text-xs text-slate-500 text-center">
-                                        Membutuhkan RESEND_API_KEY di Vercel. Daftar gratis di resend.com
+                                        Mendukung Gmail SMTP (Gratis) atau Resend API. Limit 100 email/hari.
                                     </p>
                                     <div className="border-t border-slate-700 my-3 pt-3">
                                         <p className="text-sm text-slate-400 mb-2">Alternatif (manual):</p>
