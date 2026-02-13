@@ -102,8 +102,8 @@ export default function AlumniEditorPage() {
     };
 
     const handleAddAlumni = async () => {
-        if (!newAlumni.name || !newAlumni.university) {
-            showMessage('error', 'Nama dan universitas wajib diisi');
+        if (!newAlumni.name || !newAlumni.university || !newAlumni.major || !newAlumni.whatsapp) {
+            showMessage('error', 'Nama, Universitas, Jurusan, dan WhatsApp wajib diisi');
             return;
         }
 
@@ -210,9 +210,11 @@ export default function AlumniEditorPage() {
                             </button>
                             <button
                                 onClick={() => setShowAddModal(true)}
-                                className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold flex items-center gap-2"
+                                className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold flex items-center gap-2 group transition-all active:scale-95 shadow-lg shadow-green-900/20"
+                                id="btn-tambah-alumni"
                             >
-                                <Plus size={20} /> Tambah
+                                <Plus size={20} className="group-hover:rotate-90 transition-transform" />
+                                <span>Tambah Mentor</span>
                             </button>
                         </div>
                     </div>
@@ -537,7 +539,7 @@ export default function AlumniEditorPage() {
                             <div className="bg-slate-800 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
                                 <div className="sticky top-0 bg-slate-800 p-4 border-b border-slate-700 flex justify-between items-center">
                                     <h2 className="text-xl font-bold flex items-center gap-2">
-                                        <Plus size={20} /> Tambah Alumni Baru
+                                        <Plus size={20} className="text-green-400" /> Tambah Mentor Baru
                                     </h2>
                                     <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-700 rounded-lg">
                                         <X size={20} />
@@ -626,9 +628,11 @@ export default function AlumniEditorPage() {
                                             type="text"
                                             value={newAlumni.whatsapp}
                                             onChange={(e) => setNewAlumni({ ...newAlumni, whatsapp: e.target.value })}
-                                            placeholder="wa.me/628xxx"
-                                            className="w-full p-3 bg-slate-900 border border-slate-700 rounded-lg"
+                                            placeholder="628xxxxxxxx"
+                                            className="w-full p-3 bg-slate-900 border border-slate-700 rounded-lg focus:ring-2 focus:ring-green-500"
+                                            required
                                         />
+                                        <p className="text-[10px] text-slate-500 mt-1 italic">Contoh: 6281234567890 (Gunakan kode negara, tanpa +)</p>
                                     </div>
 
                                     <div>
@@ -637,9 +641,10 @@ export default function AlumniEditorPage() {
                                             type="text"
                                             value={newAlumni.instagram}
                                             onChange={(e) => setNewAlumni({ ...newAlumni, instagram: e.target.value })}
-                                            placeholder="username (tanpa @)"
-                                            className="w-full p-3 bg-slate-900 border border-slate-700 rounded-lg"
+                                            placeholder="username"
+                                            className="w-full p-3 bg-slate-900 border border-slate-700 rounded-lg focus:ring-2 focus:ring-pink-500"
                                         />
+                                        <p className="text-[10px] text-slate-500 mt-1 italic">Contoh: gherenr (Tanpa simbol @)</p>
                                     </div>
 
                                     <div>
@@ -695,7 +700,7 @@ export default function AlumniEditorPage() {
                                         className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 rounded-xl font-bold flex items-center justify-center gap-2"
                                     >
                                         {saving ? <RefreshCw size={20} className="animate-spin" /> : <Plus size={20} />}
-                                        {saving ? 'Menyimpan...' : 'Tambah Alumni'}
+                                        {saving ? 'Menyimpan...' : 'Tambah Mentor'}
                                     </button>
                                 </div>
                             </div>
