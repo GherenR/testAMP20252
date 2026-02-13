@@ -11,9 +11,67 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
     const GMAIL_USER = process.env.GMAIL_USER;
     const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD; // 16-character Google App Password
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
+    const APP_URL = process.env.VITE_APP_URL || 'https://alumnihangtuah2025.vercel.app';
 
     const recipientList = Array.isArray(to) ? to : [to];
     const today = new Date().toISOString().split('T')[0];
+
+    // Format message for HTML: replace newlines with paragraphs/breaks
+    const formattedMessage = message
+        .split('\n')
+        .map(line => line.trim() === '' ? '<br>' : `<p style="margin-bottom: 16px; margin-top: 0;">${line}</p>`)
+        .join('');
+
+    const htmlTemplate = `
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--[if mso]>
+    <noscript>
+    <xml>
+    <o:OfficeDocumentSettings>
+    <o:PixelsPerInch>96</o:PixelsPerInch>
+    </o:OfficeDocumentSettings>
+    </xml>
+    </noscript>
+    <![endif]-->
+    <style>
+        body { margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+        img { border: 0; line-height: 100%; outline: none; text-decoration: none; }
+        table { border-collapse: collapse !important; }
+        .wrapper { width: 100%; table-layout: fixed; background-color: #f1f5f9; padding: 40px 0; }
+        .main { background-color: #ffffff; margin: 0 auto; width: 100%; max-width: 600px; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0; }
+        .header { padding: 40px 0 32px; text-align: center; background-color: #ffffff; }
+        .logo { width: 70px; height: auto; display: block; margin: 0 auto; }
+        .content { padding: 40px; color: #334155; line-height: 1.7; font-size: 16px; }
+        .footer { padding: 32px 40px; text-align: center; color: #94a3b8; font-size: 13px; background-color: #f8fafc; border-top: 1px solid #f1f5f9; }
+        .footer p { margin: 4px 0; }
+        .btn { display: inline-block; padding: 12px 24px; background-color: #2563eb; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; margin-top: 16px; }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <center>
+            <div class="main">
+                <div class="header">
+                    <img src="${APP_URL}/LogoIKAHATANewRBG.svg" alt="${WEBSITE_NAME}" class="logo">
+                </div>
+                <div class="content">
+                    ${formattedMessage}
+                </div>
+                <div class="footer">
+                    <p style="color: #64748b; font-weight: 600; margin-bottom: 8px;">${WEBSITE_NAME}</p>
+                    <p>Alumni Mentorship Project SMA Hang Tuah 1 Jakarta</p>
+                    <p style="margin-top: 16px; font-size: 11px;">&copy; ${new Date().getFullYear()} All rights reserved.</p>
+                </div>
+            </div>
+        </center>
+    </div>
+</body>
+</html>
+    `;
 
     console.log(`[EmailService] Attempting to send email to ${recipientList.length} recipients. Provider order: Gmail -> Resend`);
 
@@ -62,6 +120,7 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
                     to: recipientList.join(', '),
                     subject: subject,
                     text: message,
+                    html: htmlTemplate
                 });
 
                 sent = true;
@@ -88,7 +147,8 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
                         from: `${WEBSITE_NAME} <onboarding@resend.dev>`,
                         to: recipientList,
                         subject: subject,
-                        text: message
+                        text: message,
+                        html: htmlTemplate
                     })
                 });
 
