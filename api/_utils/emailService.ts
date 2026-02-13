@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { supabase } from './supabase';
+import { supabase } from './supabase.js';
 
 /**
  * Reusable function to send branded emails using Gmail SMTP

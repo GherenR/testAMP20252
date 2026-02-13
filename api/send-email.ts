@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sendBrandEmail } from './_utils/emailService';
+import { sendBrandEmail } from './_utils/emailService.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     // CORS headers
