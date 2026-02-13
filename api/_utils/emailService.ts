@@ -25,8 +25,8 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
         .join('');
 
     // NOTE: SVG logos are often blocked by email clients. 
-    // It is STRONGLY recommended to use a .png version of your logo.
-    const logoUrl = `${APP_URL}/LogoIKAHATANewRBG.svg`;
+    // Using the new transparent PNG version provided by the user.
+    const logoUrl = `${APP_URL}/LogoIKAHATANew-removebg-preview.png`;
 
     const htmlTemplate = `
 <!DOCTYPE html>
