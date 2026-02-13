@@ -27,6 +27,7 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
     // NOTE: SVG logos are often blocked by email clients. 
     // Using the new transparent PNG version provided by the user.
     const logoUrl = `${APP_URL}/LogoIKAHATANew-removebg-preview.png`;
+    const unsubscribeUrl = `${APP_URL}/unsubscribe`; // Placeholder for reputation
 
     const htmlTemplate = `
 <!DOCTYPE html>
@@ -47,6 +48,8 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
         .footer-brand { color: #1e293b; font-weight: 700; margin-bottom: 2px; font-size: 15px; letter-spacing: 0.5px; }
         .footer-org { color: #64748b; font-weight: 500; font-size: 12px; }
         .footer-copy { margin-top: 12px; font-size: 11px; color: #94a3b8; }
+        .footer-unsubscribe { margin-top: 8px; font-size: 11px; color: #94a3b8; }
+        .footer-unsubscribe a { color: #94a3b8; text-decoration: underline; }
         p { margin: 0 0 10px 0; }
     </style>
 </head>
@@ -73,6 +76,7 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
                                         <div class="footer-brand">${WEBSITE_NAME}</div>
                                         <div class="footer-org">Ikatan Alumni SMA Hang Tuah 1 Jakarta</div>
                                         <div class="footer-copy">&copy; ${new Date().getFullYear()} All rights reserved.</div>
+                                        <div class="footer-unsubscribe">You received this because you are an alumnus. <a href="${unsubscribeUrl}">Unsubscribe</a></div>
                                         <div style="display:none !important; font-size:1px; color:#f1f5f9; line-height:1px; max-height:0px; max-width:0px; opacity:0; overflow:hidden;">Ref: ${timestamp}</div>
                                     </td>
                                 </tr>
@@ -90,7 +94,7 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
     console.log(`[EmailService] Sending email to ${recipientList.length} recipients. Branding: ${WEBSITE_NAME}`);
 
     try {
-        // 1. Check daily limit (100 emails)
+        // ... (Check daily limit code remains the same)
         let dailyCount = 0;
         try {
             const { count, error: countError } = await supabase
@@ -124,6 +128,10 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
                 await transporter.sendMail({
                     from: `"${WEBSITE_NAME}" <${GMAIL_USER}>`,
                     to: recipientList.join(', '),
+                    replyTo: GMAIL_USER,
+                    headers: {
+                        'List-Unsubscribe': `<${unsubscribeUrl}>`
+                    },
                     subject: subject,
                     text: message,
                     html: htmlTemplate
@@ -150,6 +158,10 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
                     body: JSON.stringify({
                         from: `${WEBSITE_NAME} <onboarding@resend.dev>`,
                         to: recipientList,
+                        reply_to: GMAIL_USER || 'admin@alumnihangtuah.com',
+                        headers: {
+                            'List-Unsubscribe': `<${unsubscribeUrl}>`
+                        },
                         subject: subject,
                         text: message,
                         html: htmlTemplate

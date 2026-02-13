@@ -295,8 +295,8 @@ export default function EmailPage() {
             }
             setSendProgress({ sent, total: selectedMentors.length, errors });
 
-            // Small delay to avoid rate limiting
-            await new Promise(resolve => setTimeout(resolve, 200));
+            // Small delay to avoid rate limiting and spam filters (burst detection)
+            await new Promise(resolve => setTimeout(resolve, 1500));
         }
 
         setSending(false);
