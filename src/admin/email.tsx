@@ -15,25 +15,20 @@ const DEFAULT_TEMPLATES: EmailTemplate[] = [
     {
         id: 'welcome',
         name: 'Welcome Message',
-        subject: 'Selamat Bergabung di Alumni Mentorship Project! 🎉',
+        subject: 'Selamat Bergabung di Alumni Mentorship Project IKAHATA 🎉',
         body: `Halo {name}! 👋
 
-Selamat datang di Alumni Mentorship Project (AMP) IKAHATA!
+Terima kasih sudah bersedia menjadi mentor untuk adik-adik kita. Data kamu sudah tercatat di database AMP IKAHATA:
 
-Terima kasih sudah bersedia menjadi mentor untuk adik-adik kita. Data kamu sudah tercatat di database kami:
 - Universitas: {university}
 - Jurusan: {major}
 - Angkatan: {angkatan}
 - Kategori: {category}
-- WhatsApp: {whatsapp}
-- Instagram: @{instagram}
 
-Data lengkap kamu, termasuk riwayat pengalaman dan prestasi, sudah dapat dilihat publik di:
+Kamu bisa cek data lengkap dan profil publik kamu di website:
 https://alumnihangtuah2025.vercel.app/database
 
-Cari nama kamu sendiri untuk memastikan semua informasi sudah benar. Jika ada data yang salah, ingin update prestasi/pengalaman, atau perlu diperbaiki, silakan hubungi admin (Gheren atau Faisal).
-
-Adik-adik yang tertarik bisa menghubungi kamu melalui WhatsApp.
+Jika ada data yang salah atau ingin update, silakan hubungi admin (Gheren atau Faisal).
 
 Salam hangat,
 IKAHATA`
@@ -41,17 +36,16 @@ IKAHATA`
     {
         id: 'update',
         name: 'Update Data Request',
-        subject: 'Mohon Update Data Mentor AMP',
+        subject: 'Update Data Mentor AMP IKAHATA',
         body: `Halo {name}!
 
-Kami ingin memastikan data kamu di AMP masih akurat:
+Kami sedang merapikan database mentor AMP. Mohon kesediaannya untuk mengecek data kamu apakah masih sesuai:
+
 - Universitas: {university}
 - Jurusan: {major}
 - Angkatan: {angkatan}
 
-Jika ada perubahan (kontak, status, dll), mohon balas email ini atau hubungi admin.
-
-Terima kasih atas kerjasamanya!
+Jika ada perubahan, mohon kabari kami ya. Terima kasih!
 
 Salam,
 IKAHATA`
@@ -59,14 +53,12 @@ IKAHATA`
     {
         id: 'reminder',
         name: 'Mentor Reminder',
-        subject: 'Reminder: Kamu adalah Mentor AMP! 📚',
+        subject: 'Reminder Mentor AMP IKAHATA 📚',
         body: `Halo {name}! 👋
 
-Ini reminder bahwa kamu terdaftar sebagai mentor di Alumni Mentorship Project IKAHATA.
+Sekadar pengingat bahwa kamu terdaftar sebagai mentor di program AMP IKAHATA.
 
-Jangan lupa untuk membalas pesan dari adik-adik yang menghubungi ya! 💪
-
-Terima kasih sudah menjadi bagian dari program ini.
+Terima kasih banyak sudah menyempatkan waktu untuk membimbing adik-adik kita. Sukses selalu buat kamu! 💪
 
 Salam,
 IKAHATA`
@@ -108,7 +100,7 @@ export default function EmailPage() {
     const [previewMentor, setPreviewMentor] = useState<MentorDB | null>(null);
 
     // Send progress
-    const [sendProgress, setSendProgress] = useState<{ sent: number; total: number; errors: string[] } | null>(null);
+    const [sendProgress, setSendProgress] = useState<{ sent: number; total: number; errors: string[]; statusText?: string } | null>(null);
 
     useEffect(() => {
         loadMentors();
@@ -261,54 +253,79 @@ export default function EmailPage() {
         if (!window.confirm(`Kirim email ke ${selectedMentors.length} mentor?`)) return;
 
         setSending(true);
-        setSendProgress({ sent: 0, total: selectedMentors.length, errors: [] });
+        setSendProgress({ sent: 0, total: selectedMentors.length, errors: [], statusText: 'Inisialisasi...' });
 
         const errors: string[] = [];
         let sent = 0;
+        let batchCount = 0;
 
         for (const mentor of selectedMentors) {
+            // Cool-down pause: every 10 emails, wait 2 minutes
+            if (batchCount > 0 && batchCount % 10 === 0) {
+                const waitTime = 120; // 2 minutes
+                for (let i = waitTime; i > 0; i--) {
+                    if (!sending) return;
+                    setSendProgress({
+                        sent,
+                        total: selectedMentors.length,
+                        errors,
+                        statusText: `☕ Cool-down: Melanjutkan dalam ${i} detik...`
+                    });
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+
             try {
+                setSendProgress({
+                    sent,
+                    total: selectedMentors.length,
+                    errors,
+                    statusText: `📤 Mengirim ke ${mentor.name}...`
+                });
+
                 await sendEmailDirect(mentor);
                 sent++;
+                batchCount++;
             } catch (error: any) {
                 const errorMsg = error.message || 'Unknown error';
                 errors.push(`${mentor.name}: ${errorMsg}`);
 
-                // Check for fatal errors (case-insensitive)
                 const lowerMsg = errorMsg.toLowerCase();
-
                 if (lowerMsg.includes('configured')) {
-                    setMessage({
-                        type: 'info',
-                        text: `⚠️ Email API belum dikonfigurasi. Pastikan GMAIL_USER atau RESEND_API_KEY sudah diset di Vercel.`
-                    });
+                    setMessage({ type: 'info', text: `⚠️ Email API belum dikonfigurasi.` });
                     setSending(false);
                     return;
                 }
 
                 if (lowerMsg.includes('limit reached')) {
-                    setMessage({
-                        type: 'error',
-                        text: `🚫 Limit email harian tercapai. Terkirim: ${sent}, Gagal: ${selectedMentors.length - sent}`
-                    });
+                    setMessage({ type: 'error', text: `🚫 Limit email harian tercapai.` });
                     setSending(false);
                     return;
                 }
 
-                // If Gmail specifically fails, we stop to avoid further blocks
                 if (lowerMsg.includes('gmail error')) {
-                    setMessage({
-                        type: 'error',
-                        text: `❌ Error pada Gmail: ${errorMsg}. Pengiriman dihentikan.`
-                    });
+                    setMessage({ type: 'error', text: `❌ Gmail blocking detected: ${errorMsg}.` });
                     setSending(false);
                     return;
                 }
             }
+
             setSendProgress({ sent, total: selectedMentors.length, errors });
 
-            // Small delay to avoid rate limiting and spam filters (burst detection)
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // Natural delay: 8 seconds between each email
+            if (sent < selectedMentors.length) {
+                const delayTime = 8;
+                for (let i = delayTime; i > 0; i--) {
+                    if (!sending) return;
+                    setSendProgress({
+                        sent,
+                        total: selectedMentors.length,
+                        errors,
+                        statusText: `⏱️ Menunggu ${i} detik (Natural Pattern)...`
+                    });
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
         }
 
         setSending(false);
@@ -383,7 +400,7 @@ export default function EmailPage() {
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-3">
                                     <Loader2 className="animate-spin" size={20} />
-                                    <span className="font-semibold">Mengirim: {sendProgress.sent}/{sendProgress.total}</span>
+                                    <span className="font-semibold">{sendProgress.statusText || `Mengirim: ${sendProgress.sent}/${sendProgress.total}`}</span>
                                 </div>
                                 <span className="text-xs text-indigo-300">
                                     {Math.round((sendProgress.sent / sendProgress.total) * 100)}% Complete
