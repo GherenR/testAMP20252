@@ -129,9 +129,12 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
                     transporter = nodemailer.createTransport({
                         service: 'gmail',
                         auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD },
-                        pool: true, // Use connection pooling for bulk sends
+                        pool: true,
                         maxConnections: 3,
                         maxMessages: 100,
+                        connectionTimeout: 10000, // 10s
+                        greetingTimeout: 5000,    // 5s
+                        socketTimeout: 30000      // 30s
                     });
                 }
 
@@ -156,8 +159,9 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
             } catch (err: any) {
                 console.error('[EmailService] Gmail failed:', err.message);
                 lastError = `Gmail Error: ${err.message}`;
-                // If auth failure or similar, invalidate transporter
-                if (err.message.includes('Invalid login') || err.message.includes('AUTH')) {
+                // If auth failure, timeout, or similar, invalidate transporter
+                if (err.message.includes('Invalid login') || err.message.includes('AUTH') || err.message.includes('ETIMEDOUT') || err.message.includes('ECONN')) {
+                    console.log('[EmailService] Invalidating transporter due to network/auth error');
                     transporter = null;
                 }
             }
@@ -212,7 +216,7 @@ export async function sendBrandEmail(to: string | string[], subject: string, mes
                 // If it doesn't work, we'll suggest them to check their Supabase policies.
             }
 
-            const { error: logError } = await supabase.from('email_logs').insert({
+            const { error: logError } = await logClient.from('email_logs').insert({
                 recipient: recipientList.join(', ').substring(0, 255),
                 subject: subject.substring(0, 255),
                 provider: provider,
